@@ -145,24 +145,26 @@ android {
         checkReleaseBuilds = false
     }
 
+    val targetAbi = project.findProperty("abi") as? String ?: ""
+
     splits {
         abi {
-            isEnable = enableAbiSplits
-            reset()
-            
-            // Check if a specific ABI was passed via command line (e.g., -Pabi=arm64-v8a)
-            val targetAbi = project.findProperty("abi") as? String
-            
-            if (targetAbi != null) {
-                // If an ABI is specified, only build that one
+            if (targetAbi.isNotEmpty()) {
+                // If a specific ABI is requested via command line, build only that one
+                isEnable = true
+                reset()
                 include(targetAbi)
                 isUniversalApk = false
-            } else if (enableAbiSplits) {
-                // Default behavior if no specific ABI is requested
-                // Add armv7a back to the build list
-                include("arm64-v8a", "armeabi-v7a") 
-                // Re-enable the universal APK
-                isUniversalApk = true  
+            } else {
+                // Your default behavior when building locally or without the -P flag
+                isEnable = enableAbiSplits
+                reset()
+                if (enableAbiSplits) {
+                    // Add armv7a back to the build list
+                    include("arm64-v8a", "armeabi-v7a") 
+                    // Re-enable the universal APK
+                    isUniversalApk = true  
+                }
             }
         }
     }
