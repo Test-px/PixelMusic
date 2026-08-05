@@ -1,12 +1,18 @@
 package com.unshoo.pixelmusic.data.remote.youtube
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
-import android.media.MediaScannerConnection
-import android.os.Environment
+import android.graphics.BitmapFactory
+import android.os.Build
 import androidx.annotation.OptIn
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.database.youtube.AppDatabase
 import com.unshoo.pixelmusic.data.model.youtube.Song
 import dagger.hilt.EntryPoint
@@ -15,7 +21,6 @@ import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.absoluteValue
@@ -39,14 +44,16 @@ class SongDownloadWorker(
         WorkerEntryPoint::class.java
     ).musicDao()
 
+    private val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val CHANNEL_ID = "song_download_channel"
+
     @OptIn(UnstableApi::class)
     override suspend fun doWork(): Result {
         return withContext(Dispatchers.IO) {
             val playlistId = params.inputData.getString(PLAYLIST_KEY)
-            val songId = params.inputData.getString(SONG_KEY)
-                ?: return@withContext Result.failure()
-                
+            val songId = params.inputData.getString(SONG_KEY) ?: return@withContext Result.failure()
             val persistPublicly = params.inputData.getBoolean("persist_publicly", true)
+            val notificationId = songId.hashCode().absoluteValue
 
             var song = localSongRepository.getSong(songId)
             if (song == null) {
@@ -63,108 +70,107 @@ class SongDownloadWorker(
             if (playlistId != null) {
                 val playlist = playlistRepository.getPlaylistById(playlistId)
                 if (playlist != null) {
-                    val playlistImage =
-                        DownloadHelper.downloadImage(
-                            appContext,
-                            playlist.info.coverHref,
-                            playlist.info.id
-                        )
-                    playlistRepository.insertPlaylist(
-                        playlist.info.copy(
-                            coverPath = playlistImage?.path
-                        )
-                    )
+                    val playlistImage = DownloadHelper.downloadImage(appContext, playlist.info.coverHref, playlist.info.id)
+                    playlistRepository.insertPlaylist(playlist.info.copy(coverPath = playlistImage?.path))
                 }
             }
 
             try {
                 var fullSong: Song? = null
-                songRepository.getSongInfo(song.youtubeId)
-                    .collect { apiResult ->
-                        when (apiResult) {
-                            is ApiResult.Success -> {
-                                fullSong = apiResult.data
-                            }
-                            else -> {}
-                        }
+                songRepository.getSongInfo(song.youtubeId).collect { apiResult ->
+                    if (apiResult is ApiResult.Success) {
+                        fullSong = apiResult.data
                     }
+                }
 
-                val audioPath =
-                    DownloadHelper.downloadAudio(
-                        appContext, song, connections = 8, persistPublicly = persistPublicly
-                    )
-                val thumbnailPath =
-                    DownloadHelper.downloadImage(
-                        appContext,
-                        fullSong?.thumbnailHref ?: song.thumbnailHref,
-                        song.youtubeId
-                    )
-
-                val updatedSong = song.copy(
-                    thumbnailPath = thumbnailPath?.path,
-                    audioFilePath = audioPath,
+                // 1. Download the thumbnail FIRST so we can display it in the progressive notification
+                val thumbnailPath = DownloadHelper.downloadImage(
+                    appContext,
+                    fullSong?.thumbnailHref ?: song.thumbnailHref,
+                    song.youtubeId
                 )
+                val songWithThumb = song.copy(thumbnailPath = thumbnailPath?.path)
+
+                // 2. Put the worker in the Foreground to show the rich notification immediately
+                setForeground(createForegroundInfo(songWithThumb, notificationId, progress = 0, indeterminate = true))
+
+                // 3. Download the audio. 
+                // NOTE: If DownloadHelper supports a progress callback, you can update the notification here.
+                val audioPath = DownloadHelper.downloadAudio(
+                    appContext, songWithThumb, connections = 8, persistPublicly = persistPublicly
+                )
+
+                val updatedSong = songWithThumb.copy(audioFilePath = audioPath)
                 localSongRepository.create(updatedSong)
 
                 ensureYoutubeSongInLibrary(updatedSong)
 
                 if (audioPath != null) {
                     val mainId = -(15_000_000_000_000L + song.youtubeId.hashCode().toLong().absoluteValue)
-                    
-                    // Safely handle MediaStore URIs so the database doesn't crash
-                    val parentDir = if (audioPath.startsWith("content://")) {
-                        "Music/PixelMusic"
-                    } else {
-                        File(audioPath).parentFile?.absolutePath ?: ""
-                    }
-                    
+                    val parentDir = if (audioPath.startsWith("content://")) "Music/PixelMusic" else File(audioPath).parentFile?.absolutePath ?: ""
                     musicDao.updateSongFilePathAndParent(mainId, audioPath, parentDir)
                 }
 
+                // Remove the foreground progress notification, and show the final success one
                 if (persistPublicly) {
+                    notificationManager.cancel(notificationId)
                     UmihiNotificationManager.showSongDownloadSuccess(appContext, song)
                 }
                 Result.success()
+                
             } catch (_: CancellationException) {
+                notificationManager.cancel(notificationId)
                 UmihiHelper.printd("Song download canceled ${song.title}")
                 Result.failure()
             } catch (e: Exception) {
-                val errorMessage = e.message ?: e.javaClass.simpleName
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        appContext, 
-                        "CRASH REASON: $errorMessage", 
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }
-                
+                notificationManager.cancel(notificationId)
                 if (persistPublicly) {
-                    UmihiNotificationManager.showSongDownloadFailed(
-                        appContext,
-                        song
-                    )
+                    UmihiNotificationManager.showSongDownloadFailed(appContext, song)
                 }
-                
-                UmihiHelper.printe(
-                    message = "Error downloading song: ${song.youtubeId}",
-                    exception = e
-                )
                 Result.failure()
             }
         }
     }
 
-    private fun toUnifiedYoutubeSongId(youtubeId: String): Long {
-        return -(15_000_000_000_000L + youtubeId.hashCode().toLong().absoluteValue)
+    /**
+     * Builds the rich, Material You progressive notification.
+     */
+    private fun createForegroundInfo(song: Song, notificationId: Int, progress: Int, indeterminate: Boolean): ForegroundInfo {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Active Downloads",
+                NotificationManager.IMPORTANCE_LOW // Low importance prevents it from popping over the screen aggressively
+            ).apply { description = "Shows progress for downloading songs" }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Load the downloaded thumbnail as a Bitmap for the Large Icon
+        val albumArtBitmap = song.thumbnailPath?.let { path ->
+            BitmapFactory.decodeFile(path)
+        }
+
+        val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
+            .setContentTitle(song.title)
+            .setContentText("Downloading • ${song.artist}")
+            .setSmallIcon(android.R.drawable.stat_sys_download) // Fallback system icon
+            .setLargeIcon(albumArtBitmap) // Injects the album art!
+            .setProgress(100, progress, indeterminate)
+            .setOngoing(true)
+            .build()
+
+        // Required for Android 14+ Foreground Service types
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(notificationId, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(notificationId, notification)
+        }
     }
 
-    private fun toUnifiedYoutubeAlbumId(albumName: String): Long {
-        return -(16_000_000_000_000L + albumName.lowercase().hashCode().toLong().absoluteValue)
-    }
-
-    private fun toUnifiedYoutubeArtistId(artistName: String): Long {
-        return -(17_000_000_000_000L + artistName.lowercase().hashCode().toLong().absoluteValue)
-    }
+    // ... (Keep toUnifiedYoutubeSongId, toUnifiedYoutubeAlbumId, toUnifiedYoutubeArtistId exactly as they were) ...
+    private fun toUnifiedYoutubeSongId(youtubeId: String): Long = -(15_000_000_000_000L + youtubeId.hashCode().toLong().absoluteValue)
+    private fun toUnifiedYoutubeAlbumId(albumName: String): Long = -(16_000_000_000_000L + albumName.lowercase().hashCode().toLong().absoluteValue)
+    private fun toUnifiedYoutubeArtistId(artistName: String): Long = -(17_000_000_000_000L + artistName.lowercase().hashCode().toLong().absoluteValue)
 
     private fun parseYoutubeArtistNames(artistStr: String): List<String> {
         if (artistStr.isBlank()) return listOf("Unknown Artist")
@@ -185,34 +191,18 @@ class SongDownloadWorker(
         val primaryArtistId = toUnifiedYoutubeArtistId(primaryArtistName)
 
         val artistsToInsert = artistNames.map { name ->
-            com.unshoo.pixelmusic.data.database.ArtistEntity(
-                id = toUnifiedYoutubeArtistId(name),
-                name = name,
-                trackCount = 0,
-                imageUrl = null
-            )
+            com.unshoo.pixelmusic.data.database.ArtistEntity(id = toUnifiedYoutubeArtistId(name), name = name, trackCount = 0, imageUrl = null)
         }
 
         val crossRefsToInsert = artistNames.mapIndexed { index, name ->
-            val artistId = toUnifiedYoutubeArtistId(name)
-            com.unshoo.pixelmusic.data.database.SongArtistCrossRef(
-                songId = songId,
-                artistId = artistId,
-                isPrimary = index == 0
-            )
+            com.unshoo.pixelmusic.data.database.SongArtistCrossRef(songId = songId, artistId = toUnifiedYoutubeArtistId(name), isPrimary = index == 0)
         }
 
         val albumId = toUnifiedYoutubeAlbumId("YouTube Music")
         val albumName = "YouTube Music"
         val albumToInsert = com.unshoo.pixelmusic.data.database.AlbumEntity(
-            id = albumId,
-            title = albumName,
-            artistName = primaryArtistName,
-            artistId = primaryArtistId,
-            songCount = 0,
-            dateAdded = System.currentTimeMillis(),
-            year = 0,
-            albumArtUriString = song.thumbnailPath ?: song.thumbnailHref
+            id = albumId, title = albumName, artistName = primaryArtistName, artistId = primaryArtistId,
+            songCount = 0, dateAdded = System.currentTimeMillis(), year = 0, albumArtUriString = song.thumbnailPath ?: song.thumbnailHref
         )
 
         val artistsJson = try {
@@ -225,9 +215,7 @@ class SongDownloadWorker(
                 arr.put(obj)
             }
             arr.toString()
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
 
         val durationMs = try {
             if (song.duration.contains(":")) {
@@ -241,45 +229,19 @@ class SongDownloadWorker(
             } else {
                 song.duration.toLongOrNull() ?: 0L
             }
-        } catch (e: Exception) {
-            0L
-        }
+        } catch (e: Exception) { 0L }
 
         val songEntity = com.unshoo.pixelmusic.data.database.SongEntity(
-            id = songId,
-            title = title,
-            artistName = artist,
-            artistId = primaryArtistId,
-            albumArtist = null,
-            albumName = albumName,
-            albumId = albumId,
-            contentUriString = "youtube://${song.youtubeId}",
-            albumArtUriString = song.thumbnailPath ?: song.thumbnailHref,
-            duration = durationMs,
-            genre = song.genre?.takeIf { it.isNotBlank() } ?: "YouTube Music",
-            filePath = "",
-            parentDirectoryPath = "youtube://",
-            isFavorite = false,
-            lyrics = null,
-            trackNumber = 0,
-            year = 0,
-            dateAdded = System.currentTimeMillis(),
-            mimeType = "audio/webm",
-            bitrate = null,
-            sampleRate = null,
-            telegramChatId = null,
-            telegramFileId = null,
-            artistsJson = artistsJson,
-            sourceType = com.unshoo.pixelmusic.data.database.SourceType.YOUTUBE
+            id = songId, title = title, artistName = artist, artistId = primaryArtistId, albumArtist = null,
+            albumName = albumName, albumId = albumId, contentUriString = "youtube://${song.youtubeId}",
+            albumArtUriString = song.thumbnailPath ?: song.thumbnailHref, duration = durationMs,
+            genre = song.genre?.takeIf { it.isNotBlank() } ?: "YouTube Music", filePath = "", parentDirectoryPath = "youtube://",
+            isFavorite = false, lyrics = null, trackNumber = 0, year = 0, dateAdded = System.currentTimeMillis(),
+            mimeType = "audio/webm", bitrate = null, sampleRate = null, telegramChatId = null, telegramFileId = null,
+            artistsJson = artistsJson, sourceType = com.unshoo.pixelmusic.data.database.SourceType.YOUTUBE
         )
 
-        musicDao.incrementalSyncMusicData(
-            songs = listOf(songEntity),
-            albums = listOf(albumToInsert),
-            artists = artistsToInsert,
-            crossRefs = crossRefsToInsert,
-            deletedSongIds = emptyList()
-        )
+        musicDao.incrementalSyncMusicData(listOf(songEntity), listOf(albumToInsert), artistsToInsert, crossRefsToInsert, emptyList())
     }
 
     companion object {
