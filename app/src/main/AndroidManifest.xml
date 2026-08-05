@@ -358,6 +358,11 @@
             android:name="com.snap.kit.clientId"
             android:value="cb161c07-2ed5-4064-87b0-f8dedf684849" />
 
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
     </application>
 
 </manifest>
