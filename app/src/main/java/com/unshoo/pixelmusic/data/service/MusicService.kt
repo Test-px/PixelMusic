@@ -3544,4 +3544,39 @@ class MusicService : MediaLibraryService() {
         }
         return future
     }
+
+    private suspend fun triggerDownloadIfEnabled(songId: String) {
+        val shouldCache = runCatching { userPreferencesRepository.cacheLikedSongsOfflineFlow.first() }.getOrDefault(false)
+        if (!shouldCache) return
+
+        val song = musicRepository.getSong(songId).first() ?: return
+        val videoId = song.youtubeId ?: if (song.contentUriString?.startsWith("youtube://") == true) {
+            song.contentUriString.substringAfter("youtube://")
+        } else if (song.id.startsWith("youtube_")) {
+            song.id.substringAfter("youtube_")
+        } else {
+            null
+        }
+
+        if (videoId != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val appDb = com.unshoo.pixelmusic.data.database.youtube.AppDatabase.getInstance(this@MusicService)
+                    appDb.songRepository().markAsPermanentlyDownloaded(videoId)
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Failed to mark YouTube song as permanently downloaded")
+                }
+            }
+
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.unshoo.pixelmusic.data.remote.youtube.SongDownloadWorker>()
+                .setInputData(androidx.work.workDataOf(com.unshoo.pixelmusic.data.remote.youtube.SongDownloadWorker.SONG_KEY to videoId))
+                .setConstraints(androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build())
+                .build()
+            
+            androidx.work.WorkManager.getInstance(this@MusicService)
+                .enqueueUniqueWork("dl_liked_$videoId", androidx.work.ExistingWorkPolicy.KEEP, workRequest)
+        }
+    }
 }
