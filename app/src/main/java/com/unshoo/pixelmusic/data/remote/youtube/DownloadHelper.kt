@@ -107,7 +107,7 @@ object DownloadHelper {
         val safeTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val safeArtist = song.artist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         // Changed to .m4a
-        val finalFileName = "${safeTitle}_${safeArtist}_${System.currentTimeMillis()}.m4a"
+        val finalFileName = "$safeTitle - $safeArtist.m4a"
 
         if (!persistPublicly) {
             val hiddenDir = File(context.filesDir, "hidden_cache").apply { mkdirs() }
