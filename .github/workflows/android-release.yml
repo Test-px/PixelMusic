@@ -37,7 +37,9 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
       - name: Build Release APK (arm64-v8a)
-        # Added --build-cache and --parallel for faster execution
+        # Added memory allocation to prevent R8 Garbage Collection bottleneck
+        env:
+          GRADLE_OPTS: "-Xmx3g -XX:+UseParallelGC"
         run: ./gradlew :app:assembleRelease -Pabi=arm64-v8a --build-cache --parallel
 
       - name: Upload Signed Release APK artifact
