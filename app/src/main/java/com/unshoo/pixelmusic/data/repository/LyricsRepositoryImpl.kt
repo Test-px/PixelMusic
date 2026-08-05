@@ -282,50 +282,56 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     private suspend fun fetchLyricsFromAPI(song: Song): Lyrics? = withContext(Dispatchers.IO) {
-    ...
-    val rawTitle = song.title.trim()
-    val rawArtist = song.displayArtist.trim()
-    val sanitizedTitle = sanitizeTitleForLyrics(rawTitle)
-    val primaryArtist = extractPrimaryArtist(rawArtist)
+        if (isNeteaseSong(song)) {
+            val amlLyrics = fetchFromAmlldb(song)
+            if (amlLyrics != null) return@withContext amlLyrics
+        }
 
-    var results = emptyList<LrcLibResponse>()
-    var searchedWithArtist = true   // ADD THIS
+        val cachedJson = loadLocalLyricsJson(song)
+        if (cachedJson != null) return@withContext cachedJson
 
-    // Pass 1: Strict Sanitized Match on LRCLIB
-    if (sanitizedTitle.isNotBlank()) {
-        results = runCatching {
-            withNetworkRetry(operationName = "lrclib_sanitized") {
-                lrcLibApiService.searchLyrics(trackName = sanitizedTitle, artistName = primaryArtist)
+        val currentTime = System.currentTimeMillis()
+        val delayNeeded = calculateApiDelay("lrclib", currentTime)
+        if (delayNeeded > 0) delay(delayNeeded)
+        updateLastApiCall("lrclib", System.currentTimeMillis())
+
+        try {
+            val rawTitle = song.title.trim()
+            val rawArtist = song.displayArtist.trim()
+            val sanitizedTitle = sanitizeTitleForLyrics(rawTitle)
+            val primaryArtist = extractPrimaryArtist(rawArtist)
+
+            var results = emptyList<LrcLibResponse>()
+
+            // Pass 1: Strict Sanitized Match on LRCLIB
+            if (sanitizedTitle.isNotBlank()) {
+                results = runCatching {
+                    withNetworkRetry(operationName = "lrclib_sanitized") {
+                        lrcLibApiService.searchLyrics(trackName = sanitizedTitle, artistName = primaryArtist)
+                    }
+                }.getOrNull()?.toList() ?: emptyList()
             }
-        }.getOrNull()?.toList() ?: emptyList()
-    }
 
-    // Pass 2: Raw Data Fallback
-    if (results.isEmpty() && (sanitizedTitle != rawTitle || primaryArtist != rawArtist)) {
-        results = runCatching {
-            withNetworkRetry(operationName = "lrclib_raw") {
-                lrcLibApiService.searchLyrics(trackName = rawTitle, artistName = rawArtist)
+            // Pass 2: Raw Data Fallback
+            if (results.isEmpty() && (sanitizedTitle != rawTitle || primaryArtist != rawArtist)) {
+                results = runCatching {
+                    withNetworkRetry(operationName = "lrclib_raw") {
+                        lrcLibApiService.searchLyrics(trackName = rawTitle, artistName = rawArtist)
+                    }
+                }.getOrNull()?.toList() ?: emptyList()
             }
-        }.getOrNull()?.toList() ?: emptyList()
-    }
 
-    // Pass 3: Title Only Fallback
-    if (results.isEmpty() && sanitizedTitle.isNotBlank()) {
-        results = runCatching {
-            withNetworkRetry(operationName = "lrclib_title_only") {
-                lrcLibApiService.searchLyrics(trackName = sanitizedTitle)
+            // Pass 3: Title Only Fallback
+            if (results.isEmpty() && sanitizedTitle.isNotBlank()) {
+                results = runCatching {
+                    withNetworkRetry(operationName = "lrclib_title_only") {
+                        lrcLibApiService.searchLyrics(trackName = sanitizedTitle)
+                    }
+                }.getOrNull()?.toList() ?: emptyList()
             }
-        }.getOrNull()?.toList() ?: emptyList()
-        searchedWithArtist = false   // ADD THIS — this batch has no artist filter, don't reject on artist mismatch
-    }
 
-    val rankedLrcLib = rankRemoteLyricsMatches(
-        song = song,
-        responses = results,
-        mode = RemoteLyricsMatchMode.AUTOMATIC,
-        primaryArtist = primaryArtist,
-        requireArtistMatch = searchedWithArtist   // ADD THIS
-    )
+            // Check if LRCLIB gave us a SYNCED match
+            val rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist)
             val bestLrcLibSynced = rankedLrcLib.firstOrNull { hasSyncedLyrics(it.response) }?.response
 
             if (bestLrcLibSynced != null) {
@@ -489,41 +495,55 @@ class LyricsRepositoryImpl @Inject constructor(
         !response.syncedLyrics.isNullOrBlank()
 
     private fun rankRemoteLyricsMatches(
-    song: Song,
-    responses: List<LrcLibResponse>,
-    mode: RemoteLyricsMatchMode,
-    primaryArtist: String,
-    requireArtistMatch: Boolean = true   // ADD THIS
-): List<RemoteLyricsMatch> {
-    ...
-    val score = remoteLyricsMatchScore(
-        song = song,
-        response = response,
-        mode = mode,
-        songDurationSeconds = songDurationSeconds,
-        primaryArtist = primaryArtist,
-        requireArtistMatch = requireArtistMatch   // ADD THIS
-    ) ?: return@mapNotNull null
-    ...
-}
+        song: Song,
+        responses: List<LrcLibResponse>,
+        mode: RemoteLyricsMatchMode,
+        primaryArtist: String
+    ): List<RemoteLyricsMatch> {
+        val songDurationSeconds = song.duration / 1000.0
+        if (songDurationSeconds <= 0.0) return emptyList()
 
-private fun remoteLyricsMatchScore(
-    song: Song,
-    response: LrcLibResponse,
-    mode: RemoteLyricsMatchMode,
-    songDurationSeconds: Double,
-    primaryArtist: String,
-    requireArtistMatch: Boolean = true   // ADD THIS
-): Int? {
-    ...
-    val titleScore = titleMatchScore(song.title, response.name, mode) ?: return null
-    val artistScore = artistMatchScore(song.displayArtist, response.artistName)
-    if (requireArtistMatch && !isUnknownArtist(song.displayArtist) && artistScore == null) return null   // CHANGED
+        return responses
+            .mapNotNull { response ->
+                val score = remoteLyricsMatchScore(
+                    song = song,
+                    response = response,
+                    mode = mode,
+                    songDurationSeconds = songDurationSeconds,
+                    primaryArtist = primaryArtist
+                ) ?: return@mapNotNull null
+                RemoteLyricsMatch(response, score)
+            }
+            .sortedWith(
+                compareByDescending<RemoteLyricsMatch> { hasSyncedLyrics(it.response) }
+                    .thenByDescending { it.score }
+                    .thenBy { abs(it.response.duration - songDurationSeconds) }
+            )
+    }
 
-    val durationScore = (durationTolerance - durationDiff).coerceAtLeast(0.0).toInt()
-    val syncedScore = if (hasSynced) 10 else 0
-    return titleScore + (artistScore ?: 0) + durationScore + syncedScore
-}
+    private fun remoteLyricsMatchScore(
+        song: Song,
+        response: LrcLibResponse,
+        mode: RemoteLyricsMatchMode,
+        songDurationSeconds: Double,
+        primaryArtist: String
+    ): Int? {
+        if (!hasLyrics(response) || response.duration <= 0.0) return null
+        if (!variantDescriptorsCompatible(song, response)) return null
+
+        val hasSynced = hasSyncedLyrics(response)
+        val durationTolerance = remoteDurationToleranceSeconds(songDurationSeconds, hasSynced, mode)
+        val durationDiff = abs(response.duration - songDurationSeconds)
+        if (durationDiff > durationTolerance) return null
+
+        val titleScore = titleMatchScore(song.title, response.name, mode) ?: return null
+        val artistScore = artistMatchScore(song.displayArtist, response.artistName)
+        if (!isUnknownArtist(song.displayArtist) && artistScore == null) return null
+
+        val durationScore = (durationTolerance - durationDiff).coerceAtLeast(0.0).toInt()
+        val syncedScore = if (hasSynced) 10 else 0
+        return titleScore + (artistScore ?: 0) + durationScore + syncedScore
+    }
 
     private fun remoteDurationToleranceSeconds(
         songDurationSeconds: Double,
