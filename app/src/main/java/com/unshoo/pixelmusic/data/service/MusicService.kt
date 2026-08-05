@@ -1091,6 +1091,11 @@ class MusicService : MediaLibraryService() {
                             } else {
                                 favoriteSongIds - songId
                             }
+                            
+                        if (updatedFavorite) {
+                                triggerDownloadIfEnabled(songId)
+                        }
+                        
                             mediaSession?.let { refreshMediaSessionUi(it) }
                             requestWidgetFullUpdate(force = true)
                         }
