@@ -302,6 +302,7 @@ class LyricsRepositoryImpl @Inject constructor(
             val primaryArtist = extractPrimaryArtist(rawArtist)
 
             var results = emptyList<LrcLibResponse>()
+            var searchedWithArtist = true
 
             // Pass 1: Strict Sanitized Match on LRCLIB
             if (sanitizedTitle.isNotBlank()) {
@@ -328,10 +329,11 @@ class LyricsRepositoryImpl @Inject constructor(
                         lrcLibApiService.searchLyrics(trackName = sanitizedTitle)
                     }
                 }.getOrNull()?.toList() ?: emptyList()
+                searchedWithArtist = false
             }
 
             // Check if LRCLIB gave us a SYNCED match
-            val rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist)
+            val rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist, requireArtistMatch = searchedWithArtist)
             val bestLrcLibSynced = rankedLrcLib.firstOrNull { hasSyncedLyrics(it.response) }?.response
 
             if (bestLrcLibSynced != null) {
@@ -498,7 +500,8 @@ class LyricsRepositoryImpl @Inject constructor(
         song: Song,
         responses: List<LrcLibResponse>,
         mode: RemoteLyricsMatchMode,
-        primaryArtist: String
+        primaryArtist: String,
+        requireArtistMatch: Boolean = true
     ): List<RemoteLyricsMatch> {
         val songDurationSeconds = song.duration / 1000.0
         if (songDurationSeconds <= 0.0) return emptyList()
@@ -510,7 +513,8 @@ class LyricsRepositoryImpl @Inject constructor(
                     response = response,
                     mode = mode,
                     songDurationSeconds = songDurationSeconds,
-                    primaryArtist = primaryArtist
+                    primaryArtist = primaryArtist,
+                    requireArtistMatch = requireArtistMatch
                 ) ?: return@mapNotNull null
                 RemoteLyricsMatch(response, score)
             }
@@ -526,7 +530,8 @@ class LyricsRepositoryImpl @Inject constructor(
         response: LrcLibResponse,
         mode: RemoteLyricsMatchMode,
         songDurationSeconds: Double,
-        primaryArtist: String
+        primaryArtist: String,
+        requireArtistMatch: Boolean = true
     ): Int? {
         if (!hasLyrics(response) || response.duration <= 0.0) return null
         if (!variantDescriptorsCompatible(song, response)) return null
@@ -534,7 +539,7 @@ class LyricsRepositoryImpl @Inject constructor(
         val hasSynced = hasSyncedLyrics(response)
         val durationTolerance = remoteDurationToleranceSeconds(songDurationSeconds, hasSynced, mode)
         val durationDiff = abs(response.duration - songDurationSeconds)
-        if (durationDiff > durationTolerance) return null
+        if (requireArtistMatch && !isUnknownArtist(song.displayArtist) && artistScore == null) return null
 
         val titleScore = titleMatchScore(song.title, response.name, mode) ?: return null
         val artistScore = artistMatchScore(song.displayArtist, response.artistName)
