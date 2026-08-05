@@ -539,11 +539,11 @@ class LyricsRepositoryImpl @Inject constructor(
         val hasSynced = hasSyncedLyrics(response)
         val durationTolerance = remoteDurationToleranceSeconds(songDurationSeconds, hasSynced, mode)
         val durationDiff = abs(response.duration - songDurationSeconds)
-        if (requireArtistMatch && !isUnknownArtist(song.displayArtist) && artistScore == null) return null
 
         val titleScore = titleMatchScore(song.title, response.name, mode) ?: return null
         val artistScore = artistMatchScore(song.displayArtist, response.artistName)
-        if (!isUnknownArtist(song.displayArtist) && artistScore == null) return null
+        if (requireArtistMatch && !isUnknownArtist(song.displayArtist) && artistScore == null) return null
+        
 
         val durationScore = (durationTolerance - durationDiff).coerceAtLeast(0.0).toInt()
         val syncedScore = if (hasSynced) 10 else 0
