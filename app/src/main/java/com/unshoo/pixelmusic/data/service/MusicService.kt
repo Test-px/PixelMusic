@@ -3216,6 +3216,11 @@ class MusicService : MediaLibraryService() {
             Timber.tag("MusicService")
                 .d("Applying favorite=$targetFavoriteState for songId: $songId")
             musicRepository.setFavoriteStatus(songId, targetFavoriteState)
+
+            if (targetFavoriteState) {
+                triggerDownloadIfEnabled(songId)
+            }
+            
             refreshMediaSessionUi(session)
             requestWidgetFullUpdate(force = true)
         }
