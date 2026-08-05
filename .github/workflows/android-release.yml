@@ -1,10 +1,10 @@
 name: Android Release Build
 
 on:
-  workflow_dispatch: # Allows you to manually trigger a release build
+  workflow_dispatch: 
   push:
     tags:
-      - 'v*' # Automatically runs when you push a tag like "v1.0.0"
+      - 'v*' 
 
 jobs:
   build:
@@ -20,7 +20,12 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          # This enables the build-cache across GitHub Actions runs
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }} 
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -31,13 +36,14 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
-      - name: Build Release APK
-        run: ./gradlew :app:assembleRelease
+      - name: Build Release APK (arm64-v8a)
+        # Added --build-cache and --parallel for faster execution
+        run: ./gradlew :app:assembleRelease -Pabi=arm64-v8a --build-cache --parallel
 
       - name: Upload Signed Release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
+          name: app-arm64-v8a-release
           path: app/build/outputs/apk/release/*.apk
           retention-days: 14
           
