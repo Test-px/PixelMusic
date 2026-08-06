@@ -668,6 +668,7 @@ fun ExploreTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
             .statusBarsPadding()
             .padding(start = 24.dp, top = 12.dp, end = 20.dp, bottom = 12.dp),
