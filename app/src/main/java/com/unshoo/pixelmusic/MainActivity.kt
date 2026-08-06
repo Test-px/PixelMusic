@@ -995,7 +995,7 @@ class MainActivity : ComponentActivity() {
                         UnifiedPlayerSheetV2(
                             playerViewModel = playerViewModel,
                             sheetCollapsedTargetY = sheetCollapsedTargetY,
-                            collapsedStateHorizontalPadding = horizontalPadding,
+                            collapsedStateHorizontalPadding = horizontalPadding + 16.dp,
                             hideMiniPlayer = shouldHideMiniPlayer,
                             containerHeight = containerHeight,
                             navController = navController,
