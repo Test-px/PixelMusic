@@ -110,7 +110,7 @@ fun QuickPicksSection(
             }
         }
         
-        if (displayMode == QuickPicksDisplayMode.CARD) {
+         if (displayMode == QuickPicksDisplayMode.CARD) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,12 +118,23 @@ fun QuickPicksSection(
                     .padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                songs.take(20).forEach { song ->
-                    QuickPickCard(
-                        song = song,
-                        isPlaying = song.id == currentSongId,
-                        onClick = { onSongClick(song) }
-                    )
+                // 1. Group the top 20 songs into pairs (chunks of 2)
+                val chunkedSongs = songs.take(20).chunked(2)
+                
+                chunkedSongs.forEach { columnSongs ->
+                    // 2. Wrap each pair in a Column
+                    Column(
+                        // The card already has 8.dp bottom padding, so we only need a tiny bit of extra spacing
+                        verticalArrangement = Arrangement.spacedBy(4.dp) 
+                    ) {
+                        columnSongs.forEach { song ->
+                            QuickPickCard(
+                                song = song,
+                                isPlaying = song.id == currentSongId,
+                                onClick = { onSongClick(song) }
+                            )
+                        }
+                    }
                 }
             }
         } else {
