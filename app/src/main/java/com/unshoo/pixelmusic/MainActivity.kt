@@ -149,6 +149,10 @@ import javax.annotation.concurrent.Immutable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.positionChange
+import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 
 
 @Immutable
@@ -960,14 +964,74 @@ class MainActivity : ComponentActivity() {
                             bottomSpacerPx = spacerPx
                         )
 
-                        AppNavigation(
-                            playerViewModel = playerViewModel,
-                            navController = navController,
-                            paddingValues = innerPadding,
-                            userPreferencesRepository = userPreferencesRepository,
-                            onSearchBarActiveChange = { isSearchBarActive = it },
-                            onOpenSidebar = { scope.launch { drawerState.open() } }
-                        )
+                        // Define the main tabs in order
+                        val tabs = remember { listOf(Screen.Home.route, Screen.Explore.route, Screen.Search.route, Screen.Library.route) }
+                        val currentTabIndex = tabs.indexOf(currentRoute)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(currentTabIndex) {
+                                    // Only enable swiping on the root tabs
+                                    if (currentTabIndex == -1) return@pointerInput
+
+                                    // Define the bottom swipe zone (covers the pill, mini-player, and a little space above)
+                                    val bottomAreaPx = 250.dp.toPx() 
+                                    val swipeThreshold = 50.dp.toPx() // How far they need to drag
+
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        val startY = down.position.y
+
+                                        // Only activate if the touch starts in the bottom zone
+                                        if (startY >= size.height - bottomAreaPx) {
+                                            var totalDrag = 0f
+                                            var isHorizontalDrag = false
+
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                val change = event.changes.firstOrNull { it.id == down.id }
+
+                                                // Only process if the touch hasn't been consumed by the mini-player yet
+                                                if (change != null && change.pressed && !change.isConsumed) {
+                                                    val dx = change.positionChange().x
+                                                    val dy = change.positionChange().y
+
+                                                    // Detect if it's a horizontal swipe vs a vertical scroll
+                                                    if (!isHorizontalDrag && kotlin.math.abs(dx) > kotlin.math.abs(dy) && kotlin.math.abs(dx) > 10f) {
+                                                        isHorizontalDrag = true
+                                                    }
+
+                                                    if (isHorizontalDrag) {
+                                                        totalDrag += dx
+                                                        change.consume() // Consume to prevent lists from scrolling
+                                                    }
+                                                }
+                                            } while (event.changes.any { it.pressed })
+
+                                            // When the finger is lifted, navigate if threshold is met
+                                            if (isHorizontalDrag) {
+                                                if (totalDrag > swipeThreshold && currentTabIndex > 0) {
+                                                    // Swiped Right -> Go to Previous Tab
+                                                    navController.navigateToTopLevelSafely(tabs[currentTabIndex - 1])
+                                                } else if (totalDrag < -swipeThreshold && currentTabIndex < tabs.size - 1) {
+                                                    // Swiped Left -> Go to Next Tab
+                                                    navController.navigateToTopLevelSafely(tabs[currentTabIndex + 1])
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                        ) {
+                            AppNavigation(
+                                playerViewModel = playerViewModel,
+                                navController = navController,
+                                paddingValues = innerPadding,
+                                userPreferencesRepository = userPreferencesRepository,
+                                onSearchBarActiveChange = { isSearchBarActive = it },
+                                onOpenSidebar = { scope.launch { drawerState.open() } }
+                            )
+                        }
 
                         val isExpandedOrExpanding by remember {
                             derivedStateOf {
