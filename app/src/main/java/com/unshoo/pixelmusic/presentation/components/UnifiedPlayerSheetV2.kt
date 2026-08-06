@@ -108,7 +108,7 @@ fun UnifiedPlayerSheetV2(
     playerViewModel: PlayerViewModel,
     sheetCollapsedTargetY: Float,
     containerHeight: Dp,
-    collapsedStateHorizontalPadding: Dp = 16.dp,
+    collapsedStateHorizontalPadding: Dp = 24.dp,
     navController: NavHostController,
     hideMiniPlayer: Boolean = false,
     isNavBarHidden: Boolean = false
