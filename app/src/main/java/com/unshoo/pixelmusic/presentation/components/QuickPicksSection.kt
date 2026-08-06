@@ -110,24 +110,40 @@ fun QuickPicksSection(
             }
         }
         
-         if (displayMode == QuickPicksDisplayMode.CARD) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(scrollState)
-                    .padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+        if (displayMode == QuickPicksDisplayMode.CARD) {
+            // 1. A parent Column to stack the two independent rows
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 1. Group the top 20 songs into pairs (chunks of 2)
-                val chunkedSongs = songs.take(20).chunked(2)
-                
-                chunkedSongs.forEach { columnSongs ->
-                    // 2. Wrap each pair in a Column
-                    Column(
-                        // The card already has 8.dp bottom padding, so we only need a tiny bit of extra spacing
-                        verticalArrangement = Arrangement.spacedBy(4.dp) 
+                // 2. TOP ROW with its own independent scroll state
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()) // Independent scroll
+                        .padding(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    songs.take(10).forEach { song ->
+                        QuickPickCard(
+                            song = song,
+                            isPlaying = song.id == currentSongId,
+                            onClick = { onSongClick(song) }
+                        )
+                    }
+                }
+
+                // 3. BOTTOM ROW with its own independent scroll state
+                val bottomRowSongs = songs.drop(10).take(10)
+                if (bottomRowSongs.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()) // Independent scroll
+                            .padding(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        columnSongs.forEach { song ->
+                        bottomRowSongs.forEach { song ->
                             QuickPickCard(
                                 song = song,
                                 isPlaying = song.id == currentSongId,
