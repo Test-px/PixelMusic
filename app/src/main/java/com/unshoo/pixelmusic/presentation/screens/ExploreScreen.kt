@@ -107,6 +107,7 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.YTItem
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.derivedStateOf
 
 @UnstableApi
 @Composable
