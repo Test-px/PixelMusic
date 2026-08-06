@@ -55,6 +55,8 @@ import com.unshoo.pixelmusic.BottomNavItem
 import com.unshoo.pixelmusic.presentation.navigation.Screen
 import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 import kotlinx.collections.immutable.ImmutableList
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 
 internal val NavBarContentHeight = 76.dp
 internal val NavBarCompactContentHeight = 64.dp
@@ -133,12 +135,34 @@ fun PlayerInternalNavigationBar(
 
     val selectedIndex = mainItems.indexOfFirst { it.screen.route == latestCurrentRoute }
 
+    // 1. Create a map of the total tabs
+    val tabs = remember(navItems) { navItems.map { it.screen.route } }
+    val currentGlobalTabIndex = tabs.indexOf(latestCurrentRoute)
+
     // Outer Row handles layout separation
     Row(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            // 2. Add the horizontal swipe gesture directly to the pill container
+            .pointerInput(currentGlobalTabIndex) {
+                if (currentGlobalTabIndex == -1) return@pointerInput
+                var totalDrag = 0f
+                detectHorizontalDragGestures(
+                    onHorizontalDrag = { _, dragAmount ->
+                        totalDrag += dragAmount
+                    },
+                    onDragEnd = {
+                        val swipeThreshold = 40.dp.toPx() // Sensible threshold for a small bar
+                        if (totalDrag > swipeThreshold && currentGlobalTabIndex > 0) {
+                            navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex - 1])
+                        } else if (totalDrag < -swipeThreshold && currentGlobalTabIndex < tabs.size - 1) {
+                            navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex + 1])
+                        }
+                    }
+                )
+            },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
