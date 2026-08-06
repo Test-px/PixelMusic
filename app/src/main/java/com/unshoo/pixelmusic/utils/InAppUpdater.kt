@@ -31,7 +31,7 @@ data class GithubAsset(
 
 sealed class UpdateState {
     object Checking : UpdateState()
-    object UpToDate : UpdateState()
+    data class UpToDate(val changelog: String? = null) : UpdateState()
     data class Available(
         val versionName: String, 
         val downloadUrl: String,
@@ -73,11 +73,12 @@ object InAppUpdater {
                         )
                     }
                 }
+                return@withContext UpdateState.UpToDate(changelog = release.body)
             }
-            return@withContext UpdateState.UpToDate
+            return@withContext UpdateState.UpToDate(changelog = null)
         } catch (e: Exception) {
             e.printStackTrace()
-            return@withContext UpdateState.UpToDate
+            return@withContext UpdateState.UpToDate(changelog = null)
         }
     }
 
