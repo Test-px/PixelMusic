@@ -138,44 +138,15 @@ fun PlayerInternalNavigationBar(
 
     val selectedIndex = mainItems.indexOfFirst { it.screen.route == latestCurrentRoute }
 
-    // --- NEW INTERACTIVE SWIPE LOGIC ---
-    val tabs = remember(navItems) { navItems.map { it.screen.route } }
-    val currentGlobalTabIndex = tabs.indexOf(latestCurrentRoute)
-
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val maxDragPx = with(LocalDensity.current) { 100.dp.toPx() } // About the width of one tab
-    val rawFraction = (dragOffset / maxDragPx).coerceIn(-1f, 1f)
-    val targetIndexFloat = selectedIndex - rawFraction
-
-    // Outer Row handles layout separation
+    // Outer Row handles layout separation (No pointerInput here)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            .pointerInput(currentGlobalTabIndex) {
-                if (currentGlobalTabIndex == -1) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = { dragOffset = 0f },
-                    onHorizontalDrag = { _, dragAmount ->
-                        dragOffset += dragAmount // Track the physical drag 1:1
-                    },
-                    onDragEnd = {
-                        val swipeThreshold = maxDragPx * 0.4f // 40% of the drag required to switch screens
-                        if (dragOffset > swipeThreshold && currentGlobalTabIndex > 0) {
-                            navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex - 1])
-                        } else if (dragOffset < -swipeThreshold && currentGlobalTabIndex < tabs.size - 1) {
-                            navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex + 1])
-                        }
-                        dragOffset = 0f // Snap back on release
-                    },
-                    onDragCancel = { dragOffset = 0f }
-                )
-            },
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Original Working Pill
         HorizontalFloatingToolbar(
             modifier = Modifier.weight(1f),
             expanded = true,
@@ -185,10 +156,8 @@ fun PlayerInternalNavigationBar(
             ),
             content = {
                 mainItems.forEachIndexed { index, item ->
-                    
-                    // The magic: Calculate how "selected" this item is based on finger position!
-                    val weight = (1f - kotlin.math.abs(targetIndexFloat - index)).coerceIn(0f, 1f)
-                    val isEffectivelySelected = weight > 0.5f
+                    // Reverted to simple boolean state
+                    val isSelected = index == selectedIndex
 
                     val itemWidth by animateDpAsState(
                         targetValue = 48.dp,
@@ -199,9 +168,8 @@ fun PlayerInternalNavigationBar(
                         label = "item_width_$index"
                     )
 
-                    // Bind the width directly to the gesture weight
                     val labelWidth by animateDpAsState(
-                        targetValue = if (!shouldHideLabel) (80.dp * weight) else 0.dp,
+                        targetValue = if (isSelected && !shouldHideLabel) 80.dp else 0.dp,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessLow
@@ -218,6 +186,19 @@ fun PlayerInternalNavigationBar(
                         label = "spacer_width_$index"
                     )
 
+                    // Reverted back to standard color animations
+                    val containerColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
+                        animationSpec = tween(200),
+                        label = "container_color_$index"
+                    )
+
+                    val contentColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                        animationSpec = tween(200),
+                        label = "content_color_$index"
+                    )
+
                     Surface(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -229,9 +210,8 @@ fun PlayerInternalNavigationBar(
                             .width(itemWidth + labelWidth)
                             .height(48.dp),
                         shape = CircleShape,
-                        // Interactively blend the background and foreground colors!
-                        color = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background, weight),
-                        contentColor = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primary, weight)
+                        color = containerColor,
+                        contentColor = contentColor
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -240,7 +220,7 @@ fun PlayerInternalNavigationBar(
                                 .fillMaxSize()
                                 .padding(horizontal = 8.dp)
                         ) {
-                            val iconRes = if (isEffectivelySelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
+                            val iconRes = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
                                 item.selectedIconResId
                             } else {
                                 item.iconResId
@@ -253,13 +233,13 @@ fun PlayerInternalNavigationBar(
                                 Icon(
                                     painter = painterResource(id = iconRes),
                                     contentDescription = item.label,
-                                    tint = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primary, weight),
+                                    tint = contentColor,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
 
                             AnimatedVisibility(
-                                visible = isEffectivelySelected && !shouldHideLabel,
+                                visible = isSelected && !shouldHideLabel,
                                 enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(expandFrom = Alignment.Start),
                                 exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally(shrinkTowards = Alignment.Start)
                             ) {
@@ -284,6 +264,7 @@ fun PlayerInternalNavigationBar(
                 }
             }
         )
+
 
         // Detached Custom Search Surface
         if (searchItem != null) {
