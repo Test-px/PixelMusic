@@ -298,12 +298,40 @@ private fun AboutHeroCard(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Update State tracking
     var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Checking) }
+    var showChangelogDialog by remember { mutableStateOf(false) }
 
-    // Check for updates when the screen loads
     LaunchedEffect(Unit) {
         updateState = InAppUpdater.checkForUpdate(versionName)
+    }
+
+    // Extract changelog dynamically from whatever state InAppUpdater is in
+    val latestChangelog = when (val state = updateState) {
+        is UpdateState.UpToDate -> state.changelog
+        is UpdateState.Available -> state.changelog
+        is UpdateState.Downloading -> state.changelog
+        else -> null
+    }
+
+    // The Dialog Box displaying the release body from your Worker proxy
+    if (showChangelogDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangelogDialog = false },
+            icon = { Icon(Icons.Rounded.AutoAwesome, contentDescription = null) },
+            title = { Text("Changes in latest version") },
+            text = {
+                Text(
+                    text = latestChangelog ?: "No release notes available for this version.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showChangelogDialog = false }) {
+                    Text("Got it")
+                }
+            }
+        )
     }
 
     Surface(
@@ -385,60 +413,17 @@ private fun AboutHeroCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // The Expressive Material 3 Update Section
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize()
                 ) {
-                    // Extract the changelog if it exists in the current state
-                    val currentChangelog = when (val state = updateState) {
-                        is UpdateState.Available -> state.changelog
-                        is UpdateState.Downloading -> state.changelog
-                        else -> null
-                    }
-
-                    // Dynamically expanding Changelog Card
-                    if (!currentChangelog.isNullOrBlank()) {
-                        Surface(
-                            shape = AbsoluteSmoothCornerShape(16.dp, 60),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AutoAwesome, 
-                                        contentDescription = null, 
-                                        modifier = Modifier.size(16.dp), 
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = "What's New", 
-                                        style = MaterialTheme.typography.labelMedium, 
-                                        color = MaterialTheme.colorScheme.primary, 
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = currentChangelog,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
                     AnimatedContent<UpdateState>(
                         targetState = updateState,
                         transitionSpec = {
                             fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
                         },
-                        contentKey = { it::class }, // This prevents crossfading when progress updates!
+                        contentKey = { it::class },
                         label = "update_button_anim"
                     ) { state ->
                         when (state) {
@@ -458,43 +443,95 @@ private fun AboutHeroCard(
                                 }
                             }
                             is UpdateState.UpToDate -> {
-                                FilledTonalButton(
-                                    onClick = { },
-                                    enabled = false,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("You are on the latest version")
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    FilledTonalButton(
+                                        onClick = { },
+                                        enabled = false,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("You are on the latest version")
+                                    }
+                                    
+                                    if (!latestChangelog.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        Button(
+                                            onClick = { showChangelogDialog = true },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        ) {
+                                            Icon(Icons.Rounded.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Changes in the latest version")
+                                        }
+                                    }
                                 }
                             }
                             is UpdateState.Available -> {
-                                Button(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            // Pass the changelog into the downloading state so it stays expanded
-                                            updateState = UpdateState.Downloading(0f, state.changelog)
-                                            InAppUpdater.downloadAndTrackProgress(
-                                                context, 
-                                                state.downloadUrl, 
-                                                "PixelMusic_${state.versionName}.apk"
-                                            ).collectLatest { progress ->
-                                                updateState = UpdateState.Downloading(progress, state.changelog)
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    if (!state.changelog.isNullOrBlank()) {
+                                        Surface(
+                                            shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(bottom = 12.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.AutoAwesome, 
+                                                        contentDescription = null, 
+                                                        modifier = Modifier.size(16.dp), 
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text(
+                                                        text = "What's New", 
+                                                        style = MaterialTheme.typography.labelMedium, 
+                                                        color = MaterialTheme.colorScheme.primary, 
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = state.changelog,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
                                             }
                                         }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Install Version ${state.versionName}")
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                updateState = UpdateState.Downloading(0f, state.changelog)
+                                                InAppUpdater.downloadAndTrackProgress(
+                                                    context, 
+                                                    state.downloadUrl, 
+                                                    "PixelMusic_${state.versionName}.apk"
+                                                ).collectLatest { progress ->
+                                                    updateState = UpdateState.Downloading(progress, state.changelog)
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Install Version ${state.versionName}")
+                                    }
                                 }
                             }
                             is UpdateState.Downloading -> {
-                                // Animate the progress value so the bar fills smoothly between updates
                                 val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
                                     targetValue = state.progress,
-                                    // A spring animation handles rapid continuous updates perfectly for a fluid fill
                                     animationSpec = spring(
                                         dampingRatio = Spring.DampingRatioNoBouncy,
                                         stiffness = Spring.StiffnessLow
@@ -505,16 +542,14 @@ private fun AboutHeroCard(
                                 val progressColor = MaterialTheme.colorScheme.primary
                                 val trackColor = MaterialTheme.colorScheme.secondaryContainer
 
-                                // Custom Progress Bar Button (DrawScope free)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(40.dp) // Standard Material Button Height
+                                        .height(40.dp)
                                         .clip(AbsoluteSmoothCornerShape(20.dp, 60))
                                         .background(trackColor),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    // The animated progress fill
                                     Box(
                                         modifier = Modifier
                                             .fillMaxHeight()
