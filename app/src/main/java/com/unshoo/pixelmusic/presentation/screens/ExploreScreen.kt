@@ -105,6 +105,8 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.PlaylistItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.YTItem
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.core.animateFloatAsState
 
 @UnstableApi
 @Composable
@@ -122,6 +124,13 @@ fun ExploreScreen(
     val currentSongId = stablePlayerState.currentSong?.id
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
+
+    val listState = rememberLazyListState()
+    val isScrolled by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -145,7 +154,8 @@ fun ExploreScreen(
                 },
                 onCreateClick = {
                     navController.navigateSafely(Screen.SmartMix.route)
-                }
+                },
+                isScrolled = isScrolled
             )
         }
     ) { innerPadding ->
@@ -209,6 +219,7 @@ fun ExploreScreen(
                     }
                     val bottomPadding = if (currentSongId != null) MiniPlayerHeight else 0.dp
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             top = innerPadding.calculateTopPadding(),
@@ -663,13 +674,20 @@ fun RecentMixCardItem(
 @Composable
 fun ExploreTopBar(
     onSettingsClick: () -> Unit,
-    onCreateClick: () -> Unit
+    onCreateClick: () -> Unit,
+    isScrolled: Boolean = false
 ) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isScrolled) 1f else 0.4f,
+        animationSpec = tween(durationMillis = 300),
+        label = "topbar_alpha_transition"
+    )
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = animatedAlpha))
             .statusBarsPadding()
             .padding(start = 24.dp, top = 12.dp, end = 20.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
