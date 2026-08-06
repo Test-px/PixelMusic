@@ -57,6 +57,9 @@ import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 import kotlinx.collections.immutable.ImmutableList
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableFloatStateOf
 
 internal val NavBarContentHeight = 76.dp
 internal val NavBarCompactContentHeight = 64.dp
@@ -135,9 +138,14 @@ fun PlayerInternalNavigationBar(
 
     val selectedIndex = mainItems.indexOfFirst { it.screen.route == latestCurrentRoute }
 
-    // 1. Create a map of the total tabs
+    // --- NEW INTERACTIVE SWIPE LOGIC ---
     val tabs = remember(navItems) { navItems.map { it.screen.route } }
     val currentGlobalTabIndex = tabs.indexOf(latestCurrentRoute)
+
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val maxDragPx = with(LocalDensity.current) { 100.dp.toPx() } // About the width of one tab
+    val rawFraction = (dragOffset / maxDragPx).coerceIn(-1f, 1f)
+    val targetIndexFloat = selectedIndex - rawFraction
 
     // Outer Row handles layout separation
     Row(
@@ -145,28 +153,29 @@ fun PlayerInternalNavigationBar(
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            // 2. Add the horizontal swipe gesture directly to the pill container
             .pointerInput(currentGlobalTabIndex) {
                 if (currentGlobalTabIndex == -1) return@pointerInput
-                var totalDrag = 0f
                 detectHorizontalDragGestures(
+                    onDragStart = { dragOffset = 0f },
                     onHorizontalDrag = { _, dragAmount ->
-                        totalDrag += dragAmount
+                        dragOffset += dragAmount // Track the physical drag 1:1
                     },
                     onDragEnd = {
-                        val swipeThreshold = 40.dp.toPx() // Sensible threshold for a small bar
-                        if (totalDrag > swipeThreshold && currentGlobalTabIndex > 0) {
+                        val swipeThreshold = maxDragPx * 0.4f // 40% of the drag required to switch screens
+                        if (dragOffset > swipeThreshold && currentGlobalTabIndex > 0) {
                             navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex - 1])
-                        } else if (totalDrag < -swipeThreshold && currentGlobalTabIndex < tabs.size - 1) {
+                        } else if (dragOffset < -swipeThreshold && currentGlobalTabIndex < tabs.size - 1) {
                             navController.navigateToTopLevelSafely(tabs[currentGlobalTabIndex + 1])
                         }
-                    }
+                        dragOffset = 0f // Snap back on release
+                    },
+                    onDragCancel = { dragOffset = 0f }
                 )
             },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Original Working Pill (Now uses Modifier.weight(1f) to leave space for Search button)
+        // Original Working Pill
         HorizontalFloatingToolbar(
             modifier = Modifier.weight(1f),
             expanded = true,
@@ -176,7 +185,10 @@ fun PlayerInternalNavigationBar(
             ),
             content = {
                 mainItems.forEachIndexed { index, item ->
-                    val isSelected = selectedIndex == index
+                    
+                    // The magic: Calculate how "selected" this item is based on finger position!
+                    val weight = (1f - kotlin.math.abs(targetIndexFloat - index)).coerceIn(0f, 1f)
+                    val isEffectivelySelected = weight > 0.5f
 
                     val itemWidth by animateDpAsState(
                         targetValue = 48.dp,
@@ -187,8 +199,9 @@ fun PlayerInternalNavigationBar(
                         label = "item_width_$index"
                     )
 
+                    // Bind the width directly to the gesture weight
                     val labelWidth by animateDpAsState(
-                        targetValue = if (isSelected && !shouldHideLabel) 80.dp else 0.dp,
+                        targetValue = if (!shouldHideLabel) (80.dp * weight) else 0.dp,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessLow
@@ -216,16 +229,9 @@ fun PlayerInternalNavigationBar(
                             .width(itemWidth + labelWidth)
                             .height(48.dp),
                         shape = CircleShape,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.background
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        contentColor = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.background
-                        }
+                        // Interactively blend the background and foreground colors!
+                        color = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background, weight),
+                        contentColor = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primary, weight)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -234,7 +240,7 @@ fun PlayerInternalNavigationBar(
                                 .fillMaxSize()
                                 .padding(horizontal = 8.dp)
                         ) {
-                            val iconRes = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
+                            val iconRes = if (isEffectivelySelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
                                 item.selectedIconResId
                             } else {
                                 item.iconResId
@@ -247,17 +253,13 @@ fun PlayerInternalNavigationBar(
                                 Icon(
                                     painter = painterResource(id = iconRes),
                                     contentDescription = item.label,
-                                    tint = if (isSelected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.background
-                                    },
+                                    tint = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.primary, weight),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
 
                             AnimatedVisibility(
-                                visible = isSelected && !shouldHideLabel,
+                                visible = isEffectivelySelected && !shouldHideLabel,
                                 enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(expandFrom = Alignment.Start),
                                 exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally(shrinkTowards = Alignment.Start)
                             ) {
