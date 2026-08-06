@@ -971,7 +971,6 @@ class MainActivity : ComponentActivity() {
                                 onSearchBarActiveChange = { isSearchBarActive = it },
                                 onOpenSidebar = { scope.launch { drawerState.open() } }
                             )
-                        }
 
                         val isExpandedOrExpanding by remember {
                             derivedStateOf {
