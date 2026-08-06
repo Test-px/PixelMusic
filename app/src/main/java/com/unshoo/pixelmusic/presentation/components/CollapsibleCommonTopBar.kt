@@ -27,6 +27,8 @@ import androidx.compose.ui.zIndex
 import com.unshoo.pixelmusic.ui.theme.PixelMusicStatusBarStyle
 import androidx.compose.ui.res.stringResource
 import com.unshoo.pixelmusic.R
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun CollapsibleCommonTopBar(
@@ -78,6 +80,7 @@ fun CollapsibleCommonTopBar(
         modifier = modifier
             .fillMaxWidth()
             .height(headerHeight)
+            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
             .background(backgroundColor)
             .zIndex(5f)
     ) {
