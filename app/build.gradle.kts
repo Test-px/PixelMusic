@@ -126,7 +126,7 @@ android {
     }
 
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
+        isCoreLibraryDesugaringEnabled = false
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
@@ -225,7 +225,7 @@ dependencies {
     implementation(libs.re2j)
     implementation(libs.rhino)
     // Core & Optimization
-    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    // coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))
 
