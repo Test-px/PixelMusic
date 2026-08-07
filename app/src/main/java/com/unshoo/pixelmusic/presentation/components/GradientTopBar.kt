@@ -182,11 +182,11 @@ fun HomeGradientTopBar(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.rounded_graphic_eq_24), // Swap with any mic/audio icon you prefer
-                    contentDescription = "Recognize Music",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Rounded.Search, 
+                contentDescription = "Recognize Music",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
             }
         },
         colors = topAppBarColors(
