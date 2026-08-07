@@ -158,10 +158,6 @@
 # Keep Kotlin reflection if needed by Ktor/Serialization in Release
 -keep class kotlin.reflect.** { *; }
 
-# TDLib (Telegram Database Library) rules
--keep class org.drinkless.tdlib.** { *; }
--keep interface org.drinkless.tdlib.** { *; }
-
 # Ktor & Netty Rules (Crucial for StreamProxy)
 -keep class org.slf4j.** { *; }
 
@@ -169,19 +165,6 @@
 -dontwarn io.ktor.**
 -dontwarn kotlinx.coroutines.**
 -dontwarn io.netty.**
-
-# Ensure internal server can start
--keep class com.unshoo.pixelmusic.data.telegram.TelegramStreamProxy { *; }
-
-# Kuromoji
--keep class com.atilika.kuromoji.** { *; }
--keepnames class com.atilika.kuromoji.** { *; }
--dontwarn com.atilika.kuromoji.**
-
-# Pinyin4J
--keep class net.sourceforge.pinyin4j.** { *; }
--keepclassmembers class net.sourceforge.pinyin4j.** { *; }
--dontwarn net.sourceforge.pinyin4j.**
 
 # Glance Widget
 -keep class * extends androidx.glance.appwidget.action.ActionCallback { <init>(); }
