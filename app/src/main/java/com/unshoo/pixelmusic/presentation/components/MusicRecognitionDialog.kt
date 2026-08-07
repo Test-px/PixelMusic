@@ -78,23 +78,11 @@ fun MusicRecognitionDialog(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Right Close Button
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd) {
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
 
                 when (val currentStatus = status) {
                     is RecognitionStatus.Ready -> {
                         Text(
-                            text = "Tap to recognize",
+                            text = "Tap to recognize 𝄞",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
