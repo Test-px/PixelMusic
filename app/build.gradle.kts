@@ -252,6 +252,8 @@ dependencies {
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation(libs.androidx.appcompat)
     implementation("androidx.webkit:webkit:1.16.0")
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
 
     // DI & Navigation
     implementation(libs.hilt.android)
