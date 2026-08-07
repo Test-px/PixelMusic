@@ -213,21 +213,6 @@ class MusicService : MediaLibraryService() {
         private val pendingMediaButtonForegroundStarts = AtomicInteger(0)
 
         private const val APP_PACKAGE_PREFIX = "com.unshoo.pixelmusic"
-        private val BLOCKED_WEAR_CONTROLLER_PREFIXES = listOf(
-            "com.google.android.wearable",
-            "com.google.android.clockwork",
-            "com.google.android.apps.wearable",
-            "com.google.android.apps.wear.companion",
-            "com.samsung.android.app.watchmanager",
-            "com.mobvoi.wear",
-        )
-        private val WEAR_HINT_KEY_MARKERS = listOf(
-            "wear",
-            "clockwork",
-            "companion",
-            "node",
-            "remote_device",
-        )
         private const val AUTO_CONTEXT_RECENT = "recent"
         private const val AUTO_CONTEXT_FAVORITES = "favorites"
         private const val AUTO_CONTEXT_ALL_SONGS = "all_songs"
@@ -517,28 +502,6 @@ class MusicService : MediaLibraryService() {
         }
 
         val callback = object : MediaLibrarySession.Callback {
-            override fun onConnect(
-                session: MediaSession,
-                controller: MediaSession.ControllerInfo
-            ): MediaSession.ConnectionResult {
-                val controllerPackage = controller.packageName
-                val hintKeys = controller.connectionHints.keySet().joinToString(",")
-                Timber.tag(TAG).d(
-                    "onConnect from package=%s uid=%s trusted=%s version=%s hints=[%s]",
-                    controllerPackage,
-                    controller.uid,
-                    controller.isTrusted,
-                    controller.controllerVersion,
-                    hintKeys
-                )
-                if (shouldRejectWearController(controller)) {
-                    Timber.tag(TAG).i(
-                        "Rejecting Wear system controller connection from package=%s",
-                        controllerPackage
-                    )
-                    return MediaSession.ConnectionResult.reject()
-                }
-
                 val defaultResult = super.onConnect(session, controller)
                 val customCommands = listOf(
                     MusicNotificationProvider.CUSTOM_COMMAND_CLOSE_PLAYER,
@@ -899,28 +862,6 @@ class MusicService : MediaLibraryService() {
                 }
             }
         }
-    }
-
-    private fun shouldRejectWearController(controller: MediaSession.ControllerInfo): Boolean {
-        val controllerPackage = controller.packageName
-        if (controllerPackage.startsWith(APP_PACKAGE_PREFIX)) {
-            return false
-        }
-        val blockedByPackage = BLOCKED_WEAR_CONTROLLER_PREFIXES.any { prefix ->
-            controllerPackage.startsWith(prefix)
-        }
-        if (blockedByPackage) {
-            return true
-        }
-
-        val hasWearHints = controller.connectionHints.keySet().any { key ->
-            WEAR_HINT_KEY_MARKERS.any { marker ->
-                key.contains(marker, ignoreCase = true)
-            }
-        }
-        // If hints identify a Wear/remote controller and it's not our app package,
-        // reject to avoid the default Wear system media player hijacking the session.
-        return hasWearHints
     }
 
     private fun createSleepTimerPendingIntent(): PendingIntent {
