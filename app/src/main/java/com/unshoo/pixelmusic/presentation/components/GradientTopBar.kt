@@ -43,6 +43,8 @@ import com.unshoo.pixelmusic.ui.theme.PixelMusicStatusBarStyle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.*
+import com.unshoo.pixelmusic.presentation.components.MusicRecognitionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +109,16 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
 ) {
+var showRecognitionDialog by remember { mutableStateOf(false) }
+
+    if (showRecognitionDialog) {
+        MusicRecognitionDialog(
+            onDismiss = { showRecognitionDialog = false },
+            onPlayMusic = { youtubeVideoId ->
+                // We will wire this to your player next!
+            }
+        )
+    }
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
 
     PixelMusicStatusBarStyle(color = surfaceContainerHigh)
@@ -144,9 +156,7 @@ fun HomeGradientTopBar(
         },
         actions = {
             IconButton(
-                onClick = { 
-                    // We will hook up the Shazam recording logic here later!
-                },
+                onClick = { showRecognitionDialog = true },
                 modifier = Modifier
                     .padding(end = 8.dp)
                     .clip(CircleShape)
