@@ -4,6 +4,10 @@
 
 package com.unshoo.pixelmusic.presentation.components
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -23,10 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.unshoo.pixelmusic.data.shazam.MusicRecognizer
@@ -40,6 +46,25 @@ fun MusicRecognitionDialog(
 ) {
     var status by remember { mutableStateOf<RecognitionStatus>(RecognitionStatus.Ready) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            status = RecognitionStatus.Listening
+            coroutineScope.launch {
+                val result = MusicRecognizer.recognizeCurrentAudio()
+                result.onSuccess {
+                    status = RecognitionStatus.Success(it)
+                }.onFailure {
+                    status = RecognitionStatus.Error(it.message ?: "Could not recognize song")
+                }
+            }
+        } else {
+            status = RecognitionStatus.Error("Microphone permission is required to listen to music.")
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -83,14 +108,19 @@ fun MusicRecognitionDialog(
                         )
                         Spacer(modifier = Modifier.height(32.dp))
                         BigListeningButton(isListening = false) {
-                            status = RecognitionStatus.Listening
-                            coroutineScope.launch {
-                                val result = MusicRecognizer.recognizeCurrentAudio()
-                                result.onSuccess {
-                                    status = RecognitionStatus.Success(it)
-                                }.onFailure {
-                                    status = RecognitionStatus.Error(it.message ?: "Could not recognize song")
+                            val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                            if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
+                                status = RecognitionStatus.Listening
+                                coroutineScope.launch {
+                                    val result = MusicRecognizer.recognizeCurrentAudio()
+                                    result.onSuccess {
+                                        status = RecognitionStatus.Success(it)
+                                    }.onFailure {
+                                        status = RecognitionStatus.Error(it.message ?: "Could not recognize song")
+                                    }
                                 }
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
                         }
                         Spacer(modifier = Modifier.height(32.dp))
@@ -268,4 +298,3 @@ fun BigListeningButton(isListening: Boolean, onClick: () -> Unit) {
         }
     }
 }
-
