@@ -615,7 +615,7 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 24.dp, // Aligns perfectly on the right side
-                    bottom = paddingValuesParent.calculateBottomPadding() + if (currentSong != null) 48.dp else 16.dp
+                    bottom = paddingValuesParent.calculateBottomPadding() + if (currentSong != null) 16.dp else 4.dp
                 )
         ) {
             Icon(
