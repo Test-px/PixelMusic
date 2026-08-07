@@ -121,10 +121,8 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
 ) {
-    // 1. Grab the PlayerViewModel
     val playerViewModel: PlayerViewModel = hiltViewModel()
-
-    // 2. The Dialog State
+    val coroutineScope = rememberCoroutineScope()
     var showRecognitionDialog by remember { mutableStateOf(false) }
 
     if (showRecognitionDialog) {
@@ -135,14 +133,14 @@ fun HomeGradientTopBar(
                 
                 coroutineScope.launch {
                     // Search YouTube Music and grab the first song result
-                    val songToPlay = withContext(Dispatchers.IO) {
+                    val songToPlay = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         val query = "${recognizedSong.title} ${recognizedSong.artist}"
-                        val searchResult = YouTube.search(
+                        val searchResult = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.search(
                             query, 
-                            YouTube.SearchFilter.FILTER_SONG
+                            unshoo.ianshulyadav.pixelmusic.innertube.YouTube.SearchFilter.FILTER_SONG
                         ).getOrNull()
                         
-                        val topResult = searchResult?.items?.firstOrNull { it is SongItem } as? SongItem
+                        val topResult = searchResult?.items?.firstOrNull { it is unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem } as? unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
                         
                         // Convert it to a PixelMusic Song object, and keep Shazam's gorgeous high-res cover art!
                         val nativeSong = topResult?.toNativeSong()
