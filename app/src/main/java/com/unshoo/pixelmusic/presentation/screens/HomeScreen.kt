@@ -623,7 +623,10 @@ fun HomeScreen(
                         )
                     )
                 )
-        )
+        ) {
+            
+        }
+    }
     
     if (showOptionsBottomSheet) {
         ModalBottomSheet(
