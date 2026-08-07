@@ -455,16 +455,7 @@ fun HomeScreen(
                         key = "your_mix_header",
                         contentType = "your_mix_header"
                     ) {
-                        YourMixHeader(
-                            song = yourMixSong,
-                            isShuffleEnabled = isShuffleEnabled,
-                             onPlayShuffled = {
-                                 val songsToUse = quickPicks.ifEmpty { yourMixSongs }
-                                 if (songsToUse.isNotEmpty()) {
-                                     playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
-                                 }
-                             }
-                        )
+                        YourMixHeader(song = yourMixSong)
                     }
                 }
 
@@ -610,7 +601,32 @@ fun HomeScreen(
         ) {
 
         }
+        androidx.compose.material3.FloatingActionButton(
+            onClick = {
+                val songsToUse = quickPicks.ifEmpty { yourMixSongs }
+                if (songsToUse.isNotEmpty()) {
+                    playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
+                }
+            },
+            containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
+            shape = androidx.compose.foundation.shape.CircleShape,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 24.dp, // Aligns perfectly on the right side
+                    // Dynamically stacks above the nav pill AND the mini player!
+                    bottom = paddingValuesParent.calculateBottomPadding() + bottomPadding + 16.dp
+                )
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.rounded_shuffle_24),
+                contentDescription = stringResource(R.string.cd_shuffle_play),
+                modifier = Modifier.size(28.dp)
+            )
+        }
     }
+    
     if (showOptionsBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showOptionsBottomSheet = false },
@@ -808,22 +824,6 @@ fun YourMixHeader(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-        // Play Button - fully expressive CircleShape for maximum performance and touch response
-        LargeExtendedFloatingActionButton(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp),
-            onClick = onPlayShuffled,
-            containerColor = if (isShuffleEnabled) colors.primary else colors.tertiaryContainer,
-            contentColor = if (isShuffleEnabled) colors.onPrimary else colors.onTertiaryContainer,
-            shape = androidx.compose.foundation.shape.CircleShape
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.rounded_shuffle_24),
-                contentDescription = stringResource(R.string.cd_shuffle_play),
-                modifier = Modifier.size(36.dp)
             )
         }
     }
