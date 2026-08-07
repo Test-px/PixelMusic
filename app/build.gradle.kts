@@ -368,10 +368,6 @@ dependencies {
 
     constraints {
         // Fix vulnerabilities in transitive dependencies
-        implementation(libs.netty.common)
-        implementation(libs.netty.handler)
-        implementation(libs.netty.codec.http)
-        implementation(libs.netty.codec.http2)
         implementation(libs.bouncycastle.bcprov)
         implementation(libs.bouncycastle.bcpkix)
         implementation(libs.commons.lang3)
