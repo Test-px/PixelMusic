@@ -49,6 +49,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint
 import androidx.compose.material.icons.rounded.Search
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
+import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 
@@ -121,22 +127,40 @@ fun HomeGradientTopBar(
     // 2. The Dialog State
     var showRecognitionDialog by remember { mutableStateOf(false) }
 
-    // 3. The Dialog UI and Playback Trigger
     if (showRecognitionDialog) {
         MusicRecognitionDialog(
             onDismiss = { showRecognitionDialog = false },
-            onPlayMusic = { youtubeVideoId ->
-                // Create a YouTube endpoint from the recognized video ID
-                val endpoint = WatchEndpoint(
-                    videoId = youtubeVideoId,
-                    playlistId = "RDAMVM$youtubeVideoId"
-                )
+            onPlayMusic = { recognizedSong ->
+                showRecognitionDialog = false // Hide the dialog instantly
                 
-                // Trigger the radio mix and open the player!
-                playerViewModel.playRadio(
-                    endpoint = endpoint,
-                    title = "Recognized Music"
-                )
+                coroutineScope.launch {
+                    // Search YouTube Music and grab the first song result
+                    val songToPlay = withContext(Dispatchers.IO) {
+                        val query = "${recognizedSong.title} ${recognizedSong.artist}"
+                        val searchResult = YouTube.search(
+                            query, 
+                            YouTube.SearchFilter.FILTER_SONG
+                        ).getOrNull()
+                        
+                        val topResult = searchResult?.items?.firstOrNull { it is SongItem } as? SongItem
+                        
+                        // Convert it to a PixelMusic Song object, and keep Shazam's gorgeous high-res cover art!
+                        val nativeSong = topResult?.toNativeSong()
+                        nativeSong?.copy(
+                            albumArtUriString = recognizedSong.coverArtHqUrl ?: recognizedSong.coverArtUrl ?: nativeSong.albumArtUriString
+                        )
+                    }
+
+                    if (songToPlay != null) {
+                        // Boom! Play it using your standard player and build an endless radio queue
+                        playerViewModel.playWithArchiveTuneQueueBuilder(
+                            song = songToPlay,
+                            queueName = "Recognized Music"
+                        )
+                    } else {
+                        playerViewModel.sendToast("Could not find this track on YouTube Music.")
+                    }
+                }
             }
         )
     }
