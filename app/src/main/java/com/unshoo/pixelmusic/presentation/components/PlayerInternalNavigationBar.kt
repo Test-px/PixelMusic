@@ -2,6 +2,7 @@ package com.unshoo.pixelmusic.presentation.components
 
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,13 +35,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -52,15 +48,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.unshoo.pixelmusic.BottomNavItem
+import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.presentation.navigation.Screen
 import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 import kotlinx.collections.immutable.ImmutableList
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.animation.animateColorAsState
 
 internal val NavBarContentHeight = 76.dp
 internal val NavBarCompactContentHeight = 64.dp
@@ -122,16 +113,14 @@ fun PlayerInternalNavigationBar(
 ) {
     val latestCurrentRoute by rememberUpdatedState(currentRoute)
     val latestNavigationEnabled by rememberUpdatedState(currentRoute != null)
-    var lastSearchTapTimestamp by remember { mutableStateOf(0L) }
 
     val haptic = LocalHapticFeedback.current
     val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
     val screenWidth = configuration.screenWidthDp
 
-    // Extract Search logic safely
-    val searchItem = navItems.find { it.screen.route == Screen.Search.route }
-    val mainItems = navItems.filter { it.screen.route != Screen.Search.route }
+    // We no longer filter out Search! It stays dynamically inside the main list.
+    val mainItems = navItems
 
     val isLargeFont = fontScale > 1.25f
     val isCompactScreen = screenWidth < 400
@@ -139,7 +128,6 @@ fun PlayerInternalNavigationBar(
 
     val selectedIndex = mainItems.indexOfFirst { it.screen.route == latestCurrentRoute }
 
-    // Outer Row handles layout separation (No pointerInput here)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -157,7 +145,6 @@ fun PlayerInternalNavigationBar(
             ),
             content = {
                 mainItems.forEachIndexed { index, item ->
-                    // Reverted to simple boolean state
                     val isSelected = index == selectedIndex
 
                     val itemWidth by animateDpAsState(
@@ -187,7 +174,6 @@ fun PlayerInternalNavigationBar(
                         label = "spacer_width_$index"
                     )
 
-                    // Reverted back to standard color animations
                     val containerColor by animateColorAsState(
                         targetValue = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
                         animationSpec = tween(200),
@@ -205,6 +191,9 @@ fun PlayerInternalNavigationBar(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (latestNavigationEnabled && latestCurrentRoute != item.screen.route) {
                                 navController.navigateToTopLevelSafely(item.screen.route)
+                            } else if (isSelected && item.screen.route == Screen.Search.route) {
+                                // Keeps your double-tap logic intact for Search!
+                                onSearchIconDoubleTap()
                             }
                         },
                         modifier = Modifier
@@ -266,42 +255,28 @@ fun PlayerInternalNavigationBar(
             }
         )
 
-
-        // Detached Custom Search Surface
-        if (searchItem != null) {
-            val isSearchSelected = latestCurrentRoute == searchItem.screen.route
-            val searchIconRes = if (isSearchSelected && searchItem.selectedIconResId != null && searchItem.selectedIconResId != 0) searchItem.selectedIconResId else searchItem.iconResId
-            
-            Surface(
-                onClick = {
-                    if (!latestNavigationEnabled) return@Surface
-                    
-                    val now = SystemClock.elapsedRealtime()
-                    val isDoubleTap = now - lastSearchTapTimestamp <= 350L
-                    lastSearchTapTimestamp = now
-
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-
-                    if (!isSearchSelected) {
-                        navController.navigateToTopLevelSafely(searchItem.screen.route)
-                    } else if (isDoubleTap) {
-                        lastSearchTapTimestamp = 0L
-                        onSearchIconDoubleTap()
-                    }
-                },
-                modifier = Modifier.size(64.dp), // Matches your original app's FAB footprint exactly
-                shape = CircleShape,
-                color = if (isSearchSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
-                contentColor = if (isSearchSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onPrimaryContainer,
-                shadowElevation = 8.dp
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(
-                        painter = painterResource(id = searchIconRes),
-                        contentDescription = searchItem.label,
-                        modifier = Modifier.size(24.dp)
-                    )
+        // Detached Settings Button
+        val isSettingsSelected = latestCurrentRoute == Screen.Settings.route
+        Surface(
+            onClick = {
+                if (!latestNavigationEnabled) return@Surface
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (!isSettingsSelected) {
+                    navController.navigateToTopLevelSafely(Screen.Settings.route)
                 }
+            },
+            modifier = Modifier.size(64.dp), 
+            shape = CircleShape,
+            color = if (isSettingsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (isSettingsSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 8.dp
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    painter = painterResource(id = R.drawable.rounded_settings_24),
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
