@@ -134,6 +134,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
@@ -363,11 +365,6 @@ fun HomeScreen(
     animationSpec = tween(300),
     label = "fabAlpha"
 )
-
-modifier = Modifier
-    .padding(bottom = fabBottomPadding)
-    .graphicsLayer { alpha = fabAlpha }
-    
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
