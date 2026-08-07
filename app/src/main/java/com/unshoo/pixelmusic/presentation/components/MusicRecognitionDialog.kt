@@ -70,7 +70,7 @@ fun MusicRecognitionDialog(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth() // <--- Animation completely removed for an instant snap!
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
@@ -164,7 +164,6 @@ fun MusicRecognitionDialog(
                         
                         Spacer(modifier = Modifier.height(24.dp))
                         
-                        // ALWAYS show the play button! 
                         Button(
                             onClick = { onPlayMusic(song) },
                             modifier = Modifier.fillMaxWidth(),
@@ -207,73 +206,72 @@ fun MusicRecognitionDialog(
                             Text("Try Again")
                         }
                     }
-                    else -> {}
-                }
-            }
-        }
-    }
+                } // End of when
+            } // End of Column
+        } // End of Surface
+    } // End of Dialog
+} // End of MusicRecognitionDialog (This bracket was missing!)
 
-    @Composable
-    fun BigListeningButton(isListening: Boolean, onClick: () -> Unit) {
-        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-        
-        val rippleScale by infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = if (isListening) 1.5f else 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1500, easing = LinearOutSlowInEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "rippleScale"
-        )
-        
-        val rippleAlpha by infiniteTransition.animateFloat(
-            initialValue = if (isListening) 0.5f else 0f,
-            targetValue = 0f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1500, easing = LinearOutSlowInEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "rippleAlpha"
-        )
+@Composable
+fun BigListeningButton(isListening: Boolean, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    
+    val rippleScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isListening) 1.5f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleScale"
+    )
+    
+    val rippleAlpha by infiniteTransition.animateFloat(
+        initialValue = if (isListening) 0.5f else 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleAlpha"
+    )
 
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(120.dp)
-        ) {
-            if (isListening) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .graphicsLayer {
-                            scaleX = rippleScale
-                            scaleY = rippleScale
-                            alpha = rippleAlpha
-                        }
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
-
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(120.dp)
+    ) {
+        if (isListening) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .matchParentSize()
+                    .graphicsLayer {
+                        scaleX = rippleScale
+                        scaleY = rippleScale
+                        alpha = rippleAlpha
+                    }
                     .clip(CircleShape)
-                    .background(
-                        if (isListening) MaterialTheme.colorScheme.primary 
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    )
-                    .clickable(enabled = !isListening, onClick = onClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.GraphicEq,
-                    contentDescription = "Microphone",
-                    modifier = Modifier.size(36.dp),
-                    tint = if (isListening) MaterialTheme.colorScheme.onPrimary 
-                           else MaterialTheme.colorScheme.onSecondaryContainer
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isListening) MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.secondaryContainer
                 )
-            }
+                .clickable(enabled = !isListening, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.GraphicEq,
+                contentDescription = "Microphone",
+                modifier = Modifier.size(36.dp),
+                tint = if (isListening) MaterialTheme.colorScheme.onPrimary 
+                       else MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
-    
+}
