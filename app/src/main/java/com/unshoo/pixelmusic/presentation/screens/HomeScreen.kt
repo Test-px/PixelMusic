@@ -788,11 +788,8 @@ private fun YourMixEmptyPlaceholder(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun YourMixHeader(
-    song: String,
-    isShuffleEnabled: Boolean = false,
-    onPlayShuffled: () -> Unit
+    song: String
 ) {
-    val colors = MaterialTheme.colorScheme
     val titleStyle = rememberYourMixTitleStyle()
 
     Box(
@@ -804,7 +801,6 @@ fun YourMixHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(end = 96.dp)
                 .padding(start = 12.dp, top = 8.dp)
         ) {
             // Your Mix Title
