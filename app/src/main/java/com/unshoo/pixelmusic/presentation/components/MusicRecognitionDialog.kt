@@ -164,7 +164,7 @@ fun MusicRecognitionDialog(
                         
                         Spacer(modifier = Modifier.height(24.dp))
                         
-                        // Play button is now ALWAYS visible!
+                        // ALWAYS show the play button! 
                         Button(
                             onClick = { onPlayMusic(song) },
                             modifier = Modifier.fillMaxWidth(),
