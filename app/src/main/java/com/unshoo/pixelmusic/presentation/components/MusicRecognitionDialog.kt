@@ -206,6 +206,7 @@ fun MusicRecognitionDialog(
                             Text("Try Again")
                         }
                     }
+                    else -> {}
                 } // End of when
             } // End of Column
         } // End of Surface
