@@ -66,7 +66,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.blur
-
+import androidx.compose.material3.FilledTonalIconButton
 
 
 
@@ -210,27 +210,20 @@ fun HomeGradientTopBar(
                 )
             }
         },
-     actions = {
+        actions = {
             val infiniteTransition = rememberInfiniteTransition(label = "recognitionPulse")
 
-            val scale by infiniteTransition.animateFloat(
-                initialValue = 1f,
-                targetValue = 1.08f,
+            // Animate only the icon to prevent the button background from exceeding bounds and clipping
+            val iconScale by infiniteTransition.animateFloat(
+                initialValue = 0.9f,
+                targetValue = 1.15f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1400, easing = FastOutSlowInEasing),
+                    animation = tween(1200, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
                 ),
-                label = "buttonScale"
+                label = "iconScale"
             )
-            val glowAlpha by infiniteTransition.animateFloat(
-                initialValue = 0.35f,
-                targetValue = 0.75f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1400, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "glowAlpha"
-            )
+            
             val iconRotation by infiniteTransition.animateFloat(
                 initialValue = -8f,
                 targetValue = 8f,
@@ -241,48 +234,24 @@ fun HomeGradientTopBar(
                 label = "iconRotation"
             )
 
-            val gradientBrush = Brush.linearGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.tertiary
+            // Perfectly fitted Material You expressive button
+            FilledTonalIconButton(
+                onClick = { showRecognitionDialog = true },
+                modifier = Modifier.padding(end = 6.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer, // Expressive dynamic color
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 )
-            )
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.padding(end = 8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .graphicsLayer {
-                            scaleX = scale * 1.6f
-                            scaleY = scale * 1.6f
-                            alpha = glowAlpha
-                        }
-                        .background(gradientBrush, shape = CircleShape)
-                        .blur(radius = 14.dp)
+                Icon(
+                    imageVector = Icons.Rounded.GraphicEq,
+                    contentDescription = "Recognize Music",
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                        rotationZ = iconRotation
+                    }
                 )
-
-                IconButton(
-                    onClick = { showRecognitionDialog = true },
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .clip(CircleShape)
-                        .background(gradientBrush)
-                ) {
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Rounded.GraphicEq,
-                        contentDescription = "Recognize Music",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.graphicsLayer {
-                            rotationZ = iconRotation
-                        }
-                    )
-                }
             }
         },
         colors = topAppBarColors(
