@@ -502,6 +502,12 @@ class MusicService : MediaLibraryService() {
         }
 
         val callback = object : MediaLibrarySession.Callback {
+
+            override fun onConnect(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo
+            ): MediaSession.ConnectionResult {
+                
                 val defaultResult = super.onConnect(session, controller)
                 val customCommands = listOf(
                     MusicNotificationProvider.CUSTOM_COMMAND_CLOSE_PLAYER,
