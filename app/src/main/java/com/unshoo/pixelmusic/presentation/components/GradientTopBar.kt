@@ -208,43 +208,79 @@ fun HomeGradientTopBar(
                 )
             }
         },
-        actions = {
-            // Self-animating visualizer effect for 2 seconds on load/return
-            val infiniteTransition = rememberInfiniteTransition(label = "topBarPulse")
-            var isAnimating by remember { mutableStateOf(true) }
-
-            LaunchedEffect(Unit) {
-                isAnimating = true
-                kotlinx.coroutines.delay(2000L)
-                isAnimating = false
-            }
+     actions = {
+            val infiniteTransition = rememberInfiniteTransition(label = "recognitionPulse")
 
             val scale by infiniteTransition.animateFloat(
                 initialValue = 1f,
-                targetValue = if (isAnimating) 1.2f else 1f,
+                targetValue = 1.08f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(400, easing = FastOutSlowInEasing),
+                    animation = tween(1400, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
                 ),
-                label = "scalePulse"
+                label = "buttonScale"
+            )
+            val glowAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 0.75f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1400, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "glowAlpha"
+            )
+            val iconRotation by infiniteTransition.animateFloat(
+                initialValue = -8f,
+                targetValue = 8f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1600, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "iconRotation"
             )
 
-            IconButton(
-                onClick = { showRecognitionDialog = true },
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Rounded.GraphicEq,
-                    contentDescription = "Recognize Music",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
+            val gradientBrush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.tertiary
                 )
+            )
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer {
+                            scaleX = scale * 1.6f
+                            scaleY = scale * 1.6f
+                            alpha = glowAlpha
+                        }
+                        .background(gradientBrush, shape = CircleShape)
+                        .blur(radius = 14.dp)
+                )
+
+                IconButton(
+                    onClick = { showRecognitionDialog = true },
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .clip(CircleShape)
+                        .background(gradientBrush)
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Rounded.GraphicEq,
+                        contentDescription = "Recognize Music",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.graphicsLayer {
+                            rotationZ = iconRotation
+                        }
+                    )
+                }
             }
         },
         colors = topAppBarColors(
