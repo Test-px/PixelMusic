@@ -130,6 +130,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
@@ -280,6 +284,15 @@ fun HomeScreen(
 
     // Padding inferior si hay canción en reproducción
     val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
+    val fabBottomPadding by animateDpAsState(
+    targetValue = paddingValuesParent.calculateBottomPadding() + bottomPadding + 16.dp,
+    animationSpec = spring(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessLow
+    ),
+    label = "fabBottomPadding"
+)
+    
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
 
@@ -345,6 +358,16 @@ fun HomeScreen(
         settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
             !cleanInstallDisclaimerDismissedThisSession
 
+    val fabAlpha by animateFloatAsState(
+    targetValue = 1f,
+    animationSpec = tween(300),
+    label = "fabAlpha"
+)
+
+modifier = Modifier
+    .padding(bottom = fabBottomPadding)
+    .graphicsLayer { alpha = fabAlpha }
+    
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -382,11 +405,9 @@ fun HomeScreen(
                     containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
                     shape = androidx.compose.foundation.shape.CircleShape,
-                    modifier = Modifier.padding(
-                        // No more crazy math. We just clear the parent padding (nav pill). 
-                        // The Scaffold handles the right-side alignment automatically!
-                        bottom = paddingValuesParent.calculateBottomPadding() + 8.dp
-                    )
+                    modifier = Modifier
+                        .padding(bottom = fabBottomPadding)
+                        .graphicsLayer { alpha = fabAlpha }
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.rounded_shuffle_24),
