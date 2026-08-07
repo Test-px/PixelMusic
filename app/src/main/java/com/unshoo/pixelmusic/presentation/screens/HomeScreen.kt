@@ -615,8 +615,7 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 24.dp, // Aligns perfectly on the right side
-                    // Dynamically stacks above the nav pill AND the mini player!
-                    bottom = paddingValuesParent.calculateBottomPadding() + bottomPadding + 16.dp
+                    bottom = paddingValuesParent.calculateBottomPadding() + if (currentSong != null) 48.dp else 16.dp
                 )
         ) {
             Icon(
