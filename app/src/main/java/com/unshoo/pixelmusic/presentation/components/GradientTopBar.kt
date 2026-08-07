@@ -48,6 +48,9 @@ import com.unshoo.pixelmusic.presentation.components.MusicRecognitionDialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,7 +186,7 @@ fun HomeGradientTopBar(
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Rounded.Search, 
+                imageVector = Icons.Rounded.Search, 
                 contentDescription = "Recognize Music",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
