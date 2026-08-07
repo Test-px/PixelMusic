@@ -45,6 +45,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.*
 import com.unshoo.pixelmusic.presentation.components.MusicRecognitionDialog
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
+import unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,16 +113,32 @@ fun HomeGradientTopBar(
     onMenuClick: () -> Unit = {},
     isScrolled: Boolean = false,
 ) {
-var showRecognitionDialog by remember { mutableStateOf(false) }
+    // 1. Grab the PlayerViewModel
+    val playerViewModel: PlayerViewModel = hiltViewModel()
 
+    // 2. The Dialog State
+    var showRecognitionDialog by remember { mutableStateOf(false) }
+
+    // 3. The Dialog UI and Playback Trigger
     if (showRecognitionDialog) {
         MusicRecognitionDialog(
             onDismiss = { showRecognitionDialog = false },
             onPlayMusic = { youtubeVideoId ->
-                // We will wire this to your player next!
+                // Create a YouTube endpoint from the recognized video ID
+                val endpoint = WatchEndpoint(
+                    videoId = youtubeVideoId,
+                    playlistId = "RDAMVM$youtubeVideoId"
+                )
+                
+                // Trigger the radio mix and open the player!
+                playerViewModel.playRadio(
+                    endpoint = endpoint,
+                    title = "Recognized Music"
+                )
             }
         )
     }
+    
     val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHighest
 
     PixelMusicStatusBarStyle(color = surfaceContainerHigh)
