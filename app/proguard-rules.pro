@@ -164,3 +164,9 @@
 
 # Protect the preferences repository so the background playback toggle state isn't obfuscated
 -keep class com.unshoo.pixelmusic.data.preferences.UserPreferencesRepository { *; }
+
+# Suppress R8 missing class warnings for Ktor plugins referenced by Google Generative AI
+-dontwarn io.ktor.client.plugins.HttpTimeout**
+-dontwarn io.ktor.client.plugins.contentnegotiation.**
+-dontwarn com.google.ai.client.generativeai.**
+
