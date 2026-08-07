@@ -55,6 +55,7 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.rounded.GraphicEq
 
 
 
@@ -199,6 +200,26 @@ fun HomeGradientTopBar(
             }
         },
         actions = {
+            // Self-animating visualizer effect for 2 seconds on load/return
+            val infiniteTransition = rememberInfiniteTransition(label = "topBarPulse")
+            var isAnimating by remember { mutableStateOf(true) }
+
+            LaunchedEffect(Unit) {
+                isAnimating = true
+                kotlinx.coroutines.delay(2000L)
+                isAnimating = false
+            }
+
+            val scale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = if (isAnimating) 1.2f else 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(400, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "scalePulse"
+            )
+
             IconButton(
                 onClick = { showRecognitionDialog = true },
                 modifier = Modifier
@@ -206,11 +227,15 @@ fun HomeGradientTopBar(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
-            Icon(
-                imageVector = Icons.Rounded.Search, 
-                contentDescription = "Recognize Music",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Rounded.GraphicEq,
+                    contentDescription = "Recognize Music",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                )
             }
         },
         colors = topAppBarColors(
