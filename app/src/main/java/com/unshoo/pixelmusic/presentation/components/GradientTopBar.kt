@@ -142,7 +142,23 @@ fun HomeGradientTopBar(
                 )
             }
         },
-        actions = {},
+        actions = {
+            IconButton(
+                onClick = { 
+                    // We will hook up the Shazam recording logic here later!
+                },
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.rounded_graphic_eq_24), // Swap with any mic/audio icon you prefer
+                    contentDescription = "Recognize Music",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        },
         colors = topAppBarColors(
             containerColor = Color.Transparent
         )
