@@ -389,29 +389,6 @@ fun HomeScreen(
                     },
                     isScrolled = isScrolledPastThreshold.value
                 )
-            },
-            // ---> ADD THE NATIVE FAB SLOT HERE <---
-            floatingActionButton = {
-                androidx.compose.material3.FloatingActionButton(
-                    onClick = {
-                        val songsToUse = quickPicks.ifEmpty { yourMixSongs }
-                        if (songsToUse.isNotEmpty()) {
-                            playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
-                        }
-                    },
-                    containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    modifier = Modifier
-                        .padding(bottom = fabBottomPadding)
-                        .graphicsLayer { alpha = fabAlpha }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.rounded_shuffle_24),
-                        contentDescription = stringResource(R.string.cd_shuffle_play),
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
             }
         ) { innerPadding ->
             val pullRefreshState = rememberPullToRefreshState()
@@ -643,6 +620,28 @@ fun HomeScreen(
                 )
         ) {
             
+        }
+
+        androidx.compose.material3.FloatingActionButton(
+            onClick = {
+                val songsToUse = quickPicks.ifEmpty { yourMixSongs }
+                if (songsToUse.isNotEmpty()) {
+                    playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
+                }
+            },
+            containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
+            shape = androidx.compose.foundation.shape.CircleShape,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = fabBottomPadding)
+                .graphicsLayer { alpha = fabAlpha }
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.rounded_shuffle_24),
+                contentDescription = stringResource(R.string.cd_shuffle_play),
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
     
