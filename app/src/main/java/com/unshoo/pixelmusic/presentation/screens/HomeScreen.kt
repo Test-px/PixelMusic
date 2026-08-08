@@ -284,6 +284,9 @@ fun HomeScreen(
             .map { it.isShuffleEnabled }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
+    
+    val density = LocalDensity.current
+    
 // Padding inferior si hay canción en reproducción (still used by LazyColumn below — keep it)
 val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
 
@@ -322,7 +325,6 @@ val fabBottomPadding by animateDpAsState(
     var isRefreshing by remember { mutableStateOf(false) }
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
-    val density = LocalDensity.current
     val scrollThresholdPx = remember(density) { with(density) { 180.dp.toPx() } }
     val isScrolledPastThreshold = remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > scrollThresholdPx }
