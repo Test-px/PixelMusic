@@ -41,7 +41,9 @@ fun HomeShuffleFab(
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
         // Using the animated offset here instead of the static one
-        modifier = modifier.padding(bottom = animatedBottomOffset, end = 24.dp)
+        modifier = modifier
+            .padding(bottom = animatedBottomOffset, end = 24.dp)
+            .size(64.dp)
     ) {
         Icon(
             painter = painterResource(R.drawable.rounded_shuffle_24),
