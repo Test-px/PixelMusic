@@ -10,23 +10,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.unshoo.pixelmusic.R
 
 @Composable
 fun HomeShuffleFab(
     isShuffleEnabled: Boolean,
-    bottomOffset: Dp,
+    isPlayerActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // The component manages its own height internally now!
+    // 135.dp clears the mini player, 90.dp clears just the nav pill.
+    val bottomOffset = if (isPlayerActive) 135.dp else 90.dp
+
     FloatingActionButton(
         onClick = onClick,
         containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
-        // The padding is passed from the outside, giving us exact control
         modifier = modifier.padding(bottom = bottomOffset, end = 24.dp)
     ) {
         Icon(
@@ -36,4 +38,3 @@ fun HomeShuffleFab(
         )
     }
 }
-
