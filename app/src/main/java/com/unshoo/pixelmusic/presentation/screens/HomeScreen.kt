@@ -306,12 +306,14 @@ val fabBottomPadding by animateDpAsState(
     label = "fabBottomPadding"
 )
 
-Text(
-    text = "map=$bottomChromeTopYMap topY=$topmostY screenH=$screenHeightPx fab=$fabBottomPadding",
-    modifier = Modifier.align(Alignment.TopStart),
-    color = Color.Red,
-    fontSize = 10.sp
-)
+Box(modifier = Modifier.fillMaxSize()) { // or whatever size is appropriate
+    Text(
+        text = "map=$bottomChromeTopYMap topY=$topmostY screenH=$screenHeightPx fab=$fabBottomPadding",
+        modifier = Modifier.align(Alignment.TopStart),
+        color = Color.Red,
+        fontSize = 10.sp
+    )
+}
     
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
