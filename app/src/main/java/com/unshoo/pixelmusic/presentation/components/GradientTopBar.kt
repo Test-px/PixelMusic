@@ -220,14 +220,14 @@ fun HomeGradientTopBar(
         },
         actions = {
             // Remembers if the tooltip has been shown. Survives navigation!
-            var hasShownTooltip by rememberSaveable { mutableStateOf(false) }
+            var hasShownTooltip by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
             var isTooltipVisible by remember { mutableStateOf(false) }
 
             // Runs only once when the bar is first created (Fresh App Launch)
             LaunchedEffect(Unit) {
                 if (!hasShownTooltip) {
                     isTooltipVisible = true
-                    delay(3000) // Shows for exactly 3 seconds
+                    kotlinx.coroutines.delay(3000) // Shows for exactly 3 seconds
                     isTooltipVisible = false
                     hasShownTooltip = true // Locks it so it doesn't show again this session
                 }
@@ -235,6 +235,7 @@ fun HomeGradientTopBar(
 
             val infiniteTransition = rememberInfiniteTransition(label = "recognitionPulse")
 
+            // 1. Existing icon pulse animation
             val iconScale by infiniteTransition.animateFloat(
                 initialValue = 0.9f,
                 targetValue = 1.15f,
@@ -255,43 +256,58 @@ fun HomeGradientTopBar(
                 label = "iconRotation"
             )
 
-            // The multi-ripple loop progress
-            val waveProgress by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
+            // 2. NEW Expanding wave scale & alpha for the outside ripple
+            val waveScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 2.2f, // How far the wave expands outward
                 animationSpec = infiniteRepeatable(
-                    animation = tween(2500, easing = LinearEasing),
+                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
                     repeatMode = RepeatMode.Restart
                 ),
-                label = "waveProgress"
+                label = "waveScale"
+            )
+            
+            val waveAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 0f, // Fades out as it expands
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "waveAlpha"
             )
 
             // ---> OUR ANIMATED TEXT POPUP <---
-            AnimatedVisibility(
-                visible = isTooltipVisible
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isTooltipVisible,
+                modifier = Modifier.align(Alignment.CenterVertically)
             ) {
                 Text(
                     text = "Identify song",
                     fontFamily = GoogleSansRounded,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelMedium,
+                    // True Material You Expressive Colors
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier
                         .padding(end = 10.dp)
                         .background(
                             color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp) // Sleek pill shape
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
 
-            // We wrap the button in a Box so we can draw the waves behind it
+            // We wrap the button in a Box so we can draw the wave behind/around it
             Box(
-                modifier = Modifier.padding(end = 6.dp),
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .align(Alignment.CenterVertically),
                 contentAlignment = Alignment.Center
             ) {
-                // ---> NEW MULTIPLE BLURRY RIPPLES <---
+                // ---> NEW GRADIENT WAVEFORM <---
+                // It only draws/animates when the tooltip is visible!
                 if (isTooltipVisible) {
                     val waveGradient = Brush.radialGradient(
                         colors = listOf(
@@ -300,33 +316,24 @@ fun HomeGradientTopBar(
                         )
                     )
                     
-                    Canvas(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .blur(4.dp)
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.matchParentSize()
                     ) {
-                        val numRipples = 4 
-                        for (i in 0 until numRipples) {
-                            val delayOffset = i * (1f / numRipples)
-                            var currentProgress = waveProgress - delayOffset
-                            if (currentProgress < 0f) currentProgress += 1f
-                            
-                            val scale = 1f + (currentProgress * 1.5f)
-                            val alpha = (1f - currentProgress).coerceIn(0f, 1f)
-                            
-                            drawCircle(
-                                brush = waveGradient,
-                                radius = (size.minDimension / 2) * scale,
-                                style = Stroke(width = 2.dp.toPx()),
-                                alpha = alpha * 0.7f 
-                            )
-                        }
+                        drawCircle(
+                            brush = waveGradient,
+                            radius = (size.minDimension / 2) * waveScale,
+                            // Keeps the stroke super thin and elegant
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
+                            alpha = waveAlpha
+                        )
                     }
                 }
 
                 // Perfectly fitted Material You expressive button
                 FilledTonalIconButton(
                     onClick = { showRecognitionDialog = true },
+                    modifier = Modifier.size(48.dp),
+                    // Removed padding here because we moved it to the Box wrapper
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -335,7 +342,9 @@ fun HomeGradientTopBar(
                     Icon(
                         imageVector = Icons.Rounded.GraphicEq,
                         contentDescription = "Recognize Music",
-                        modifier = Modifier.graphicsLayer {
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer {
                             scaleX = iconScale
                             scaleY = iconScale
                             rotationZ = iconRotation
