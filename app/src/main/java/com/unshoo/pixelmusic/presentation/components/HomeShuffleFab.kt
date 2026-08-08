@@ -20,9 +20,9 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // The component manages its own height internally now!
-    // 135.dp clears the mini player, 90.dp clears just the nav pill.
-    val bottomOffset = if (isPlayerActive) 135.dp else 90.dp
+    // Absolutely NO parent padding math here. Just pure, raw screen distance.
+    // 148.dp clears the mini player + nav pill. 88.dp clears just the nav pill.
+    val bottomOffset = if (isPlayerActive) 148.dp else 88.dp
 
     FloatingActionButton(
         onClick = onClick,
