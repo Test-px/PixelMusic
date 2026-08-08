@@ -298,7 +298,7 @@ val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
 val topmostY = bottomChromeTopYMap.values.minOrNull() ?: screenHeightPx
 
 val fabBottomPadding by animateDpAsState(
-    targetValue = with(density) { (screenHeightPx - topmostY).toDp() } + 16.dp,
+    targetValue = with(density) { (screenHeightPx - topmostY).toDp() } ,
     animationSpec = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
