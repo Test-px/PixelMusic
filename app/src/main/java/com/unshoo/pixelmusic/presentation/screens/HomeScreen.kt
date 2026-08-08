@@ -286,14 +286,15 @@ fun HomeScreen(
 
     // Padding inferior si hay canción en reproducción
     val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
+    // Bring bottomPadding back into the formula
     val fabBottomPadding by animateDpAsState(
-    targetValue = paddingValuesParent.calculateBottomPadding() + 16.dp,
+    targetValue = paddingValuesParent.calculateBottomPadding() + bottomPadding + 16.dp,
     animationSpec = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
     ),
     label = "fabBottomPadding"
-)
+ )
     
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
