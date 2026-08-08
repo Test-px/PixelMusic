@@ -153,6 +153,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.positionChange
 import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 
 
 @Immutable
@@ -906,6 +908,9 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxWidth()
                                     .padding(bottom = bottomBarPadding)
                                     .onSizeChanged { componentHeightPx = it.height }
+                                    .onGloballyPositioned { coordinates ->                       // ← ADD THIS LINE
+                                     playerViewModel.reportBottomChromeTop("nav_bar", coordinates.positionInRoot().y)  // ← AND THIS
+                                    }
                                     .graphicsLayer {
                                         val hideFraction = if (showPlayerContentArea) {
                                             playerViewModel.playerContentExpansionFraction.value.coerceIn(0f, 1f)
@@ -1022,6 +1027,11 @@ class MainActivity : ComponentActivity() {
                             { playerViewModel.hideDismissUndoBar() }
                         }
 
+                       LaunchedEffect(dismissUndoBarSlice.isVisible) {
+                      if (!dismissUndoBarSlice.isVisible) {
+                       playerViewModel.reportBottomChromeTop("undo_bar", null)
+                       }
+                       }
                         AnimatedVisibility(
                             visible = dismissUndoBarSlice.isVisible,
                             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -1030,6 +1040,9 @@ class MainActivity : ComponentActivity() {
                                 .align(Alignment.BottomCenter)
                                 .padding(bottom = innerPadding.calculateBottomPadding() + MiniPlayerBottomSpacer)
                                 .padding(horizontal = horizontalPadding)
+                                .onGloballyPositioned { coordinates ->                       // ← ADD THIS LINE
+                                 playerViewModel.reportBottomChromeTop("undo_bar", coordinates.positionInRoot().y)  // ← AND THIS
+                                }
                         ) {
                             DismissUndoBar(
                                 modifier = Modifier
