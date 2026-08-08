@@ -137,6 +137,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalConfiguration
+import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
@@ -288,32 +289,7 @@ fun HomeScreen(
     val density = LocalDensity.current
     
 // Padding inferior si hay canción en reproducción (still used by LazyColumn below — keep it)
-val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
-
-// FAB position: fully independent — reads whatever the real topmost bottom
-// element currently is (nav bar, mini player, or undo bar), no matter which
-val bottomChromeTopYMap by playerViewModel.bottomChromeTopY.collectAsStateWithLifecycle(initialValue = emptyMap())
-val configuration = LocalConfiguration.current
-val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
-val topmostY = bottomChromeTopYMap.values.minOrNull() ?: screenHeightPx
-
-val fabBottomPadding by animateDpAsState(
-    targetValue = with(density) { (screenHeightPx - topmostY).toDp() } ,
-    animationSpec = spring(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
-    ),
-    label = "fabBottomPadding"
-)
-
-Box(modifier = Modifier.fillMaxSize()) { // or whatever size is appropriate
-    Text(
-        text = "map=$bottomChromeTopYMap topY=$topmostY screenH=$screenHeightPx fab=$fabBottomPadding",
-        modifier = Modifier.align(Alignment.TopStart),
-        color = Color.Red,
-        fontSize = 10.sp
-    )
-}
+    val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
     
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
@@ -378,12 +354,6 @@ Box(modifier = Modifier.fillMaxSize()) { // or whatever size is appropriate
     val shouldShowCleanInstallDisclaimer =
         settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
             !cleanInstallDisclaimerDismissedThisSession
-
-    val fabAlpha by animateFloatAsState(
-    targetValue = 1f,
-    animationSpec = tween(300),
-    label = "fabAlpha"
-)
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -622,6 +592,7 @@ Box(modifier = Modifier.fillMaxSize()) { // or whatever size is appropriate
             }
             } // end PullToRefreshBox
         }
+        // Bottom Gradient Box
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -638,28 +609,40 @@ Box(modifier = Modifier.fillMaxSize()) { // or whatever size is appropriate
                     )
                 )
         ) {
-            
+            // Empty content
         }
 
-        androidx.compose.material3.FloatingActionButton(
+        // ---> OUR NEW INDEPENDENT FAB <---
+        HomeShuffleFab(
+            isShuffleEnabled = isShuffleEnabled,
+            bottomOffset = paddingValuesParent.calculateBottomPadding() + 
+                           if (currentSong != null) (MiniPlayerHeight + 16.dp) else 16.dp,
             onClick = {
                 val songsToUse = quickPicks.ifEmpty { yourMixSongs }
                 if (songsToUse.isNotEmpty()) {
                     playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
                 }
             },
-            containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
-            shape = androidx.compose.foundation.shape.CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = fabBottomPadding)
-                .graphicsLayer { alpha = fabAlpha }
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    } // <-- End of main screen Box
+
+    if (showOptionsBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showOptionsBottomSheet = false },
+            sheetState = sheetState
         ) {
-            Icon(
-                painter = painterResource(R.drawable.rounded_shuffle_24),
-                contentDescription = stringResource(R.string.cd_shuffle_play),
-                modifier = Modifier.size(28.dp)
+            HomeOptionsBottomSheet(
+                onNavigateToMashup = {
+                    scope.launch {
+                        sheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!sheetState.isVisible) {
+                            showOptionsBottomSheet = false
+                            navController.navigateSafely(Screen.DJSpace.route)
+                        }
+                    }
+                }
             )
         }
     }
