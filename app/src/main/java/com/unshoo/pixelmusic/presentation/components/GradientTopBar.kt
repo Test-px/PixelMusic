@@ -73,6 +73,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.LinearEasing
 
 
 
@@ -255,25 +256,16 @@ fun HomeGradientTopBar(
                 label = "iconRotation"
             )
 
-            // 2. NEW Expanding wave scale & alpha for the outside ripple
-            val waveScale by infiniteTransition.animateFloat(
-                initialValue = 1f,
-                targetValue = 2.2f, // How far the wave expands outward
+            // 2. NEW Multiple expanding ripples (Loops continuously from 0f to 1f)
+            val waveProgress by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+                    // 2500ms makes the ripples slow, calm, and hypnotic
+                    animation = tween(2500, easing = androidx.compose.animation.core.LinearEasing),
                     repeatMode = RepeatMode.Restart
                 ),
-                label = "waveScale"
-            )
-            
-            val waveAlpha by infiniteTransition.animateFloat(
-                initialValue = 0.8f,
-                targetValue = 0f, // Fades out as it expands
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "waveAlpha"
+                label = "waveProgress"
             )
 
             // ---> OUR ANIMATED TEXT POPUP <---
@@ -286,27 +278,25 @@ fun HomeGradientTopBar(
                     fontFamily = GoogleSansRounded,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelMedium,
-                    // True Material You Expressive Colors
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier
                         .padding(end = 10.dp)
                         .background(
                             color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = RoundedCornerShape(12.dp) // Sleek pill shape
+                            shape = RoundedCornerShape(12.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
 
-            // We wrap the button in a Box so we can draw the wave behind/around it
+            // We wrap the button in a Box so we can draw the waves behind it
             Box(
                 modifier = Modifier
                     .padding(end = 6.dp)
                     .align(Alignment.CenterVertically),
                 contentAlignment = Alignment.Center
             ) {
-                // ---> NEW GRADIENT WAVEFORM <---
-                // It only draws/animates when the tooltip is visible!
+                // ---> NEW MULTIPLE BLURRY RIPPLES <---
                 if (isTooltipVisible) {
                     val waveGradient = Brush.radialGradient(
                         colors = listOf(
@@ -316,22 +306,36 @@ fun HomeGradientTopBar(
                     )
                     
                     androidx.compose.foundation.Canvas(
-                        modifier = Modifier.matchParentSize()
+                        modifier = Modifier
+                            .matchParentSize()
+                            .androidx.compose.ui.draw.blur(4.dp) // <--- Adds the soft glowing blur effect!
                     ) {
-                        drawCircle(
-                            brush = waveGradient,
-                            radius = (size.minDimension / 2) * waveScale,
-                            // Keeps the stroke super thin and elegant
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
-                            alpha = waveAlpha
-                        )
+                        val numRipples = 4 // 4 ripples feels perfectly balanced without cluttering
+                        for (i in 0 until numRipples) {
+                            // Offset each ripple so they trail behind one another
+                            val delayOffset = i * (1f / numRipples)
+                            var currentProgress = waveProgress - delayOffset
+                            if (currentProgress < 0f) currentProgress += 1f // Wrap around so it loops seamlessly
+                            
+                            // Calculate how big this specific ripple should be (expands from 1x to roughly 2.5x)
+                            val scale = 1f + (currentProgress * 1.5f)
+                            // Fade out gracefully as it gets larger
+                            val alpha = (1f - currentProgress).coerceIn(0f, 1f)
+                            
+                            drawCircle(
+                                brush = waveGradient,
+                                radius = (size.minDimension / 2) * scale,
+                                // Slightly thicker stroke (2.dp) looks much better when blurred
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+                                alpha = alpha * 0.7f // Softens the max opacity
+                            )
+                        }
                     }
                 }
 
                 // Perfectly fitted Material You expressive button
                 FilledTonalIconButton(
                     onClick = { showRecognitionDialog = true },
-                    // Removed padding here because we moved it to the Box wrapper
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -348,7 +352,7 @@ fun HomeGradientTopBar(
                     )
                 }
             }
-        },
+        }
         colors = topAppBarColors(
             containerColor = Color.Transparent
         )
