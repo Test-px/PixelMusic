@@ -612,11 +612,13 @@ fun HomeScreen(
             // Empty content
         }
 
-        // ---> OUR NEW INDEPENDENT FAB <---
+        // ---> OUR NEW TRULY INDEPENDENT FAB <---
         HomeShuffleFab(
             isShuffleEnabled = isShuffleEnabled,
-            bottomOffset = paddingValuesParent.calculateBottomPadding() + 
-                           if (currentSong != null) (MiniPlayerHeight + 16.dp) else 16.dp,
+            // We ripped out all the parent padding math! 
+            // 135.dp clears the mini player, 90.dp clears just the nav pill.
+            // You can tweak these two exact numbers to place it pixel-perfectly!
+            bottomOffset = if (currentSong != null) 135.dp else 90.dp,
             onClick = {
                 val songsToUse = quickPicks.ifEmpty { yourMixSongs }
                 if (songsToUse.isNotEmpty()) {
@@ -625,7 +627,7 @@ fun HomeScreen(
             },
             modifier = Modifier.align(Alignment.BottomEnd)
         )
-    } // <-- End of main screen Box
+    }
 
     if (showOptionsBottomSheet) {
         ModalBottomSheet(
