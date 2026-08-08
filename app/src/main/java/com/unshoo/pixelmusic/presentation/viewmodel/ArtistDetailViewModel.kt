@@ -203,9 +203,21 @@ class ArtistDetailViewModel @Inject constructor(
                             it.title.contains("Songs", ignoreCase = true) ||
                             it.title.contains("Popular", ignoreCase = true)
                         }
-                        val popularSongs = ytSongsSection?.items?.mapNotNull { item ->
+                        
+                        val ytPopularSongs = ytSongsSection?.items?.mapNotNull { item ->
                             (item as? SongItem)?.toNativeSong()
-                        }?.take(10) ?: emptyList()
+                        } ?: emptyList()
+
+                        // ---> OUR FIX: ALWAYS fetch local/downloaded songs first! <---
+                        val localSongs = if (numericId != null) {
+                            runCatching { musicRepository.getSongsForArtist(numericId).first() }.getOrDefault(emptyList())
+                        } else emptyList()
+
+                        // Merge them: Your downloaded songs show up first, then YouTube's tracks. 
+                        // distinctBy { it.id } ensures we don't show the exact same song twice!
+                        val popularSongs = (localSongs + ytPopularSongs)
+                            .distinctBy { it.id }
+                            .take(10)
 
                         val localCount = withContext(Dispatchers.IO) {
                             runCatching {
@@ -219,6 +231,7 @@ class ArtistDetailViewModel @Inject constructor(
                             songCount = if (localCount > 0) localCount else popularSongs.size,
                             imageUrl = artistItem.thumbnail
                         )
+                        
 
                         // ── Albums: sections titled "Albums" or "Releases" ──
                         fun AlbumItem.toAlbumSection(artistTitle: String, artistIdHash: Long): ArtistAlbumSection {
