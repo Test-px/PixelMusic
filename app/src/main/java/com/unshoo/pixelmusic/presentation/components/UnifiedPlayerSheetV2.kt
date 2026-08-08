@@ -90,6 +90,8 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 
 private data class PlayerUiSheetSliceV2(
     val currentQueueSourceName: String = "",
@@ -238,6 +240,11 @@ fun UnifiedPlayerSheetV2(
     val isCastConnecting by playerViewModel.isCastConnecting.collectAsStateWithLifecycle()
     val showPlayerContentArea by remember(infrequentPlayerState.currentSong, isCastConnecting) {
         derivedStateOf { infrequentPlayerState.currentSong != null || isCastConnecting }
+    }
+    LaunchedEffect(showPlayerContentArea) {
+    if (!showPlayerContentArea) {
+        playerViewModel.reportBottomChromeTop("mini_player", null)
+    }
     }
 
     val playerContentExpansionFraction = playerViewModel.playerContentExpansionFraction
@@ -626,6 +633,9 @@ fun UnifiedPlayerSheetV2(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onGloballyPositioned { coordinates ->
+                             playerViewModel.reportBottomChromeTop("mini_player", coordinates.positionInRoot().y)
+                            }
                             // Modifier.layout reads from pixel lambdas during the layout phase —
                             // this avoids recomposition per drag frame (unlike derivedStateOf).
                             // Layout still runs per-frame, but composition is skipped entirely.
