@@ -27,7 +27,7 @@ fun HomeShuffleFab(
     // Smooth spring animation for the vertical movement!
     // It will bounce smoothly between 96.dp and 76.dp when the player opens/closes.
     val animatedBottomOffset by animateDpAsState(
-        targetValue = if (isPlayerActive) 96.dp else 76.dp,
+        targetValue = if (isPlayerActive) 84.dp else 64.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -46,7 +46,7 @@ fun HomeShuffleFab(
         Icon(
             painter = painterResource(R.drawable.rounded_shuffle_24),
             contentDescription = stringResource(R.string.cd_shuffle_play),
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(32.dp)
         )
     }
 }
