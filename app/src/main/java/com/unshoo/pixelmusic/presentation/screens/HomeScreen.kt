@@ -288,7 +288,7 @@ fun HomeScreen(
     val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
     // Bring bottomPadding back into the formula
     val fabBottomPadding by animateDpAsState(
-    targetValue = paddingValuesParent.calculateBottomPadding() + bottomPadding + 20.dp,
+    targetValue = paddingValuesParent.calculateBottomPadding() + bottomPadding + 12.dp,
     animationSpec = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
