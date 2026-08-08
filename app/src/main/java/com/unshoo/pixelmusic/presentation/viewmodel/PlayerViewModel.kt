@@ -539,8 +539,16 @@ class PlayerViewModel @Inject constructor(
     val isMiniPlayerDismissing: StateFlow<Boolean> = _isMiniPlayerDismissing.asStateFlow()
 
     fun setMiniPlayerDismissing(dismissing: Boolean) {
-        _isMiniPlayerDismissing.value = dismissing
+    _isMiniPlayerDismissing.value = dismissing
+}
+    private val _bottomChromeTopY = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val bottomChromeTopY: StateFlow<Map<String, Float>> = _bottomChromeTopY.asStateFlow()
+
+    fun reportBottomChromeTop(id: String, topY: Float?) {
+    _bottomChromeTopY.update { current ->
+        if (topY == null) current - id else current + (id to topY)
     }
+}
 
     // AI Ecosystem: States delegated to AiStateHolder for centralized management
     val showAiPlaylistSheet: StateFlow<Boolean> = aiStateHolder.showAiPlaylistSheet
