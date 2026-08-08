@@ -464,7 +464,19 @@ fun HomeScreen(
                         key = "your_mix_header",
                         contentType = "your_mix_header"
                     ) {
-                        YourMixHeader(song = yourMixSong)
+                        YourMixHeader(
+                            subtitle = yourMixSong,
+                            featuredSong = yourMixSongs.firstOrNull(),
+                            onSongClick = {
+                                yourMixSongs.firstOrNull()?.let { song ->
+                                    if (usesFallbackHomeMix) {
+                                        playerViewModel.showAndPlaySongFromLibrary(song, queueName = "Your Mix")
+                                    } else {
+                                        playerViewModel.showAndPlaySong(song, yourMixSongs, "Your Mix")
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
 
@@ -788,19 +800,23 @@ private fun YourMixEmptyPlaceholder(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun YourMixHeader(
-    song: String
+    subtitle: String,
+    featuredSong: Song?,
+    onSongClick: () -> Unit
 ) {
     val titleStyle = rememberYourMixTitleStyle()
 
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(1f)
                 .padding(start = 12.dp, top = 8.dp)
         ) {
             // Your Mix Title
@@ -814,13 +830,37 @@ fun YourMixHeader(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Artist/Song subtitle
+            // Subtitle
             Text(
-                text = song,
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.padding(start = 8.dp)
             )
+        }
+
+        // ---> OUR NEW FEATURED QUICK PICK <---
+        if (featuredSong != null) {
+            Surface(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(86.dp),
+                shape = racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape(
+                    cornerRadiusTL = 32.dp, smoothnessAsPercentTL = 100,
+                    cornerRadiusTR = 12.dp, smoothnessAsPercentTR = 60,
+                    cornerRadiusBL = 12.dp, smoothnessAsPercentBL = 60,
+                    cornerRadiusBR = 32.dp, smoothnessAsPercentBR = 100
+                ),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                onClick = onSongClick
+            ) {
+                SmartImage(
+                    model = featuredSong.albumArtUriString,
+                    contentDescription = featuredSong.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
 }
