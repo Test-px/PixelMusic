@@ -136,6 +136,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalConfiguration
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
@@ -283,18 +284,24 @@ fun HomeScreen(
             .map { it.isShuffleEnabled }
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
+// Padding inferior si hay canción en reproducción (still used by LazyColumn below — keep it)
+val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
 
-    // Padding inferior si hay canción en reproducción
-    val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
-    // Bring bottomPadding back into the formula
-    val fabBottomPadding by animateDpAsState(
-    targetValue = paddingValuesParent.calculateBottomPadding() + 12.dp,
+// FAB position: fully independent — reads whatever the real topmost bottom
+// element currently is (nav bar, mini player, or undo bar), no matter which
+val bottomChromeTopYMap by playerViewModel.bottomChromeTopY.collectAsStateWithLifecycle(initialValue = emptyMap())
+val configuration = LocalConfiguration.current
+val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+val topmostY = bottomChromeTopYMap.values.minOrNull() ?: screenHeightPx
+
+val fabBottomPadding by animateDpAsState(
+    targetValue = with(density) { (screenHeightPx - topmostY).toDp() } + 16.dp,
     animationSpec = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
     ),
     label = "fabBottomPadding"
- )
+)
     
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
