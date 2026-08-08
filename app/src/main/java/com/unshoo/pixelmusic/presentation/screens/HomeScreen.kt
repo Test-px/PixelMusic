@@ -615,7 +615,7 @@ fun HomeScreen(
         // ---> OUR NEW TRULY INDEPENDENT FAB <---
         HomeShuffleFab(
             isShuffleEnabled = isShuffleEnabled,
-            isPlayerActive = currentSong != null, // Just pass true/false!
+            isPlayerActive = currentSong != null, // Just passing true/false now!
             onClick = {
                 val songsToUse = quickPicks.ifEmpty { yourMixSongs }
                 if (songsToUse.isNotEmpty()) {
