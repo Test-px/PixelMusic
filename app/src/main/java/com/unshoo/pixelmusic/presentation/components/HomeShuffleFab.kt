@@ -1,5 +1,8 @@
 package com.unshoo.pixelmusic.presentation.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -7,6 +10,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -20,16 +24,24 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Absolutely NO parent padding math here. Just pure, raw screen distance.
-    // 148.dp clears the mini player + nav pill. 88.dp clears just the nav pill.
-    val bottomOffset = if (isPlayerActive) 148.dp else 88.dp
+    // Smooth spring animation for the vertical movement!
+    // It will bounce smoothly between 96.dp and 76.dp when the player opens/closes.
+    val animatedBottomOffset by animateDpAsState(
+        targetValue = if (isPlayerActive) 96.dp else 76.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "fabBottomOffset"
+    )
 
     FloatingActionButton(
         onClick = onClick,
         containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
-        modifier = modifier.padding(bottom = bottomOffset, end = 24.dp)
+        // Using the animated offset here instead of the static one
+        modifier = modifier.padding(bottom = animatedBottomOffset, end = 24.dp)
     ) {
         Icon(
             painter = painterResource(R.drawable.rounded_shuffle_24),
