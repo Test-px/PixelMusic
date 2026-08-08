@@ -220,14 +220,14 @@ fun HomeGradientTopBar(
         },
         actions = {
             // Remembers if the tooltip has been shown. Survives navigation!
-            var hasShownTooltip by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+            var hasShownTooltip by rememberSaveable { mutableStateOf(false) }
             var isTooltipVisible by remember { mutableStateOf(false) }
 
             // Runs only once when the bar is first created (Fresh App Launch)
             LaunchedEffect(Unit) {
                 if (!hasShownTooltip) {
                     isTooltipVisible = true
-                    kotlinx.coroutines.delay(3000) // Shows for exactly 3 seconds
+                    delay(3000) // Shows for exactly 3 seconds
                     isTooltipVisible = false
                     hasShownTooltip = true // Locks it so it doesn't show again this session
                 }
@@ -235,7 +235,6 @@ fun HomeGradientTopBar(
 
             val infiniteTransition = rememberInfiniteTransition(label = "recognitionPulse")
 
-            // 1. Existing icon pulse animation
             val iconScale by infiniteTransition.animateFloat(
                 initialValue = 0.9f,
                 targetValue = 1.15f,
@@ -256,22 +255,20 @@ fun HomeGradientTopBar(
                 label = "iconRotation"
             )
 
-            // 2. NEW Multiple expanding ripples (Loops continuously from 0f to 1f)
+            // The multi-ripple loop progress
             val waveProgress by infiniteTransition.animateFloat(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    // 2500ms makes the ripples slow, calm, and hypnotic
-                    animation = tween(2500, easing = androidx.compose.animation.core.LinearEasing),
+                    animation = tween(2500, easing = LinearEasing),
                     repeatMode = RepeatMode.Restart
                 ),
                 label = "waveProgress"
             )
 
             // ---> OUR ANIMATED TEXT POPUP <---
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isTooltipVisible,
-                modifier = Modifier.align(Alignment.CenterVertically)
+            AnimatedVisibility(
+                visible = isTooltipVisible
             ) {
                 Text(
                     text = "Identify song",
@@ -291,9 +288,7 @@ fun HomeGradientTopBar(
 
             // We wrap the button in a Box so we can draw the waves behind it
             Box(
-                modifier = Modifier
-                    .padding(end = 6.dp)
-                    .align(Alignment.CenterVertically),
+                modifier = Modifier.padding(end = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // ---> NEW MULTIPLE BLURRY RIPPLES <---
@@ -305,29 +300,25 @@ fun HomeGradientTopBar(
                         )
                     )
                     
-                    androidx.compose.foundation.Canvas(
+                    Canvas(
                         modifier = Modifier
                             .matchParentSize()
-                            .androidx.compose.ui.draw.blur(4.dp) // <--- Adds the soft glowing blur effect!
+                            .blur(4.dp)
                     ) {
-                        val numRipples = 4 // 4 ripples feels perfectly balanced without cluttering
+                        val numRipples = 4 
                         for (i in 0 until numRipples) {
-                            // Offset each ripple so they trail behind one another
                             val delayOffset = i * (1f / numRipples)
                             var currentProgress = waveProgress - delayOffset
-                            if (currentProgress < 0f) currentProgress += 1f // Wrap around so it loops seamlessly
+                            if (currentProgress < 0f) currentProgress += 1f
                             
-                            // Calculate how big this specific ripple should be (expands from 1x to roughly 2.5x)
                             val scale = 1f + (currentProgress * 1.5f)
-                            // Fade out gracefully as it gets larger
                             val alpha = (1f - currentProgress).coerceIn(0f, 1f)
                             
                             drawCircle(
                                 brush = waveGradient,
                                 radius = (size.minDimension / 2) * scale,
-                                // Slightly thicker stroke (2.dp) looks much better when blurred
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
-                                alpha = alpha * 0.7f // Softens the max opacity
+                                style = Stroke(width = 2.dp.toPx()),
+                                alpha = alpha * 0.7f 
                             )
                         }
                     }
@@ -352,7 +343,7 @@ fun HomeGradientTopBar(
                     )
                 }
             }
-        }
+        },
         colors = topAppBarColors(
             containerColor = Color.Transparent
         )
