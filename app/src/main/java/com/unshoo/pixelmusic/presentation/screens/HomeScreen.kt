@@ -647,25 +647,6 @@ fun HomeScreen(
         }
     }
     
-    if (showOptionsBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showOptionsBottomSheet = false },
-            sheetState = sheetState
-        ) {
-            HomeOptionsBottomSheet(
-                onNavigateToMashup = {
-                    scope.launch {
-                        sheetState.hide()
-                    }.invokeOnCompletion {
-                        if (!sheetState.isVisible) {
-                            showOptionsBottomSheet = false
-                            navController.navigateSafely(Screen.DJSpace.route)
-                        }
-                    }
-                }
-            )
-        }
-    }
     if (showChangelogBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showChangelogBottomSheet = false },
