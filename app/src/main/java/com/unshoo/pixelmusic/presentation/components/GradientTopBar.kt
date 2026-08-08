@@ -67,6 +67,13 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.blur
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlinx.coroutines.delay
+
 
 
 
@@ -211,9 +218,23 @@ fun HomeGradientTopBar(
             }
         },
         actions = {
+            // Remembers if the tooltip has been shown. Survives navigation!
+            var hasShownTooltip by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+            var isTooltipVisible by remember { mutableStateOf(false) }
+
+            // Runs only once when the bar is first created (Fresh App Launch)
+            LaunchedEffect(Unit) {
+                if (!hasShownTooltip) {
+                    isTooltipVisible = true
+                    kotlinx.coroutines.delay(3000) // Shows for exactly 3 seconds
+                    isTooltipVisible = false
+                    hasShownTooltip = true // Locks it so it doesn't show again this session
+                }
+            }
+
             val infiniteTransition = rememberInfiniteTransition(label = "recognitionPulse")
 
-            // Animate only the icon to prevent the button background from exceeding bounds and clipping
+            // 1. Existing icon pulse animation
             val iconScale by infiniteTransition.animateFloat(
                 initialValue = 0.9f,
                 targetValue = 1.15f,
@@ -234,24 +255,98 @@ fun HomeGradientTopBar(
                 label = "iconRotation"
             )
 
-            // Perfectly fitted Material You expressive button
-            FilledTonalIconButton(
-                onClick = { showRecognitionDialog = true },
-                modifier = Modifier.padding(end = 6.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer, // Expressive dynamic color
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                )
+            // 2. NEW Expanding wave scale & alpha for the outside ripple
+            val waveScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 2.2f, // How far the wave expands outward
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "waveScale"
+            )
+            
+            val waveAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 0f, // Fades out as it expands
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "waveAlpha"
+            )
+
+            // ---> OUR ANIMATED TEXT POPUP <---
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isTooltipVisible,
+                modifier = Modifier.align(Alignment.CenterVertically)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.GraphicEq,
-                    contentDescription = "Recognize Music",
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                        rotationZ = iconRotation
-                    }
+                Text(
+                    text = "Identify song",
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    // True Material You Expressive Colors
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = RoundedCornerShape(12.dp) // Sleek pill shape
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
+            }
+
+            // We wrap the button in a Box so we can draw the wave behind/around it
+            Box(
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .align(Alignment.CenterVertically),
+                contentAlignment = Alignment.Center
+            ) {
+                // ---> NEW GRADIENT WAVEFORM <---
+                // It only draws/animates when the tooltip is visible!
+                if (isTooltipVisible) {
+                    val waveGradient = Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.tertiary,
+                            MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.matchParentSize()
+                    ) {
+                        drawCircle(
+                            brush = waveGradient,
+                            radius = (size.minDimension / 2) * waveScale,
+                            // Keeps the stroke super thin and elegant
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
+                            alpha = waveAlpha
+                        )
+                    }
+                }
+
+                // Perfectly fitted Material You expressive button
+                FilledTonalIconButton(
+                    onClick = { showRecognitionDialog = true },
+                    // Removed padding here because we moved it to the Box wrapper
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.GraphicEq,
+                        contentDescription = "Recognize Music",
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                            rotationZ = iconRotation
+                        }
+                    )
+                }
             }
         },
         colors = topAppBarColors(
