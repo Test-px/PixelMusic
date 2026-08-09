@@ -30,7 +30,7 @@ fun HomeShuffleFab(
     modifier: Modifier = Modifier
 ) {
     // We use a state to hold our current desired height
-    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 60.dp else 30.dp) }
+    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 60.dp else 20.dp) }
 
     // When isPlayerActive changes, we trigger this effect.
     LaunchedEffect(isPlayerActive) {
