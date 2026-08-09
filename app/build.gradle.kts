@@ -65,7 +65,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.tencent.qqmusic"
+        applicationId = "com.unshoo.pixelmusic"
         minSdk = 30
         targetSdk = 37
         versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toInt() ?: 1
