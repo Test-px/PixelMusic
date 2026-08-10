@@ -409,21 +409,6 @@ class MainActivity : ComponentActivity() {
                 }
                 clearExternalIntentPayload(intent)
             }
-            
-            // Handle YouTube Deep Links (Tapping a link)
-            intent.action == android.content.Intent.ACTION_VIEW && intent.data?.host?.contains("youtu") == true -> {
-                intent.data?.toString()?.let { url ->
-                    extractYoutubeVideoId(url)?.let { videoId ->
-                        val endpoint = unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(
-                            videoId = videoId,
-                            playlistId = "RDAMVM$videoId"
-                        )
-                        playerViewModel.playRadio(endpoint, "Shared from YouTube")
-                        playerViewModel.showPlayer()
-                    }
-                }
-                clearExternalIntentPayload(intent)
-            }
 
             // Handle YouTube Share Intent (Sharing from YT/YT Music app)
             intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
@@ -519,12 +504,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Returns true if the MIME type or file name indicates an M3U/M3U8 playlist. */
-    private fun extractYoutubeVideoId(url: String): String? {
+    private fun extractYoutubeVideoId(text: String): String? {
+        val url = text.split("\\s+".toRegex()).firstOrNull { it.contains("youtu") } ?: text
         return try {
             when {
-                url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?").substringBefore("/")
-                url.contains("watch?v=") -> url.substringAfter("watch?v=").substringBefore("&")
-                url.contains("shorts/") -> url.substringAfter("shorts/").substringBefore("?").substringBefore("/")
+                url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?").substringBefore("/").substringBefore("&")
+                url.contains("watch?v=") -> url.substringAfter("watch?v=").substringBefore("&").substringBefore("#")
+                url.contains("shorts/") -> url.substringAfter("shorts/").substringBefore("?").substringBefore("/").substringBefore("&")
                 else -> null
             }
         } catch (e: Exception) {
