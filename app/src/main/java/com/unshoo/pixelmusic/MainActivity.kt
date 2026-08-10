@@ -410,22 +410,36 @@ class MainActivity : ComponentActivity() {
                 clearExternalIntentPayload(intent)
             }
             
-            // Handle incoming M3U/M3U8 playlist — import instead of play
-            intent.action == android.content.Intent.ACTION_VIEW &&
-                intent.data != null &&
-                isM3uMimeOrExtension(intent.type, intent.data?.lastPathSegment) -> {
-                intent.data?.let { uri ->
-                    persistUriPermissionIfNeeded(intent, uri)
-                    pendingM3uImportUri.value = uri
+            // Handle YouTube Deep Links (Tapping a link)
+            intent.action == android.content.Intent.ACTION_VIEW && intent.data?.host?.contains("youtu") == true -> {
+                intent.data?.toString()?.let { url ->
+                    extractYoutubeVideoId(url)?.let { videoId ->
+                        val endpoint = unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(
+                            videoId = videoId,
+                            playlistId = "RDAMVM$videoId"
+                        )
+                        playerViewModel.playRadio(endpoint, "Shared from YouTube")
+                        playerViewModel.showPlayer()
+                    }
                 }
                 clearExternalIntentPayload(intent)
             }
 
-            intent.action == android.content.Intent.ACTION_SEND &&
-                isM3uMimeOrExtension(intent.type, null) -> {
-                resolveStreamUri(intent)?.let { uri ->
-                    persistUriPermissionIfNeeded(intent, uri)
-                    pendingM3uImportUri.value = uri
+            // Handle YouTube Share Intent (Sharing from YT/YT Music app)
+            intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
+                val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                if (sharedText != null && sharedText.contains("youtu")) {
+                    val url = sharedText.split("\\s+".toRegex()).firstOrNull { it.contains("youtu") }
+                    if (url != null) {
+                        extractYoutubeVideoId(url)?.let { videoId ->
+                            val endpoint = unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(
+                                videoId = videoId,
+                                playlistId = "RDAMVM$videoId"
+                            )
+                            playerViewModel.playRadio(endpoint, "Shared from YouTube")
+                            playerViewModel.showPlayer()
+                        }
+                    }
                 }
                 clearExternalIntentPayload(intent)
             }
@@ -505,6 +519,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Returns true if the MIME type or file name indicates an M3U/M3U8 playlist. */
+    private fun extractYoutubeVideoId(url: String): String? {
+        return try {
+            when {
+                url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?").substringBefore("/")
+                url.contains("watch?v=") -> url.substringAfter("watch?v=").substringBefore("&")
+                url.contains("shorts/") -> url.substringAfter("shorts/").substringBefore("?").substringBefore("/")
+                else -> null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
     private fun isM3uMimeOrExtension(mimeType: String?, fileName: String?): Boolean {
         val m3uMimeTypes = setOf(
             "audio/x-mpegurl",
