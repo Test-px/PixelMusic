@@ -124,6 +124,20 @@
                       android:host="sauravbr.github.io"
                       android:pathPrefix="/PixelMusic" />
             </intent-filter>
+            <!-- Handle Deep Links from YouTube & YT Music -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="youtube.com" />
+                <data android:host="www.youtube.com" />
+                <data android:host="m.youtube.com" />
+                <data android:host="youtu.be" />
+                <data android:host="music.youtube.com" />
+            </intent-filter>
             </activity>
 
         <activity
