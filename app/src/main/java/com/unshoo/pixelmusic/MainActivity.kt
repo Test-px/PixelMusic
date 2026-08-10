@@ -389,14 +389,6 @@ class MainActivity : ComponentActivity() {
                 playerViewModel.showPlayer()
             }
 
-            // Handle YouTube Deep Links (Tapping a link)
-            intent.action == android.content.Intent.ACTION_VIEW && intent.data?.host?.contains("youtu") == true -> {
-                intent.data?.toString()?.let { url ->
-                    // TODO: Pass 'url' to PlayerViewModel
-                }
-                clearExternalIntentPayload(intent)
-            }
-
             // Handle YouTube Share Intent (Sharing from YT/YT Music app)
             intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
                 val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
