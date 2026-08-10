@@ -65,7 +65,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.unshoo.pixelmusic"
+        applicationId = "com.google.android.apps.youtube.music"
         minSdk = 30
         targetSdk = 37
         versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toInt() ?: 1
@@ -148,26 +148,14 @@ android {
     val targetAbi = project.findProperty("abi") as? String ?: ""
 
     splits {
-        abi {
-            if (targetAbi.isNotEmpty()) {
-                // If a specific ABI is requested via command line, build only that one
-                isEnable = true
-                reset()
-                include(targetAbi)
-                isUniversalApk = false
-            } else {
-                // Your default behavior when building locally or without the -P flag
-                isEnable = enableAbiSplits
-                reset()
-                if (enableAbiSplits) {
-                    // Add armv7a back to the build list
-                    include("arm64-v8a", "armeabi-v7a") 
-                    // Re-enable the universal APK
-                    isUniversalApk = true  
-                }
-            }
-        }
+    abi {
+        isEnable = true
+        reset()
+        include("arm64-v8a")
+        isUniversalApk = false
     }
+}
+
 
     bundle {
         abi.enableSplit = true
