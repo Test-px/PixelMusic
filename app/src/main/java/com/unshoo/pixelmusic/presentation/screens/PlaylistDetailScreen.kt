@@ -565,6 +565,51 @@ fun PlaylistDetailScreen(
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
+                        // Download All Button
+                        Button(
+                            onClick = {
+                                if (!isPlaylistFullyDownloaded) {
+                                    Toast.makeText(context, "Downloading playlist...", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        var downloadedCount = 0
+                                        for (song in songsInPlaylist) {
+                                            // Check if already downloaded
+                                            val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+                                            val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                            val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                            val targetFile = java.io.File(musicDir, "PixelMusic/$cleanTitle - $cleanArtist.m4a")
+                                            
+                                            if (!targetFile.exists()) {
+                                                // Download sequentially to avoid overwhelming the network
+                                                val success = com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
+                                                    context = context,
+                                                    song = song,
+                                                    lyricsText = null // Bulk lyrics fetching can be added later if needed
+                                                )
+                                                if (success) downloadedCount++
+                                            }
+                                        }
+                                        Toast.makeText(context, "Playlist download complete! ($downloadedCount new songs)", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isPlaylistFullyDownloaded) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = if (isPlaylistFullyDownloaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier
+                                .height(actionButtonsHeight)
+                                .width(actionButtonsHeight)
+                                .animateContentSize()
+                        ) {
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = if (isPlaylistFullyDownloaded) Icons.Rounded.Check else Icons.Rounded.Download,
+                                contentDescription = "Download Playlist"
+                            )
+                        }
                     }
                 }
 
