@@ -530,18 +530,17 @@ object YoutubeHelper {
     suspend fun getDownloadUrl(context: Context, song: Song): String {
         val videoId = song.youtubeId
         val maxBitrate = getTargetBitrateCeiling(context, forDownload = true)
-        val cacheKey = if (maxBitrate > 0) "${videoId}_q$maxBitrate" else "${videoId}_high"
+        val cacheKey = if (maxBitrate > 0) "${videoId}_dl_q$maxBitrate" else "${videoId}_dl_high"
 
         val cachedQuality = streamUrlLruCache.get(cacheKey)
         if (cachedQuality != null && isYoutubeUrlValid(cachedQuality)) {
             return cachedQuality
         }
 
-        val result = getSongUrlFromYoutube(context, song, lowQuality = false, maxBitrateKbps = maxBitrate)
+        // We pass requireM4a = true so we don't get a WEBM/Opus file that crashes jaudiotagger
+        val result = getSongUrlFromYoutube(context, song, lowQuality = false, maxBitrateKbps = maxBitrate, requireM4a = true)
         val newUri = result.first
         streamUrlLruCache.put(cacheKey, newUri)
-        result.second?.let { streamMimeTypeLruCache.put(cacheKey, it) }
-        result.third?.let { streamBitrateLruCache.put(cacheKey, it) }
         
         return newUri
     }
@@ -1030,7 +1029,8 @@ object YoutubeHelper {
     private fun selectCandidates(
         playerResponse: PlayerResponse,
         lowQuality: Boolean,
-        maxBitrateKbps: Int
+        maxBitrateKbps: Int,
+        requireM4a: Boolean = false
     ): List<PlayerResponse.StreamingData.Format> {
         val formats = playerResponse.streamingData?.adaptiveFormats
             ?.filter { 
@@ -1071,6 +1071,11 @@ object YoutubeHelper {
             }
         }
 
+        // Enforce M4A if requested
+        if (requireM4a) {
+            return sortGroup(m4aFormats) + sortGroup(otherFormats)
+        }
+        
         return sortGroup(opusFormats) + sortGroup(m4aFormats) + sortGroup(webmFormats) + sortGroup(otherFormats)
     }
 
@@ -1082,7 +1087,8 @@ object YoutubeHelper {
         song: Song,
         retries: Int = Constants.YoutubeApi.RETRY_COUNT,
         lowQuality: Boolean = false,
-        maxBitrateKbps: Int = 0
+        maxBitrateKbps: Int = 0,
+        requireM4a: Boolean = false
     ): Triple<String, String?, Int?> {
         val videoId = song.youtubeId
 
@@ -1170,7 +1176,7 @@ object YoutubeHelper {
                     continue
                 }
 
-                val candidates = selectCandidates(playerResponse, lowQuality, maxBitrateKbps)
+                val candidates = selectCandidates(playerResponse, lowQuality, maxBitrateKbps, requireM4a)
                 if (candidates.isEmpty()) {
                     UmihiHelper.printe("No audio formats found for client ${clientObj.clientName}")
                     continue
@@ -1268,7 +1274,7 @@ object YoutubeHelper {
                         }
                     }
 
-                    val orderedStreams = sortNewPipeGroup(opusStreams) + sortNewPipeGroup(m4aStreams) + sortNewPipeGroup(webmStreams) + sortNewPipeGroup(otherStreams)
+                    val orderedStreams = if (requireM4a) sortNewPipeGroup(m4aStreams) + sortNewPipeGroup(otherStreams) else sortNewPipeGroup(opusStreams) + sortNewPipeGroup(m4aStreams) + sortNewPipeGroup(webmStreams) + sortNewPipeGroup(otherStreams)
                     val selectedStream = orderedStreams.firstOrNull() ?: streams.firstOrNull() ?: throw Exception("No audio streams found after filtering")
                     // Infer MIME from format name/suffix
                     val suffix = selectedStream.format?.suffix?.lowercase().orEmpty()
