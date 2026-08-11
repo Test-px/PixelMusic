@@ -399,32 +399,10 @@ class ListeningStatsTracker @Inject constructor(
 
     /**
      * Checks whether a YouTube song has been played enough times to warrant
-     * automatic offline caching. Silently enqueues [SongDownloadWorker] if:
-     * - The song is sourced from YouTube (content URI starts with "youtube://")
-     * - Play count has reached or exceeded [AUTO_CACHE_PLAY_COUNT_THRESHOLD]
-     * - The song is not already cached locally (file_path is blank)
+     * automatic offline caching. (Disabled since download system is removed).
      */
     private suspend fun triggerAutoCacheIfNeeded(songId: String) {
-        try {
-            val playCount = engagementDao.getPlayCount(songId) ?: return
-            if (playCount < AUTO_CACHE_PLAY_COUNT_THRESHOLD) return
-
-            // Resolve the Room numeric ID to look up the song entity
-            val numericId = songId.toLongOrNull() ?: run {
-                if (songId.startsWith("youtube_")) {
-                    val ytId = songId.removePrefix("youtube_")
-                    -(15_000_000_000_000L + kotlin.math.abs(ytId.hashCode().toLong()))
-                } else null
-            } ?: return
-            val songEntity = musicDao.getSongByIdOnce(numericId) ?: return
-
-            // Only auto-cache YouTube-streamed songs that aren't already downloaded
-            val contentUri = songEntity.contentUriString
-            if (!contentUri.startsWith("youtube://")) return
-            if (songEntity.filePath.isNotBlank()) return // Already cached
-
-            val youtubeId = contentUri.removePrefix("youtube://")
-            if (youtubeId.isBlank()) return
+        // Function disabled.
     }
 
     private fun accumulateRealtimeListening(session: ActiveSession, nowRealtime: Long) {
