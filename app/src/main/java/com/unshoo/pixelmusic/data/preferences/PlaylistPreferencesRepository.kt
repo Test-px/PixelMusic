@@ -205,9 +205,6 @@ class PlaylistPreferencesRepository @Inject constructor(
     suspend fun deletePlaylist(playlistId: String) {
         ensureMigratedIfNeeded()
         val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
-        if (ytPlaylist != null) {
-            DownloadRepository(context).deletePlaylist(ytPlaylist)
-        }
         localPlaylistDao.deletePlaylist(playlistId)
         localPlaylistDao.clearPlaylistSongs(playlistId)
         clearPlaylistSongOrderMode(playlistId)
@@ -275,46 +272,7 @@ class PlaylistPreferencesRepository @Inject constructor(
         ensureMigratedIfNeeded()
         val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
         if (ytPlaylist != null) {
-            val songRepository = AppDatabase.getInstance(context).songRepository()
-            val playlistRepository = AppDatabase.getInstance(context).playlistRepository()
-            val songEntities = songIdsToAdd.mapNotNull { songIdStr ->
-                val songIdLong = songIdStr.toLongOrNull()
-                if (songIdLong != null) {
-                    musicDao.getSongByIdOnce(songIdLong)
-                } else if (songIdStr.startsWith("youtube_")) {
-                    val yId = songIdStr.removePrefix("youtube_")
-                    val expectedLongId = -(15_000_000_000_000L + yId.hashCode().toLong().absoluteValue)
-                    musicDao.getSongByIdOnce(expectedLongId)
-                } else {
-                    null
-                }
-            }
-            val ytSongs = songEntities.map { entity ->
-                val yId = entity.contentUriString.removePrefix("youtube://")
-                    .takeIf { it != entity.contentUriString }
-                    ?: if (entity.id < 0) {
-                        entity.contentUriString.removePrefix("youtube://")
-                    } else {
-                        entity.id.toString()
-                    }
-                com.unshoo.pixelmusic.data.model.youtube.Song(
-                    youtubeId = yId,
-                    title = entity.title,
-                    artist = entity.artistName,
-                    duration = com.unshoo.pixelmusic.utils.formatDuration(entity.duration),
-                    thumbnailHref = entity.albumArtUriString ?: "",
-                    thumbnailPath = if (entity.filePath.isNotBlank()) entity.albumArtUriString else null,
-                    audioFilePath = if (entity.filePath.isNotBlank()) entity.filePath else null
-                )
-            }
-            if (ytSongs.isNotEmpty()) {
-                songRepository.createAll(ytSongs)
-                val currentSize = ytPlaylist.songs.size
-                val refs = ytSongs.mapIndexed { index, song ->
-                    com.unshoo.pixelmusic.data.model.youtube.PlaylistSongCrossRef(playlistId, song.youtubeId, currentSize + index)
-                }
-                playlistRepository.insertCrossRefs(refs)
-            }
+        AppDatabase.getInstance(context).playlistRepository().deleteCrossRef(playlistId, rawYtId)
         } else {
             val existing = userPlaylistsFlow.first().find { it.id == playlistId } ?: return
             val merged = (existing.songIds + songIdsToAdd).distinct()
