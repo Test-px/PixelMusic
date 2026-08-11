@@ -11,7 +11,6 @@ import com.unshoo.pixelmusic.data.DailyMixManager
 import com.unshoo.pixelmusic.data.database.EngagementDao
 import com.unshoo.pixelmusic.data.database.MusicDao
 import com.unshoo.pixelmusic.data.model.Song
-import com.unshoo.pixelmusic.data.remote.youtube.SongDownloadWorker
 import com.unshoo.pixelmusic.data.stats.PlaybackStatsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -426,21 +425,6 @@ class ListeningStatsTracker @Inject constructor(
 
             val youtubeId = contentUri.removePrefix("youtube://")
             if (youtubeId.isBlank()) return
-
-            val workName = "auto_cache_$youtubeId"
-            val request = OneTimeWorkRequestBuilder<SongDownloadWorker>()
-                .setInputData(workDataOf(
-                    SongDownloadWorker.SONG_KEY to youtubeId,
-                    "persist_publicly" to false
-                ))
-                .addTag("auto_cache")
-                .build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, request)
-            Timber.d("Auto-cache triggered for YouTube song $youtubeId (play count = $playCount)")
-        } catch (e: Exception) {
-            Timber.w(e, "Auto-cache check failed for song $songId")
-        }
     }
 
     private fun accumulateRealtimeListening(session: ActiveSession, nowRealtime: Long) {
