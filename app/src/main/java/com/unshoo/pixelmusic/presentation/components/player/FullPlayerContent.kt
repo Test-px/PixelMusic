@@ -1255,12 +1255,6 @@ fun FullPlayerContent(
     // Player Options Menu Bottom Sheet
     if (showSongInfoBottomSheet) {
         val songInfoViewModel: SongInfoBottomSheetViewModel = hiltViewModel()
-        val isDownloaded by songInfoViewModel.isSongDownloaded.collectAsStateWithLifecycle()
-        val isDownloading by songInfoViewModel.isSongDownloading.collectAsStateWithLifecycle()
-
-        LaunchedEffect(song.id) {
-            songInfoViewModel.loadDownloadState(song)
-        }
 
         val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
         ModalBottomSheet(
@@ -1417,55 +1411,6 @@ fun FullPlayerContent(
                                             imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
                                             contentDescription = null,
                                             tint = LocalMaterialTheme.current.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            )
-
-                            // Option 2: Download Song
-                            val downloadText = when {
-                                isDownloaded -> "Downloaded"
-                                isDownloading -> "Downloading..."
-                                else -> "Download Song"
-                            }
-                            val downloadIcon = if (isDownloaded) Icons.Rounded.CheckCircle else Icons.Rounded.Download
-                            val downloadTint = if (isDownloaded) LocalMaterialTheme.current.primary else LocalMaterialTheme.current.onSurfaceVariant
-
-                            ListItem(
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable {
-                                        if (!isDownloaded && !isDownloading) {
-                                            songInfoViewModel.downloadYoutubeSong(song)
-                                            Toast.makeText(context, "Starting download...", Toast.LENGTH_SHORT).show()
-                                        } else if (isDownloaded) {
-                                            Toast.makeText(context, "Song already downloaded", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                colors = ListItemDefaults.colors(
-                                    containerColor = LocalMaterialTheme.current.surfaceContainerHigh.copy(alpha = 0.6f)
-                                ),
-                                headlineContent = {
-                                    Text(
-                                        text = downloadText,
-                                        fontFamily = GoogleSansRounded,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (isDownloaded) LocalMaterialTheme.current.primary else LocalMaterialTheme.current.onSurface
-                                    )
-                                },
-                                leadingContent = {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(LocalMaterialTheme.current.surfaceVariant, CircleShape),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = downloadIcon,
-                                            contentDescription = null,
-                                            tint = downloadTint,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
