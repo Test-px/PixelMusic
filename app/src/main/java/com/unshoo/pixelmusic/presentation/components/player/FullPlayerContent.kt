@@ -1279,6 +1279,20 @@ fun FullPlayerContent(
                             .padding(bottom = 16.dp)
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
+                            // Check if the file is already downloaded in the public Music directory
+                            var isDownloaded by remember(song.id) { mutableStateOf(false) }
+                            LaunchedEffect(song.id) {
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+                                    val cleanTitle = song.title.replace("/", "_").replace("\\", "_")
+                                    val cleanArtist = song.displayArtist.replace("/", "_").replace("\\", "_")
+                                    
+                                    val m4aFile = java.io.File(musicDir, "$cleanTitle - $cleanArtist.m4a")
+                                    val mp3File = java.io.File(musicDir, "$cleanTitle - $cleanArtist.mp3")
+                                    
+                                    isDownloaded = m4aFile.exists() || mp3File.exists()
+                                }
+                            }
                             // Custom Drag Handle inside the Column
                             Box(
                                 modifier = Modifier
@@ -1448,6 +1462,43 @@ fun FullPlayerContent(
                                             imageVector = Icons.Rounded.Share,
                                             contentDescription = null,
                                             tint = LocalMaterialTheme.current.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            )
+                            // Option 4: Download Song
+                            ListItem(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable(enabled = !isDownloaded) {
+                                        // TODO (Phase 2): Trigger background download logic here
+                                        android.widget.Toast.makeText(context, "Download starting...", android.widget.Toast.LENGTH_SHORT).show()
+                                        showSongInfoBottomSheet = false
+                                    },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = LocalMaterialTheme.current.surfaceContainerHigh.copy(alpha = 0.6f)
+                                ),
+                                headlineContent = {
+                                    Text(
+                                        text = if (isDownloaded) "Already downloaded" else "Download",
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isDownloaded) LocalMaterialTheme.current.onSurface.copy(alpha = 0.5f) else LocalMaterialTheme.current.onSurface
+                                    )
+                                },
+                                leadingContent = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(LocalMaterialTheme.current.surfaceVariant, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDownloaded) Icons.Rounded.CheckCircle else Icons.Rounded.Download,
+                                            contentDescription = "Download Song",
+                                            tint = if (isDownloaded) LocalMaterialTheme.current.primary else LocalMaterialTheme.current.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
