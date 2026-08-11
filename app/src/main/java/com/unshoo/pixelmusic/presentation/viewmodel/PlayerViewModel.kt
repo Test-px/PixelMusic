@@ -4645,19 +4645,6 @@ class PlayerViewModel @Inject constructor(
                     Timber.w(e, "Failed to mark YouTube song as permanently downloaded")
                 }
             }
-
-            // Component 26: Cache liked songs offline
-            val shouldCache = userPreferencesRepository.cacheLikedSongsOfflineFlow.first()
-            if (shouldCache) {
-                val workRequest = OneTimeWorkRequestBuilder<SongDownloadWorker>()
-                    .setInputData(workDataOf(SongDownloadWorker.SONG_KEY to videoId))
-                    .setConstraints(Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build())
-                    .build()
-                WorkManager.getInstance(context)
-                    .enqueueUniqueWork("dl_liked_$videoId", ExistingWorkPolicy.KEEP, workRequest)
-            }
         }
 
         if (videoId != null && unshoo.ianshulyadav.pixelmusic.innertube.YouTube.hasLoginCookie()) {
