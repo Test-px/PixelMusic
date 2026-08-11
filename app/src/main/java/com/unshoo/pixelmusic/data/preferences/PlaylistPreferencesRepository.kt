@@ -333,8 +333,10 @@ class PlaylistPreferencesRepository @Inject constructor(
         val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
         
         if (ytPlaylist != null) {
+            // This is the line that was missing!
             val rawYtId = variants.find { !it.startsWith("youtube_") && it.toLongOrNull() == null }
                 ?: songIdToRemove.removePrefix("youtube_")
+                
             AppDatabase.getInstance(context).playlistRepository().deleteCrossRef(playlistId, rawYtId)
         } else {
             val existing = userPlaylistsFlow.first().find { it.id == playlistId } ?: return
