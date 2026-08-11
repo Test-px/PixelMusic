@@ -1475,12 +1475,16 @@ fun FullPlayerContent(
                                     .clickable(enabled = !isDownloaded) {
                                         showSongInfoBottomSheet = false
                                         coroutineScope.launch {
-                                            // Phase 2: Download to temp cache
-                                            val tempFile = com.unshoo.pixelmusic.utils.SongDownloader.downloadSongTemp(context, song)
-                                            
-                                            if (tempFile != null) {
-                                                // TODO (Phase 3): Embed Metadata and move to Public /Music folder
-                                            }
+                                            // Extract lyrics if they are available
+                                            val currentLyricsObj = lyricsProvider()
+                                            val lyricsText = currentLyricsObj?.synced?.joinToString("\n") { it.line }
+                                                ?: currentLyricsObj?.plain?.joinToString("\n")
+
+                                            com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
+                                                context = context, 
+                                                song = song, 
+                                                lyricsText = lyricsText
+                                            )
                                         }
                                     },
                                 colors = ListItemDefaults.colors(
