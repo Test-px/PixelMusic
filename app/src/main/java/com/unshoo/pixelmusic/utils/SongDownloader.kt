@@ -2,6 +2,10 @@ package com.unshoo.pixelmusic.utils
 
 import android.content.ContentValues
 import android.content.Context
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMuxer
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
@@ -15,18 +19,17 @@ import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.StandardArtwork
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
 
 object SongDownloader {
 
-    /**
-     * Downloads the stream, embeds metadata/cover art, and moves it to the public Music folder.
-     */
     suspend fun downloadAndTagSong(
-        context: Context, 
-        song: Song, 
+        context: Context,
+        song: Song,
         lyricsText: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
         var tempAudioFile: File? = null
+        var tempRemuxedFile: File? = null
         var tempImageFile: File? = null
 
         try {
@@ -43,36 +46,31 @@ object SongDownloader {
                 thumbnailHref = song.albumArtUriString ?: ""
             )
             val streamUrl = YoutubeHelper.getDownloadUrl(context, ytSong)
-            
             if (streamUrl.isBlank()) throw Exception("Could not resolve stream URL")
 
-            // Strip illegal characters for file naming
             val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
             val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
             val fileName = "$cleanTitle - $cleanArtist.m4a"
-            
-            tempAudioFile = File(context.cacheDir, "temp_$fileName")
+
+            tempAudioFile = File(context.cacheDir, "raw_$fileName")
+            tempRemuxedFile = File(context.cacheDir, "clean_$fileName")
             tempImageFile = File(context.cacheDir, "temp_cover.jpg")
 
-            // 2. Download the audio file
-            // We must use a custom client with higher timeouts and send a "Range" header to prevent YouTube from throttling/resetting the connection.
+            // 2. Download the audio file with Range bypass
             val downloadClient = YoutubeHelper.client.newBuilder()
                 .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
                 .connectTimeout(1, java.util.concurrent.TimeUnit.MINUTES)
                 .build()
 
             val requestProfile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(streamUrl)
-            
             val audioRequest = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.applyRequestProfile(
                 Request.Builder().get().url(streamUrl),
                 requestProfile
             )
-            .header("Range", "bytes=0-") // <--- This completely lifts the download throttle
+            .header("Range", "bytes=0-")
             .build()
 
             val audioResponse = downloadClient.newCall(audioRequest).execute()
-            
-            // 206 Partial Content is the expected success code when using a Range header
             if (!audioResponse.isSuccessful && audioResponse.code != 206) {
                 throw Exception("Failed to download audio. Code: ${audioResponse.code}")
             }
@@ -84,10 +82,60 @@ object SongDownloader {
             }
 
             withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Processing audio file...", Toast.LENGTH_SHORT).show()
+            }
+
+            // 3. Remux DASH M4A to Standard M4A
+            // YouTube sends fragmented/DASH MP4s which crash jaudiotagger.
+            // We use Android's native MediaMuxer to repackage it instantly without quality loss.
+            val extractor = MediaExtractor()
+            extractor.setDataSource(tempAudioFile.absolutePath)
+
+            var audioTrackIndex = -1
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: ""
+                if (mime.startsWith("audio/")) {
+                    audioTrackIndex = i
+                    break
+                }
+            }
+
+            if (audioTrackIndex >= 0) {
+                extractor.selectTrack(audioTrackIndex)
+                val format = extractor.getTrackFormat(audioTrackIndex)
+
+                val muxer = MediaMuxer(tempRemuxedFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+                val muxerTrackIndex = muxer.addTrack(format)
+                muxer.start()
+
+                val buffer = ByteBuffer.allocate(1024 * 1024)
+                val bufferInfo = MediaCodec.BufferInfo()
+
+                while (true) {
+                    val sampleSize = extractor.readSampleData(buffer, 0)
+                    if (sampleSize < 0) break
+                    bufferInfo.offset = 0
+                    bufferInfo.size = sampleSize
+                    bufferInfo.flags = extractor.sampleFlags
+                    bufferInfo.presentationTimeUs = extractor.sampleTime
+                    muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
+                    extractor.advance()
+                }
+
+                muxer.stop()
+                muxer.release()
+                extractor.release()
+            } else {
+                extractor.release()
+                throw Exception("No audio track found in downloaded file")
+            }
+
+            withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Writing metadata...", Toast.LENGTH_SHORT).show()
             }
 
-            // 3. Download the Album Art
+            // 4. Download Album Art
             if (!song.albumArtUriString.isNullOrBlank()) {
                 val imageRequest = Request.Builder().url(song.albumArtUriString!!).build()
                 val imageResponse = YoutubeHelper.client.newCall(imageRequest).execute()
@@ -100,22 +148,20 @@ object SongDownloader {
                 }
             }
 
-            // 4. Embed Metadata using jaudiotagger
-            val audioFile = AudioFileIO.read(tempAudioFile)
+            // 5. Embed Metadata using jaudiotagger on the REMUXED file
+            val audioFile = AudioFileIO.read(tempRemuxedFile)
             val tag = audioFile.tagOrCreateAndSetDefault
-            
+
             tag.setField(FieldKey.TITLE, song.title)
             tag.setField(FieldKey.ARTIST, song.displayArtist)
             if (!song.album.isNullOrBlank()) {
                 tag.setField(FieldKey.ALBUM, song.album)
             }
-            
-            // Embed lyrics if available
+
             if (!lyricsText.isNullOrBlank()) {
                 tag.setField(FieldKey.LYRICS, lyricsText)
             }
 
-            // Embed cover art if successfully downloaded
             if (tempImageFile.exists()) {
                 val artwork = StandardArtwork.createArtworkFromFile(tempImageFile)
                 tag.setField(artwork)
@@ -123,10 +169,10 @@ object SongDownloader {
 
             audioFile.commit()
 
-            // 5. Move to Public MediaStore (Music/PixelMusic)
+            // 6. Move to Public MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
-                put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4") // m4a is the mp4 container
+                put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
                 put(MediaStore.Audio.Media.TITLE, song.title)
                 put(MediaStore.Audio.Media.ARTIST, song.displayArtist)
                 if (!song.album.isNullOrBlank()) {
@@ -141,7 +187,7 @@ object SongDownloader {
                 ?: throw Exception("Failed to create MediaStore entry")
 
             resolver.openOutputStream(uri)?.use { outputStream ->
-                tempAudioFile.inputStream().use { inputStream ->
+                tempRemuxedFile.inputStream().use { inputStream ->
                     inputStream.copyTo(outputStream)
                 }
             }
@@ -155,12 +201,14 @@ object SongDownloader {
         } catch (e: Exception) {
             e.printStackTrace()
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                val errorMsg = e.message ?: "Unknown error"
+                Toast.makeText(context, "Download failed: $errorMsg", Toast.LENGTH_LONG).show()
             }
             return@withContext false
         } finally {
-            // 6. Cleanup temp files to save space
+            // 7. Cleanup
             tempAudioFile?.takeIf { it.exists() }?.delete()
+            tempRemuxedFile?.takeIf { it.exists() }?.delete()
             tempImageFile?.takeIf { it.exists() }?.delete()
         }
     }
