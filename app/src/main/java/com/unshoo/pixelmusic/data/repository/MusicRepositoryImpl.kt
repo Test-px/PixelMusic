@@ -1525,6 +1525,15 @@ class MusicRepositoryImpl @Inject constructor(
                         // Cleanup file if unliked
                         if (targetFile.exists() && targetFile.canWrite()) {
                             targetFile.delete()
+                            
+                            // Switch to the Main thread to show the Toast
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    context, 
+                                    "Removed downloaded song from storage", 
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }
