@@ -2,7 +2,6 @@ package com.unshoo.pixelmusic.di
 
 import android.content.Context
 import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
-import com.unshoo.pixelmusic.data.remote.youtube.DownloadRepository
 import com.unshoo.pixelmusic.data.remote.youtube.SongRepository
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubePlaylistDataSource
 import dagger.Module
@@ -26,12 +25,6 @@ object YoutubeModule {
     @Singleton
     fun provideDatastoreRepository(@ApplicationContext context: Context): DatastoreRepository {
         return DatastoreRepository(context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideDownloadRepository(@ApplicationContext context: Context): DownloadRepository {
-        return DownloadRepository(context)
     }
 
     @Provides
