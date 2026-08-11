@@ -50,7 +50,6 @@ import javax.inject.Inject
 import com.unshoo.pixelmusic.data.database.MusicDao
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import com.unshoo.pixelmusic.data.remote.youtube.DownloadHelper
 import com.unshoo.pixelmusic.data.database.SongEntity
 import com.unshoo.pixelmusic.data.database.AlbumEntity
 import com.unshoo.pixelmusic.data.database.ArtistEntity
@@ -294,33 +293,6 @@ class PlaylistViewModel @Inject constructor(
                                 isLoading = songsList.isEmpty() && playlist.source == "YOUTUBE",
                                 playlistNotFound = false
                             )
-                        }
-
-                        if (playlistId == com.unshoo.pixelmusic.data.remote.youtube.Constants.Downloads.DOWNLOADED_PLAYLIST_ID) {
-                            viewModelScope.launch(Dispatchers.IO) {
-                                if (isNetworkAvailable(context)) {
-                                    val ytSongRepo = com.unshoo.pixelmusic.data.database.youtube.AppDatabase.getInstance(context).songRepository()
-                                    var anyDownloaded = false
-                                    songsList.forEach { song ->
-                                        val youtubeId = song.youtubeId ?: song.id.removePrefix("youtube_")
-                                        if (song.id.startsWith("youtube_") || song.youtubeId != null) {
-                                            val ytSong = ytSongRepo.getSong(youtubeId)
-                                            if (ytSong != null && (ytSong.thumbnailPath.isNullOrBlank() || ytSong.thumbnailPath.startsWith("http"))) {
-                                                val downloadedImage = DownloadHelper.downloadImage(context, ytSong.thumbnailHref, ytSong.youtubeId)
-                                                if (downloadedImage != null) {
-                                                    anyDownloaded = true
-                                                    val updatedYtSong = ytSong.copy(thumbnailPath = downloadedImage.path)
-                                                    ytSongRepo.create(updatedYtSong)
-                                                    musicDao.updateSongArtwork(song.id.toLong(), downloadedImage.path)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if (anyDownloaded) {
-                                        loadPlaylistDetails(playlistId)
-                                    }
-                                }
-                            }
                         }
 
                         // Background fetch & sync for synced YouTube playlists
