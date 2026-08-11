@@ -35,7 +35,15 @@ object SongDownloader {
             }
 
             // 1. Get the stream URL honoring the user's Quality settings
-            val streamUrl = YoutubeHelper.getDownloadUrl(context, song)
+            val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
+                youtubeId = song.youtubeId ?: song.id.removePrefix("youtube_"),
+                title = song.title,
+                artist = song.displayArtist,
+                duration = "",
+                thumbnailHref = song.albumArtUriString ?: ""
+            )
+            val streamUrl = YoutubeHelper.getDownloadUrl(context, ytSong)
+            
             if (streamUrl.isBlank()) throw Exception("Could not resolve stream URL")
 
             // Strip illegal characters for file naming
