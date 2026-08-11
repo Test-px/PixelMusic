@@ -1279,20 +1279,6 @@ fun FullPlayerContent(
                             .padding(bottom = 16.dp)
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            // Check if the file is already downloaded in the public Music directory
-                            var isDownloaded by remember(song.id) { mutableStateOf(false) }
-                            LaunchedEffect(song.id) {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
-                                    val cleanTitle = song.title.replace("/", "_").replace("\\", "_")
-                                    val cleanArtist = song.displayArtist.replace("/", "_").replace("\\", "_")
-                                    
-                                    val m4aFile = java.io.File(musicDir, "$cleanTitle - $cleanArtist.m4a")
-                                    val mp3File = java.io.File(musicDir, "$cleanTitle - $cleanArtist.mp3")
-                                    
-                                    isDownloaded = m4aFile.exists() || mp3File.exists()
-                                }
-                            }
                             // Custom Drag Handle inside the Column
                             Box(
                                 modifier = Modifier
