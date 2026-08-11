@@ -1475,10 +1475,27 @@ fun FullPlayerContent(
                                     .clickable(enabled = !isDownloaded) {
                                         showSongInfoBottomSheet = false
                                         fileImportScope.launch {
-                                            // Extract lyrics if they are available
-                                            val currentLyricsObj = lyricsProvider()
-                                            val lyricsText = currentLyricsObj?.synced?.joinToString("\n") { it.line }
-                                                ?: currentLyricsObj?.plain?.joinToString("\n")
+                                            
+                                            // 1. Try to get lyrics from the current UI provider
+                                            var currentLyricsObj = lyricsProvider()
+                                            
+                                            // 2. Fallback: If UI doesn't have them yet, grab them directly from the active player state
+                                            if (currentLyricsObj == null) {
+                                                currentLyricsObj = playerViewModel.stablePlayerState.value.lyrics
+                                            }
+
+                                            // 3. Format safely (Avoid mangling plain strings)
+                                            val lyricsText = if (!currentLyricsObj?.synced.isNullOrEmpty()) {
+                                                currentLyricsObj?.synced?.joinToString("\n") { it.line }
+                                            } else {
+                                                currentLyricsObj?.plain?.toString()
+                                            }
+
+                                            if (lyricsText.isNullOrBlank()) {
+                                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                    android.widget.Toast.makeText(context, "Note: Downloading without lyrics (None found)", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
 
                                             com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
                                                 context = context, 
