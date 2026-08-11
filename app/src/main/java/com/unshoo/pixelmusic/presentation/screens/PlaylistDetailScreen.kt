@@ -565,26 +565,6 @@ fun PlaylistDetailScreen(
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
-
-                        FilledTonalIconButton(
-                            onClick = {
-                                if (isPlaylistFullyDownloaded) {
-                                    Toast.makeText(context, "Playlist already fully downloaded", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    playerViewModel.downloadPlaylistSongs(currentPlaylist.id, currentPlaylist.songIds)
-                                }
-                            },
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = if (isPlaylistFullyDownloaded) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = if (isPlaylistFullyDownloaded) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                            ),
-                            modifier = Modifier.size(actionButtonsHeight)
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaylistFullyDownloaded) Icons.Rounded.Check else Icons.Rounded.Download,
-                                contentDescription = downloadPlaylistLabel
-                            )
-                        }
                     }
                 }
 
