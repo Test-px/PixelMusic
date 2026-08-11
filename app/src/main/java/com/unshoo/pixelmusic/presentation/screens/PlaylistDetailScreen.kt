@@ -569,28 +569,7 @@ fun PlaylistDetailScreen(
                         Button(
                             onClick = {
                                 if (!isPlaylistFullyDownloaded) {
-                                    Toast.makeText(context, "Downloading playlist...", Toast.LENGTH_SHORT).show()
-                                    scope.launch {
-                                        var downloadedCount = 0
-                                        for (song in songsInPlaylist) {
-                                            // Check if already downloaded
-                                            val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
-                                            val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                                            val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                                            val targetFile = java.io.File(musicDir, "PixelMusic/$cleanTitle - $cleanArtist.m4a")
-                                            
-                                            if (!targetFile.exists()) {
-                                                // Download sequentially to avoid overwhelming the network
-                                                val success = com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
-                                                    context = context,
-                                                    song = song,
-                                                    lyricsText = null // Bulk lyrics fetching can be added later if needed
-                                                )
-                                                if (success) downloadedCount++
-                                            }
-                                        }
-                                        Toast.makeText(context, "Playlist download complete! ($downloadedCount new songs)", Toast.LENGTH_LONG).show()
-                                    }
+                                    playlistViewModel.downloadPlaylist(context, currentPlaylist.id, songsInPlaylist)
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
