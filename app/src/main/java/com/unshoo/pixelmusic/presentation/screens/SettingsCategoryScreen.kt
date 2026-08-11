@@ -1151,8 +1151,8 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.outline_high_quality_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                                 SwitchSettingItem(
-                                    title = stringResource(R.string.setcat_cache_liked_songs_title),
-                                    subtitle = stringResource(R.string.setcat_cache_liked_songs_desc),
+                                    title = "Download on like",
+                                    subtitle = "Automatically download audio of liked YouTube songs to the public Music folder.",
                                     checked = uiState.cacheLikedSongsOffline,
                                     onCheckedChange = { settingsViewModel.setCacheLikedSongsOffline(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.round_favorite_border_24), null, tint = MaterialTheme.colorScheme.secondary) }
