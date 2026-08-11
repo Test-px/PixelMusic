@@ -54,15 +54,28 @@ object SongDownloader {
             tempAudioFile = File(context.cacheDir, "temp_$fileName")
             tempImageFile = File(context.cacheDir, "temp_cover.jpg")
 
-            // 2. Download the audio file using native Stream Profiles to prevent YouTube throttling
+            // 2. Download the audio file
+            // We must use a custom client with higher timeouts and send a "Range" header to prevent YouTube from throttling/resetting the connection.
+            val downloadClient = YoutubeHelper.client.newBuilder()
+                .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
+                .connectTimeout(1, java.util.concurrent.TimeUnit.MINUTES)
+                .build()
+
             val requestProfile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(streamUrl)
+            
             val audioRequest = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.applyRequestProfile(
                 Request.Builder().get().url(streamUrl),
                 requestProfile
-            ).build()
+            )
+            .header("Range", "bytes=0-") // <--- This completely lifts the download throttle
+            .build()
 
-            val audioResponse = YoutubeHelper.client.newCall(audioRequest).execute()
-            if (!audioResponse.isSuccessful) throw Exception("Failed to download audio")
+            val audioResponse = downloadClient.newCall(audioRequest).execute()
+            
+            // 206 Partial Content is the expected success code when using a Range header
+            if (!audioResponse.isSuccessful && audioResponse.code != 206) {
+                throw Exception("Failed to download audio. Code: ${audioResponse.code}")
+            }
 
             audioResponse.body?.byteStream()?.use { input ->
                 FileOutputStream(tempAudioFile).use { output ->
