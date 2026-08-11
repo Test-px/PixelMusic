@@ -378,21 +378,20 @@ class PlaylistPreferencesRepository @Inject constructor(
         userPreferencesRepository.clearLegacyUserPlaylists()
     }
 
-    suspend fun removeSongFromAllPlaylists(songId: String) {
+    suspend fun removeSongFromPlaylist(playlistId: String, songIdToRemove: String) {
         ensureMigratedIfNeeded()
-        val playlists = userPlaylistsFlow.first()
-        playlists.forEach { playlist ->
-            if (songId in playlist.songIds) {
-                if (playlist.source == "YOUTUBE") {
-                    removeSongFromPlaylist(playlist.id, songId)
-                } else {
-                    updatePlaylist(
-                        playlist.copy(
-                            songIds = playlist.songIds.filterNot { it == songId }
-                        )
-                    )
-                }
-            }
+        val variants = getSongIdVariants(songIdToRemove)
+        val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
+        
+        if (ytPlaylist != null) {
+            // Everything is inlined here so no variables can go missing!
+            AppDatabase.getInstance(context).playlistRepository().deleteCrossRef(
+                playlistId, 
+                variants.find { !it.startsWith("youtube_") && it.toLongOrNull() == null } ?: songIdToRemove.removePrefix("youtube_")
+            )
+        } else {
+            val existing = userPlaylistsFlow.first().find { it.id == playlistId } ?: return
+            updatePlaylist(existing.copy(songIds = existing.songIds.filterNot { it in variants }))
         }
     }
 
