@@ -1468,6 +1468,22 @@ fun FullPlayerContent(
                                 }
                             )
                             // Option 4: Download Song
+                            var isDownloaded by remember(song.id) { mutableStateOf(false) }
+                            LaunchedEffect(song.id) {
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+                                    // 1. Look in the PixelMusic subfolder
+                                    val pixelMusicDir = java.io.File(musicDir, "PixelMusic")
+                                    
+                                    // 2. Use the exact same regex used in SongDownloader to match the file names perfectly
+                                    val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                    val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                    
+                                    val targetFile = java.io.File(pixelMusicDir, "$cleanTitle - $cleanArtist.m4a")
+                                    isDownloaded = targetFile.exists()
+                                }
+                            }
+
                             ListItem(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
@@ -1475,16 +1491,11 @@ fun FullPlayerContent(
                                     .clickable(enabled = !isDownloaded) {
                                         showSongInfoBottomSheet = false
                                         fileImportScope.launch {
-                                            
-                                            // 1. Try to get lyrics from the current UI provider
                                             var currentLyricsObj = lyricsProvider()
-                                            
-                                            // 2. Fallback: If UI doesn't have them yet, grab them directly from the active player state
                                             if (currentLyricsObj == null) {
                                                 currentLyricsObj = playerViewModel.stablePlayerState.value.lyrics
                                             }
 
-                                            // 3. Format safely (Avoid mangling plain strings)
                                             val lyricsText = if (!currentLyricsObj?.synced.isNullOrEmpty()) {
                                                 currentLyricsObj?.synced?.joinToString("\n") { it.line }
                                             } else {
