@@ -8,7 +8,6 @@ import com.unshoo.pixelmusic.data.database.toEntity
 import com.unshoo.pixelmusic.data.database.toPlaylist
 import com.unshoo.pixelmusic.data.model.Playlist
 import com.unshoo.pixelmusic.data.model.SortOption
-import com.unshoo.pixelmusic.data.remote.youtube.DownloadRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -203,21 +202,20 @@ class PlaylistPreferencesRepository @Inject constructor(
     }
 
     suspend fun deletePlaylist(playlistId: String) {
-        ensureMigratedIfNeeded()
-        val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
-        localPlaylistDao.deletePlaylist(playlistId)
-        localPlaylistDao.clearPlaylistSongs(playlistId)
-        clearPlaylistSongOrderMode(playlistId)
-        coverPrefs.edit().apply {
-            remove("${playlistId}_coverImageUri")
-            remove("${playlistId}_coverColorArgb")
-            remove("${playlistId}_coverIconName")
-            remove("${playlistId}_coverShapeType")
-            remove("${playlistId}_coverShapeDetail1")
-            remove("${playlistId}_coverShapeDetail2")
-            remove("${playlistId}_coverShapeDetail3")
-            remove("${playlistId}_coverShapeDetail4")
-        }.apply()
+    ensureMigratedIfNeeded()
+    localPlaylistDao.deletePlaylist(playlistId)
+    localPlaylistDao.clearPlaylistSongs(playlistId)
+    clearPlaylistSongOrderMode(playlistId)
+    coverPrefs.edit().apply {
+        remove("${playlistId}_coverImageUri")
+        remove("${playlistId}_coverColorArgb")
+        remove("${playlistId}_coverIconName")
+        remove("${playlistId}_coverShapeType")
+        remove("${playlistId}_coverShapeDetail1")
+        remove("${playlistId}_coverShapeDetail2")
+        remove("${playlistId}_coverShapeDetail3")
+        remove("${playlistId}_coverShapeDetail4")
+    }.apply()
     }
 
     suspend fun renamePlaylist(playlistId: String, newName: String) {
@@ -330,21 +328,17 @@ class PlaylistPreferencesRepository @Inject constructor(
     }
 
     suspend fun removeSongFromPlaylist(playlistId: String, songIdToRemove: String) {
-        ensureMigratedIfNeeded()
-        val variants = getSongIdVariants(songIdToRemove)
-        val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
-        if (ytPlaylist != null) {
-            val rawYtId = variants.find { !it.startsWith("youtube_") && it.toLongOrNull() == null }
-                ?: songIdToRemove.removePrefix("youtube_")
-            if (ytPlaylist.info.id == "_downloaded_") {
-                DownloadRepository(context).deleteSong(rawYtId)
-            } else {
-                AppDatabase.getInstance(context).playlistRepository().deleteCrossRef(playlistId, rawYtId)
-            }
-        } else {
-            val existing = userPlaylistsFlow.first().find { it.id == playlistId } ?: return
-            updatePlaylist(existing.copy(songIds = existing.songIds.filterNot { it in variants }))
-        }
+    ensureMigratedIfNeeded()
+    val variants = getSongIdVariants(songIdToRemove)
+    val ytPlaylist = AppDatabase.getInstance(context).playlistRepository().getPlaylistById(playlistId)
+    if (ytPlaylist != null) {
+        val rawYtId = variants.find { !it.startsWith("youtube_") && it.toLongOrNull() == null }
+            ?: songIdToRemove.removePrefix("youtube_")
+        AppDatabase.getInstance(context).playlistRepository().deleteCrossRef(playlistId, rawYtId)
+    } else {
+        val existing = userPlaylistsFlow.first().find { it.id == playlistId } ?: return
+        updatePlaylist(existing.copy(songIds = existing.songIds.filterNot { it in variants }))
+    }
     }
 
     suspend fun reorderSongsInPlaylist(playlistId: String, newSongOrderIds: List<String>) {
