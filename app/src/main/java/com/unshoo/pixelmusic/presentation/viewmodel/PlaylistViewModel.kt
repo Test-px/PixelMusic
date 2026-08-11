@@ -2117,4 +2117,36 @@ class PlaylistViewModel @Inject constructor(
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
+
+    fun downloadPlaylist(context: Context, playlistId: String, songs: List<Song>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Downloading playlist...", Toast.LENGTH_SHORT).show()
+            }
+            
+            var downloadedCount = 0
+            val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+            
+            for (song in songs) {
+                // Check if already downloaded
+                val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val targetFile = java.io.File(musicDir, "PixelMusic/$cleanTitle - $cleanArtist.m4a")
+                
+                if (!targetFile.exists()) {
+                    // Download sequentially using the engine we built in Phase 3
+                    val success = com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
+                        context = context,
+                        song = song,
+                        lyricsText = null 
+                    )
+                    if (success) downloadedCount++
+                }
+            }
+            
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Playlist download complete! ($downloadedCount new songs)", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 }
