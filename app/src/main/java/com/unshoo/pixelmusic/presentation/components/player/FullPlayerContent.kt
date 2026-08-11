@@ -1473,9 +1473,15 @@ fun FullPlayerContent(
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
                                     .clip(RoundedCornerShape(16.dp))
                                     .clickable(enabled = !isDownloaded) {
-                                        // TODO (Phase 2): Trigger background download logic here
-                                        android.widget.Toast.makeText(context, "Download starting...", android.widget.Toast.LENGTH_SHORT).show()
                                         showSongInfoBottomSheet = false
+                                        coroutineScope.launch {
+                                            // Phase 2: Download to temp cache
+                                            val tempFile = com.unshoo.pixelmusic.utils.SongDownloader.downloadSongTemp(context, song)
+                                            
+                                            if (tempFile != null) {
+                                                // TODO (Phase 3): Embed Metadata and move to Public /Music folder
+                                            }
+                                        }
                                     },
                                 colors = ListItemDefaults.colors(
                                     containerColor = LocalMaterialTheme.current.surfaceContainerHigh.copy(alpha = 0.6f)
