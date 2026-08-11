@@ -138,8 +138,6 @@ fun SongInfoBottomSheet(
     var showArtistPicker by remember { mutableStateOf(false) }
     val audioMeta by songInfoViewModel.audioMeta.collectAsStateWithLifecycle()
     val resolvedArtists by songInfoViewModel.resolvedArtists.collectAsStateWithLifecycle()
-    val isDownloaded by songInfoViewModel.isSongDownloaded.collectAsStateWithLifecycle()
-    val isDownloading by songInfoViewModel.isSongDownloading.collectAsStateWithLifecycle()
     val evenCornerRadiusElems = 26.dp
 
     val listItemShape = remember {
@@ -216,7 +214,6 @@ fun SongInfoBottomSheet(
     LaunchedEffect(song.id) {
         songInfoViewModel.loadAudioMeta(song)
         songInfoViewModel.loadArtistsForSong(song)
-        songInfoViewModel.loadDownloadState(song)
     }
 
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
@@ -575,66 +572,6 @@ fun SongInfoBottomSheet(
                                         }
 
                                         if (song.youtubeId != null) {
-                                            item {
-                                                FilledTonalButton(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .heightIn(min = 66.dp),
-                                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                                        containerColor = when {
-                                                            isDownloaded -> MaterialTheme.colorScheme.primaryContainer
-                                                            isDownloading -> MaterialTheme.colorScheme.secondaryContainer
-                                                            else -> MaterialTheme.colorScheme.surfaceVariant
-                                                        },
-                                                        contentColor = when {
-                                                            isDownloaded -> MaterialTheme.colorScheme.onPrimaryContainer
-                                                            isDownloading -> MaterialTheme.colorScheme.onSecondaryContainer
-                                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                        }
-                                                    ),
-                                                    shape = CircleShape,
-                                                    onClick = {
-                                                        when {
-                                                            isDownloaded -> {
-                                                                songInfoViewModel.deleteYoutubeSong(song)
-                                                                Toast.makeText(context, "Deleted from offline cache", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                            isDownloading -> {
-                                                                songInfoViewModel.cancelYoutubeSongDownload(song)
-                                                                Toast.makeText(context, "Download cancelled", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                            else -> {
-                                                                songInfoViewModel.downloadYoutubeSong(song)
-                                                                Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    }
-                                                ) {
-                                                    when {
-                                                        isDownloaded -> {
-                                                            Icon(
-                                                                imageVector = Icons.Rounded.CheckCircle,
-                                                                contentDescription = "Available Offline"
-                                                            )
-                                                            Spacer(Modifier.width(8.dp))
-                                                            Text("Available Offline")
-                                                        }
-                                                        isDownloading -> {
-                                                            LoadingIndicator(modifier = Modifier.size(18.dp))
-                                                            Spacer(Modifier.width(10.dp))
-                                                            Text("Downloading...")
-                                                        }
-                                                        else -> {
-                                                            Icon(
-                                                                imageVector = Icons.Rounded.Download,
-                                                                contentDescription = "Download for Offline"
-                                                            )
-                                                            Spacer(Modifier.width(8.dp))
-                                                            Text("Download for Offline")
-                                                        }
-                                                    }
-                                                }
-                                            }
 
                                             val isYouTubeSong = !song.youtubeId.isNullOrEmpty() ||
                                                     song.contentUriString.startsWith("youtube://") ||
