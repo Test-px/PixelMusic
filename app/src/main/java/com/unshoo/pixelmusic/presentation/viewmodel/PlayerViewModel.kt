@@ -4654,61 +4654,6 @@ class PlayerViewModel @Inject constructor(
                 Timber.w(e, "Failed to instantly sync Liked Songs playlist")
             }
         }
-
-        // ====================================================================
-        // NEW: "Download on Like" Feature
-        // ====================================================================
-        // Only proceed if the user actually changed the state (prevent double-clicks)
-        if (targetFavoriteState != currentlyFavorite) {
-            
-            // Check if the user has enabled the "Download on Like" toggle in Settings
-            val isDownloadOnLikeEnabled = userPreferencesRepository.cacheLikedSongsOfflineFlow.first()
-            
-            // We only care about YouTube songs (local device songs don't need downloading)
-            val isYoutubeSong = song.id.startsWith("youtube_") || song.youtubeId != null || song.contentUriString?.startsWith("youtube://") == true
-            
-            if (isYoutubeSong && isDownloadOnLikeEnabled) {
-                viewModelScope.launch(Dispatchers.IO) {
-                    val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
-                    val pixelMusicDir = java.io.File(musicDir, "PixelMusic")
-                    
-                    val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    val targetFile = java.io.File(pixelMusicDir, "$cleanTitle - $cleanArtist.m4a")
-
-                    if (targetFavoriteState) {
-                        // User Liked the song -> Download it
-                        if (!targetFile.exists()) {
-                            val lyricsText = if (!song.lyrics.isNullOrBlank()) {
-                                // If database already has lyrics, pass them
-                                val parsed = LyricsUtils.parseLyrics(song.lyrics!!)
-                                if (!parsed.synced.isNullOrEmpty()) {
-                                    parsed.synced!!.joinToString("\n") { it.line }
-                                } else {
-                                    parsed.plain?.joinToString("\n")
-                                }
-                            } else null
-
-                            com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
-                                context = context,
-                                song = song,
-                                lyricsText = lyricsText
-                            )
-                        }
-                    } else {
-                        // User Unliked the song -> Optional: Delete the downloaded file to free up space
-                        if (targetFile.exists() && targetFile.canWrite()) {
-                            targetFile.delete()
-                            // Note: To completely remove it from MediaStore, you might need to trigger a media scan or delete the MediaStore entry.
-                            // But deleting the file physically is enough for a clean cache.
-                            withContext(Dispatchers.Main) {
-                                android.widget.Toast.makeText(context, "Removed downloaded song from storage", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
     
     fun addSongToQueue(song: Song) {
