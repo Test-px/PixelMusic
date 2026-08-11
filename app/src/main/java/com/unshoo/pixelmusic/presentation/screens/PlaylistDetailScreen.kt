@@ -808,18 +808,6 @@ fun PlaylistDetailScreen(
                         }
                     )
                 }
-                if (!isPlaylistFullyDownloaded) {
-                    PlaylistActionItem(
-                        icon = rememberVectorPainter(Icons.Rounded.Download),
-                        label = downloadPlaylistLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            currentPlaylist?.let { playlist ->
-                                playerViewModel.downloadPlaylistSongs(playlist.id, playlist.songIds)
-                            }
-                        }
-                    )
-                }
             }
         }
     }
