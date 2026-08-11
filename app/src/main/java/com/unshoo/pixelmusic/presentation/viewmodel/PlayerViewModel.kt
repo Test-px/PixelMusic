@@ -4668,61 +4668,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
     }
-
-    fun downloadPlaylistSongs(playlistId: String, songIds: List<String>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val ytDb = com.unshoo.pixelmusic.data.database.youtube.AppDatabase.getInstance(context)
-            val ytPlaylist = ytDb.playlistRepository().getPlaylistById(playlistId)
-            if (ytPlaylist != null) {
-                val workRequest = OneTimeWorkRequestBuilder<PlaylistDownloadWorker>()
-                    .setInputData(
-                        workDataOf(
-                            PlaylistDownloadWorker.PLAYLIST_KEY to playlistId,
-                            "user_initiated" to true
-                        )
-                    )
-                    .setConstraints(
-                        Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
-                            .setRequiresStorageNotLow(true)
-                            .build()
-                    )
-                    .build()
-                WorkManager.getInstance(context).enqueueUniqueWork(
-                    "playlist_dl_$playlistId",
-                    ExistingWorkPolicy.KEEP,
-                    workRequest
-                )
-            } else {
-                val songs = musicRepository.getSongsByIds(songIds).first()
-                songs.forEach { song ->
-                    val videoId = song.youtubeId ?: if (song.contentUriString?.startsWith("youtube://") == true) {
-                        song.contentUriString.substringAfter("youtube://")
-                    } else if (song.id.startsWith("youtube_")) {
-                        song.id.substringAfter("youtube_")
-                    } else {
-                        null
-                    }
-                    if (videoId != null) {
-                        val workRequest = OneTimeWorkRequestBuilder<SongDownloadWorker>()
-                            .setInputData(workDataOf(SongDownloadWorker.SONG_KEY to videoId))
-                            .setConstraints(
-                                Constraints.Builder()
-                                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                                    .setRequiresStorageNotLow(true)
-                                    .build()
-                            )
-                            .build()
-                        WorkManager.getInstance(context).enqueueUniqueWork(
-                            "dl_playlist_song_$videoId",
-                            ExistingWorkPolicy.KEEP,
-                            workRequest
-                        )
-                    }
-                }
-            }
-        }
-    }
+    
     fun addSongToQueue(song: Song) {
         if (song.id.startsWith("youtube_") || song.youtubeId != null) {
             viewModelScope.launch(Dispatchers.IO) {
