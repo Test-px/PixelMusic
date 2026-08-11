@@ -1474,7 +1474,7 @@ fun FullPlayerContent(
                                     .clip(RoundedCornerShape(16.dp))
                                     .clickable(enabled = !isDownloaded) {
                                         showSongInfoBottomSheet = false
-                                        coroutineScope.launch {
+                                        fileImportScope.launch {
                                             // Extract lyrics if they are available
                                             val currentLyricsObj = lyricsProvider()
                                             val lyricsText = currentLyricsObj?.synced?.joinToString("\n") { it.line }
