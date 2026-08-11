@@ -1478,7 +1478,7 @@ constructor(
                 .toSet()
 
             val youtubePlaylists = appDatabase.playlistRepository().getAll()
-            val downloadedSongs = appDatabase.songRepository().getDownloadedSongs()
+            val downloadedSongs = emptyList<com.unshoo.pixelmusic.data.model.youtube.Song>()
 
             val existingUnifiedYoutubeIds = musicDao.getAllYoutubeSongIds()
 
