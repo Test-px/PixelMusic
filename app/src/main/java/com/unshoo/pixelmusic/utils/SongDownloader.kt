@@ -54,11 +54,12 @@ object SongDownloader {
             tempAudioFile = File(context.cacheDir, "temp_$fileName")
             tempImageFile = File(context.cacheDir, "temp_cover.jpg")
 
-            // 2. Download the audio file
-            val audioRequest = Request.Builder()
-                .url(streamUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0")
-                .build()
+            // 2. Download the audio file using native Stream Profiles to prevent YouTube throttling
+            val requestProfile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(streamUrl)
+            val audioRequest = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.applyRequestProfile(
+                Request.Builder().get().url(streamUrl),
+                requestProfile
+            ).build()
 
             val audioResponse = YoutubeHelper.client.newCall(audioRequest).execute()
             if (!audioResponse.isSuccessful) throw Exception("Failed to download audio")
