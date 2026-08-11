@@ -1,10 +1,1 @@
-🚀 What’s New in this Update
-New music recognition feature — identify songs instantly. 🎧
-Cleaned up UI and repositioned several functions for easier use.
-Fixed music downloads — core download issues resolved, including saving high-quality .m4a files.
-New Lyrics Engine (Beta) — greatly improved lyrics search and syncing for almost any track.
-Progressive download notifications — elegant Material You notifications show real-time download progress.
-Background downloading from notifications, lock screen, and widget — tapping the Like/Download heart now reliably starts background downloads.
-(Exclusive) Vivo OriginOS support — app now triggers the dynamic island on supported Vivo devices.
-In-app release notes — tap “Changes in the latest version” on the About screen to see what's new.
-Under-the-hood performance improvements, package refactoring, and general UI bug fixes.
+Download fix
