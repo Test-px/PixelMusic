@@ -1132,6 +1132,11 @@ class MusicRepositoryImpl @Inject constructor(
                 }
             }
         }
+
+        val songEntity = musicDao.getSongsByIdsListSimple(listOf(id)).firstOrNull()
+        if (songEntity != null) {
+            handleDownloadOnLike(songEntity.toSong(), isFavorite)
+        }
     }
 
     override suspend fun setFavoriteStatusWithMetadata(song: Song, isFavorite: Boolean, awaitRemoteSync: Boolean) = withContext(Dispatchers.IO) {
@@ -1188,6 +1193,8 @@ class MusicRepositoryImpl @Inject constructor(
                 }
             }
         }
+
+        handleDownloadOnLike(song, isFavorite)
     }
 
     override suspend fun getFavoriteSongIdsOnce(): Set<String> = withContext(Dispatchers.IO) {
@@ -1478,6 +1485,51 @@ class MusicRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to insert songs into YouTube DB")
+            }
+        }
+    }
+
+    private fun handleDownloadOnLike(song: Song, isFavorite: Boolean) {
+        // We use repositoryScope so the download survives even if the UI is completely destroyed
+        repositoryScope.launch(Dispatchers.IO) {
+            try {
+                val isDownloadOnLikeEnabled = userPreferencesRepository.cacheLikedSongsOfflineFlow.first()
+                val isYoutubeSong = song.id.startsWith("youtube_") || song.youtubeId != null || song.contentUriString.startsWith("youtube://")
+                
+                if (isYoutubeSong && isDownloadOnLikeEnabled) {
+                    val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+                    val pixelMusicDir = java.io.File(musicDir, "PixelMusic")
+                    
+                    val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val targetFile = java.io.File(pixelMusicDir, "$cleanTitle - $cleanArtist.m4a")
+
+                    if (isFavorite) {
+                        if (!targetFile.exists()) {
+                            val lyricsText = if (!song.lyrics.isNullOrBlank()) {
+                                val parsed = com.unshoo.pixelmusic.utils.LyricsUtils.parseLyrics(song.lyrics!!)
+                                if (!parsed.synced.isNullOrEmpty()) {
+                                    parsed.synced!!.joinToString("\n") { it.line }
+                                } else {
+                                    parsed.plain?.joinToString("\n")
+                                }
+                            } else null
+
+                            com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
+                                context = context,
+                                song = song,
+                                lyricsText = lyricsText
+                            )
+                        }
+                    } else {
+                        // Cleanup file if unliked
+                        if (targetFile.exists() && targetFile.canWrite()) {
+                            targetFile.delete()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error handling download on like")
             }
         }
     }
