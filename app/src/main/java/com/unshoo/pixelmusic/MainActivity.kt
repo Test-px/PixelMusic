@@ -392,6 +392,10 @@ class MainActivity : ComponentActivity() {
      // Catch intent from "Download on Like" notification
         handleDownloadIntent(intent, playerViewModel)
 
+        // Catch intent from "Update Ready" notification
+        handleInstallIntent(intent)
+        
+
             // Handle YouTube Share Intent (Sharing from YT/YT Music app)
             intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
                 val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
@@ -465,6 +469,31 @@ class MainActivity : ComponentActivity() {
                     playerViewModel.observeSong(songId).firstOrNull()?.let { song ->
                         playerViewModel.showAndPlaySong(song)
                     }
+                }
+            }
+        }
+    }
+
+    private fun handleInstallIntent(intent: Intent?) {
+        if (intent?.action == "INSTALL_UPDATE") {
+            val fileName = intent.getStringExtra("apk_file_name")
+            if (!fileName.isNullOrBlank()) {
+                
+                // NOTE: Change this directory if your InAppUpdater saves the APK somewhere else (e.g., cacheDir)
+                val apkFile = java.io.File(getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), fileName)
+                
+                if (apkFile.exists()) {
+                    val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                        this,
+                        "${packageName}.provider", // Make sure this matches the FileProvider authority in your AndroidManifest.xml
+                        apkFile
+                    )
+                    
+                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(apkUri, "application/vnd.android.package-archive")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    }
+                    startActivity(installIntent)
                 }
             }
         }
