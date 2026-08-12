@@ -389,6 +389,9 @@ class MainActivity : ComponentActivity() {
                 playerViewModel.showPlayer()
             }
 
+     // Catch intent from "Download on Like" notification
+        handleDownloadIntent(intent, playerViewModel)
+
             // Handle YouTube Share Intent (Sharing from YT/YT Music app)
             intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
                 val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
@@ -449,6 +452,20 @@ class MainActivity : ComponentActivity() {
                      }
                 }
                 intent.action = null
+            }
+        }
+    }
+
+    private fun handleDownloadIntent(intent: Intent?, playerViewModel: PlayerViewModel) {
+        if (intent?.action == "PLAY_DOWNLOADED_SONG") {
+            val songId = intent.getStringExtra("song_id")
+            if (!songId.isNullOrBlank()) {
+                lifecycleScope.launch {
+                    // Fetch the song from the database using the ID, then play it!
+                    playerViewModel.observeSong(songId).firstOrNull()?.let { song ->
+                        playerViewModel.showAndPlaySong(song)
+                    }
+                }
             }
         }
     }
