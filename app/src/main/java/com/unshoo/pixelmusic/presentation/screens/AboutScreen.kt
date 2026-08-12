@@ -515,14 +515,74 @@ private fun AboutHeroCard(
 
                                     Button(
                                         onClick = {
-                                            coroutineScope.launch {
-                                                updateState = UpdateState.Downloading(0f, state.changelog)
+                                            val appContext = context.applicationContext
+                                            val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                                            val channelId = "app_updates"
+                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                                val channel = android.app.NotificationChannel(
+                                                    channelId, 
+                                                    "App Updates", 
+                                                    android.app.NotificationManager.IMPORTANCE_LOW
+                                                ).apply { description = "App update downloads" }
+                                                notificationManager.createNotificationChannel(channel)
+                                            }
+                                            val notifId = 999
+                                            val fileName = "PixelMusic_${state.versionName}.apk"
+
+                                            // 1. Set the initial UI state
+                                            updateState = UpdateState.Downloading(0f, state.changelog)
+                                            
+                                            // 2. Launch in a detached background scope so it survives navigation
+                                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                                                 InAppUpdater.downloadAndTrackProgress(
-                                                    context, 
+                                                    appContext, 
                                                     state.downloadUrl, 
-                                                    "PixelMusic_${state.versionName}.apk"
+                                                    fileName
                                                 ).collectLatest { progress ->
-                                                    updateState = UpdateState.Downloading(progress, state.changelog)
+                                                    
+                                                    val progressInt = (progress * 100).toInt()
+                                                    
+                                                    // 3. Handle Notification States
+                                                    if (progress < 1.0f) {
+                                                        // Show ongoing progress notification (no intent = no action on tap)
+                                                        val downloadingNotif = androidx.core.app.NotificationCompat.Builder(appContext, channelId)
+                                                            .setSmallIcon(R.drawable.monochrome_player) // Using your existing icon
+                                                            .setContentTitle("Downloading Update")
+                                                            .setContentText("PixelMusic ${state.versionName}")
+                                                            .setProgress(100, progressInt, false)
+                                                            .setOngoing(true)
+                                                            .build()
+                                                        notificationManager.notify(notifId, downloadingNotif)
+                                                    } else {
+                                                        // Download complete - Create intent to open MainActivity and install
+                                                        val installIntent = Intent(appContext, Class.forName("com.unshoo.pixelmusic.MainActivity")).apply {
+                                                            action = "INSTALL_UPDATE"
+                                                            putExtra("apk_file_name", fileName)
+                                                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                        }
+                                                        val pendingIntent = android.app.PendingIntent.getActivity(
+                                                            appContext, 
+                                                            notifId, 
+                                                            installIntent, 
+                                                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                                                        )
+
+                                                        val successNotif = androidx.core.app.NotificationCompat.Builder(appContext, channelId)
+                                                            .setSmallIcon(R.drawable.monochrome_player)
+                                                            .setContentTitle("Update Ready")
+                                                            .setContentText("Tap to install PixelMusic ${state.versionName}")
+                                                            .setProgress(0, 0, false)
+                                                            .setOngoing(false)
+                                                            .setAutoCancel(true)
+                                                            .setContentIntent(pendingIntent)
+                                                            .build()
+                                                        notificationManager.notify(notifId, successNotif)
+                                                    }
+
+                                                    // 4. Safely update the UI state on the Main thread
+                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                        updateState = UpdateState.Downloading(progress, state.changelog)
+                                                    }
                                                 }
                                             }
                                         },
