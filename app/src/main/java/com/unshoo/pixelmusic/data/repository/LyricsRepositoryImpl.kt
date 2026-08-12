@@ -302,38 +302,47 @@ class LyricsRepositoryImpl @Inject constructor(
             val primaryArtist = extractPrimaryArtist(rawArtist)
 
             var results = emptyList<LrcLibResponse>()
+            var rankedLrcLib = emptyList<RemoteLyricsMatch>()
             var searchedWithArtist = true
 
             // Pass 1: Strict Sanitized Match on LRCLIB
             if (sanitizedTitle.isNotBlank()) {
-                results = runCatching {
+                val pass1Results = runCatching {
                     withNetworkRetry(operationName = "lrclib_sanitized") {
                         lrcLibApiService.searchLyrics(trackName = sanitizedTitle, artistName = primaryArtist)
                     }
                 }.getOrNull()?.toList() ?: emptyList()
+                
+                results = pass1Results
+                rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist, requireArtistMatch = true)
             }
 
-            // Pass 2: Raw Data Fallback
-            if (results.isEmpty() && (sanitizedTitle != rawTitle || primaryArtist != rawArtist)) {
-                results = runCatching {
+            // Pass 2: Raw Data Fallback (Only if Pass 1 found NO valid synced match)
+            if (rankedLrcLib.none { hasSyncedLyrics(it.response) } && (sanitizedTitle != rawTitle || primaryArtist != rawArtist)) {
+                val pass2Results = runCatching {
                     withNetworkRetry(operationName = "lrclib_raw") {
                         lrcLibApiService.searchLyrics(trackName = rawTitle, artistName = rawArtist)
                     }
                 }.getOrNull()?.toList() ?: emptyList()
+                
+                results = results + pass2Results
+                rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist, requireArtistMatch = true)
             }
 
-            // Pass 3: Title Only Fallback
-            if (results.isEmpty() && sanitizedTitle.isNotBlank()) {
-                results = runCatching {
+            // Pass 3: Title Only Fallback (Ultimate fallback if STILL no valid synced match)
+            if (rankedLrcLib.none { hasSyncedLyrics(it.response) } && sanitizedTitle.isNotBlank()) {
+                val pass3Results = runCatching {
                     withNetworkRetry(operationName = "lrclib_title_only") {
                         lrcLibApiService.searchLyrics(trackName = sanitizedTitle)
                     }
                 }.getOrNull()?.toList() ?: emptyList()
+                
+                results = results + pass3Results
                 searchedWithArtist = false
+                // Notice requireArtistMatch is false here, allowing the title alone to win!
+                rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist, requireArtistMatch = false)
             }
 
-            // Check if LRCLIB gave us a SYNCED match
-            val rankedLrcLib = rankRemoteLyricsMatches(song = song, responses = results, mode = RemoteLyricsMatchMode.AUTOMATIC, primaryArtist = primaryArtist, requireArtistMatch = searchedWithArtist)
             val bestLrcLibSynced = rankedLrcLib.firstOrNull { hasSyncedLyrics(it.response) }?.response
 
             if (bestLrcLibSynced != null) {
