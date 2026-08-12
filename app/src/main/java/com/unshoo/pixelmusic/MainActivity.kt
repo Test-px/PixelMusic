@@ -155,6 +155,8 @@ import androidx.compose.ui.input.pointer.positionChange
 import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import kotlinx.coroutines.flow.firstOrNull
+
 
 
 @Immutable
@@ -369,6 +371,12 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
 
+        // 1. Catch intent from "Download on Like" notification
+        handleDownloadIntent(intent, playerViewModel)
+
+        // 2. Catch intent from "Update Ready" notification
+        handleInstallIntent(intent)
+
         when {
             // Handle shuffle all shortcut / tile
             intent.action == MainActivityIntentContract.ACTION_SHUFFLE_ALL -> {
@@ -387,26 +395,6 @@ class MainActivity : ComponentActivity() {
 
             intent.getBooleanExtra("ACTION_SHOW_PLAYER", false) -> {
                 playerViewModel.showPlayer()
-            }
-
-     // Catch intent from "Download on Like" notification
-        handleDownloadIntent(intent, playerViewModel)
-
-        // Catch intent from "Update Ready" notification
-        handleInstallIntent(intent)
-        
-
-            // Handle YouTube Share Intent (Sharing from YT/YT Music app)
-            intent.action == android.content.Intent.ACTION_SEND && intent.type == "text/plain" -> {
-                val sharedText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
-                if (sharedText != null && sharedText.contains("youtu")) {
-                    // Extract URL if the share contains text + URL
-                    val url = sharedText.split("\\s+".toRegex()).firstOrNull { it.startsWith("http") }
-                    if (url != null) {
-                        // TODO: Pass 'url' to PlayerViewModel
-                    }
-                }
-                clearExternalIntentPayload(intent)
             }
 
             // Handle YouTube Share Intent (Sharing from YT/YT Music app)
