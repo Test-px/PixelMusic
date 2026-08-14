@@ -99,6 +99,7 @@ import androidx.compose.material.icons.rounded.Web
 import androidx.compose.material.icons.rounded.Code
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.foundation.layout.wrapContentHeight
 
 
 
