@@ -298,7 +298,10 @@ fun AccountsScreen(
         )
         if (showTokenDialog) {
             val authViewModel: AuthViewModel = hiltViewModel()
+            val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
+            
             AdvancedTokenLoginDialog(
+                currentCookie = fullToken,
                 onDismiss = { showTokenDialog = false },
                 onSaveToken = { token ->
                     showTokenDialog = false
@@ -880,6 +883,33 @@ private fun YouTubeAccountCard(
                     }
                 }
 
+                // ---> PASTE THE NEW BUTTON RIGHT HERE <---
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = onAdvancedLogin,
+                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Code,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "View / Edit Token",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
                 OutlinedButton(
                     onClick = onLogout,
                     enabled = !account.isLoggingOut,
@@ -964,10 +994,20 @@ private fun YouTubeAccountCard(
 
 @Composable
 fun AdvancedTokenLoginDialog(
+    currentCookie: String = "",
     onDismiss: () -> Unit,
     onSaveToken: (String) -> Unit
 ) {
-    var tokenInput by remember { mutableStateOf("") }
+    var tokenInput by remember { mutableStateOf(currentCookie) }
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val context = LocalContext.current
+
+    // Auto-fill the text field when the token loads from the database
+    LaunchedEffect(currentCookie) {
+        if (currentCookie.isNotBlank() && tokenInput.isBlank()) {
+            tokenInput = currentCookie
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1043,10 +1083,21 @@ fun AdvancedTokenLoginDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            // Added a Row to hold both Copy and Cancel beautifully
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(
+                    onClick = { 
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(tokenInput))
+                        Toast.makeText(context, "Token copied to clipboard", Toast.LENGTH_SHORT).show()
+                    },
+                    enabled = tokenInput.isNotBlank()
+                ) {
+                    Text("Copy")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         }
     )
 }
-
