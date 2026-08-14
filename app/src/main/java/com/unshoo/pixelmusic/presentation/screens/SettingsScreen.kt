@@ -604,13 +604,13 @@ fun SettingsScreen(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
                                     Text(
-                                        text = "Google Web Login",
+                                        text = "Manual Login",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Standard browser sign-in",
+                                        text = "Standard sign-in",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
