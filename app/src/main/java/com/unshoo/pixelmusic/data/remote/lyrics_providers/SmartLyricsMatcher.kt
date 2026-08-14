@@ -23,7 +23,7 @@ data class ScoredHit(
 }
 
 data class MatchConfig(
-    val providerOrder: List<Providers> = listOf(Providers.LRCLIB), // We will add NETEASE, SPOTIFY here later
+    val providerOrder: List<Providers> = listOf(Providers.LRCLIB, Providers.NETEASE, Providers.SPOTIFY),
     val maxRetries: Int = 3,
     val requestDelayMs: Long = 200,
     val maxCandidatesPerProvider: Int = 4,
@@ -33,7 +33,7 @@ data class MatchConfig(
 
 class SmartLyricsMatcher(
     private val lrcLib: LRCLibAPI,
-    // private val netease: NeteaseAPI, (Will add in Phase 3)
+    private val netease: NeteaseAPI, (Will add in Phase 3)
     // private val providerService: LyricsProviderService? = null, (Will add in Phase 3)
 ) {
     suspend fun search(
@@ -93,8 +93,8 @@ class SmartLyricsMatcher(
 
             val found = when (provider) {
                 Providers.LRCLIB -> searchLrcLib(query, local, cand, config, log)
-                // Providers.NETEASE -> searchNetease(...)
-                else -> emptyList() // Will implement Generic search (Spotify/Apple) later
+                Providers.NETEASE -> searchNetease(query, local, cand, config, log)
+                else -> emptyList()
             }
             
             for (raw in found) {
