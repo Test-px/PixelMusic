@@ -48,13 +48,62 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun saveManualCookie(cookieString: String) {
+    fun saveManualCookie(tokenString: String) {
         viewModelScope.launch {
-            val cookies = Cookies(cookieString)
-            saveCookies(cookies)
+            var cookieStr = ""
+            var dataSyncId = ""
+            var accountName = ""
+            var accountHandle = ""
+
+            // 1. Check if it's the formatted ArchiveTune token string
+            if (tokenString.contains("***INNERTUBE COOKIE***")) {
+                // Helper to extract the value between the = and the next ***
+                fun extractBlock(key: String): String {
+                    val header = "***$key***"
+                    val startIdx = tokenString.indexOf(header)
+                    if (startIdx == -1) return ""
+                    
+                    val equalsIdx = tokenString.indexOf("=", startIdx + header.length)
+                    if (equalsIdx == -1) return ""
+                    
+                    val nextHeaderIdx = tokenString.indexOf("***", equalsIdx)
+                    return if (nextHeaderIdx != -1) {
+                        tokenString.substring(equalsIdx + 1, nextHeaderIdx)
+                    } else {
+                        tokenString.substring(equalsIdx + 1)
+                    }.trim()
+                }
+
+                // Extract all the pieces perfectly
+                cookieStr = extractBlock("INNERTUBE COOKIE")
+                dataSyncId = extractBlock("DATASYNC ID")
+                accountName = extractBlock("ACCOUNT NAME")
+                accountHandle = extractBlock("ACCOUNT CHANNEL HANDLE")
+            } else {
+                // Fallback: If they just pasted a raw raw cookie string without the extra metadata
+                cookieStr = tokenString.trim()
+            }
+
+            // 2. Save the extracted Cookie
+            if (cookieStr.isNotEmpty()) {
+                val cookies = Cookies(cookieStr)
+                saveCookies(cookies)
+            }
+
+            // 3. Save the DataSyncId if it exists
+            if (dataSyncId.isNotEmpty()) {
+                datastoreRepository.saveDataSyncId(dataSyncId)
+                YouTube.dataSyncId = dataSyncId
+            }
+
+            // 4. Save the Profile Info! (This is what updates the "Guest User" header)
+            if (accountName.isNotEmpty() || accountHandle.isNotEmpty()) {
+                datastoreRepository.saveYtProfile(accountName, accountHandle, "")
+            }
+
+            // 5. Complete the login and trigger the background sync
             _uiState.update { it.copy(isLoggedIn = true) }
             _eventsChannel.emit(ScreenEvent.Out.LoginCompleted)
-            // Trigger an immediate background synchronization
             syncManager.fullSync()
         }
     }
