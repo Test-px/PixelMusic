@@ -16,6 +16,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
+
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -106,6 +110,38 @@ class AuthViewModel @Inject constructor(
             _eventsChannel.emit(ScreenEvent.Out.LoginCompleted)
             syncManager.fullSync()
         }
+    }
+
+    fun getFullTokenString(): Flow<String> = kotlinx.coroutines.flow.flow {
+        val cookies = datastoreRepository.cookies.first().toRawCookie()
+        val settings = datastoreRepository.settings.first()
+        val name = datastoreRepository.ytUsername.first()
+        val handle = datastoreRepository.ytHandle.first()
+
+        val token = buildString {
+            if (cookies.isNotEmpty()) {
+                append("***INNERTUBE COOKIE*** =\n")
+                append(cookies)
+                append("\n")
+            }
+            if (settings.dataSyncId.isNotEmpty()) {
+                append("***DATASYNC ID*** =\n")
+                append(settings.dataSyncId)
+                append("\n")
+            }
+            if (name.isNotEmpty()) {
+                append("***ACCOUNT NAME*** =\n")
+                append(name)
+                append("\n")
+            }
+            if (handle.isNotEmpty()) {
+                append("***ACCOUNT CHANNEL HANDLE*** =\n")
+                append(handle)
+                append("\n")
+            }
+        }.trim()
+        
+        emit(token)
     }
 
     private fun saveCookies(cookies: Cookies) {
