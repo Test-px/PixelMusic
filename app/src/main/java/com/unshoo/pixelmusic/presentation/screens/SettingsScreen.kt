@@ -541,39 +541,76 @@ fun SettingsScreen(
                 }
             )
         }
-        // 1. The Sign In Options Chooser
+        // 1. The Sign In Options Chooser (Premium Custom UI)
         if (showLoginOptionsDialog) {
-            AlertDialog(
+            androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showLoginOptionsDialog = false },
-                shape = RoundedCornerShape(28.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                title = {
-                    Text(
-                        text = "Sign In Options",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // This property is the magic that stops Android from squishing the width!
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp), // Leaves a nice 24dp gap on the screen edges
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 4.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Sign In Options",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
                         // Option 1: Web Login
                         Surface(
                             onClick = {
                                 showLoginOptionsDialog = false
                                 navController.navigateSafely(Screen.YoutubeAuth.route)
                             },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp) // Large expressive touch target
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Rounded.Web, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Web,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
-                                    Text("Web Login", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("Standard browser sign-in", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "Web Login",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Standard browser sign-in",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
@@ -584,29 +621,61 @@ fun SettingsScreen(
                                 showLoginOptionsDialog = false
                                 showTokenDialog = true
                             },
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Rounded.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Code,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
-                                    Text("Advanced Login", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("Paste InnerTube token", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "Advanced Login",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Paste InnerTube token",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showLoginOptionsDialog = false }) {
-                        Text("Cancel", fontWeight = FontWeight.Bold)
+
+                        // Cancel Button
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showLoginOptionsDialog = false }) {
+                                Text("Cancel", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
-            )
+            }
         }
 
         // 2. The Token Input Dialog (Reusing the exact one from AccountsScreen!)
