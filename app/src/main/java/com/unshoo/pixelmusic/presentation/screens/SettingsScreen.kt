@@ -552,7 +552,7 @@ fun SettingsScreen(
             ) {
                 Surface(
                     modifier = Modifier
-                        .width(310.dp) // Constrains the width so the dialog becomes taller than it is wide
+                        .width(450.dp) // Constrains the width so the dialog becomes taller than it is wide
                         .wrapContentHeight(),
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -580,7 +580,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(88.dp) // Taller touch target
+                                .height(100.dp) // Taller touch target
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -628,7 +628,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(88.dp) // Taller touch target
+                                .height(100.dp) // Taller touch target
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(16.dp),
