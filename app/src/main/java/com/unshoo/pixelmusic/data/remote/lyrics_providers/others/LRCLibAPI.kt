@@ -64,7 +64,7 @@ class LRCLibAPI(
             val song = json.getOrNull(offset) ?: return@withContext null
 
             SongInfo(
-                songName = song.trackName,
+                songName = song.name,
                 artistName = song.artistName,
                 lrcLibID = song.id
             )
