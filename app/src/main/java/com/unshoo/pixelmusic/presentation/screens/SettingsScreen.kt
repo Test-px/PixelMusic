@@ -95,6 +95,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import com.unshoo.pixelmusic.data.preferences.LaunchTab
+import androidx.compose.material.icons.rounded.Web
+import androidx.compose.material.icons.rounded.Code
+import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
+
 
 // SettingsTopBar removed, replaced by CollapsibleCommonTopBar
 
@@ -145,6 +149,9 @@ fun SettingsScreen(
 
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
     var showAccountDialog by remember { mutableStateOf(false) }
+    var showLoginOptionsDialog by remember { mutableStateOf(false) }
+    var showTokenDialog by remember { mutableStateOf(false) }
+    
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
@@ -229,7 +236,7 @@ fun SettingsScreen(
                         if (uiState.ytUsername.isNotEmpty()) {
                             showAccountDialog = true
                         } else {
-                            navController.navigateSafely(Screen.YoutubeAuth.route)
+                            showLoginOptionsDialog = true // Opens the chooser dialog
                         }
                     },
                     modifier = Modifier
@@ -531,6 +538,89 @@ fun SettingsScreen(
                     TextButton(onClick = { showAccountDialog = false }) {
                         Text("Close", fontWeight = FontWeight.Bold)
                     }
+                }
+            )
+        }
+        // 1. The Sign In Options Chooser
+        if (showLoginOptionsDialog) {
+            AlertDialog(
+                onDismissRequest = { showLoginOptionsDialog = false },
+                shape = RoundedCornerShape(28.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                title = {
+                    Text(
+                        text = "Sign In Options",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Option 1: Web Login
+                        Surface(
+                            onClick = {
+                                showLoginOptionsDialog = false
+                                navController.navigateSafely(Screen.YoutubeAuth.route)
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.Web, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("Web Login", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Standard browser sign-in", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+
+                        // Option 2: Token Login
+                        Surface(
+                            onClick = {
+                                showLoginOptionsDialog = false
+                                showTokenDialog = true
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("Advanced Login", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Paste InnerTube token", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLoginOptionsDialog = false }) {
+                        Text("Cancel", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
+
+        // 2. The Token Input Dialog (Reusing the exact one from AccountsScreen!)
+        if (showTokenDialog) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
+
+            AdvancedTokenLoginDialog(
+                currentCookie = fullToken,
+                onDismiss = { showTokenDialog = false },
+                onSaveToken = { token ->
+                    showTokenDialog = false
+                    authViewModel.saveManualCookie(token)
+                    android.widget.Toast.makeText(context, "Cookie saved! Syncing library...", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
         }
