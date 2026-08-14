@@ -131,7 +131,7 @@ class SmartLyricsMatcher(private val client: OkHttpClient) {
         return results
             .filter { !it.syncedLyrics.isNullOrBlank() }
             .map { r ->
-                val pr = ProviderResult(r.trackName, r.artistName, r.duration, r.albumName, true)
+                val pr = ProviderResult(r.name, r.artistName, r.duration, r.albumName, true)
                 ScoredHit(Providers.LRCLIB, cand.strategy, pr, scoreHitAgainstViews(local, pr, cand), r.syncedLyrics, null)
             }
             .sortedByDescending { it.confidence.score }
