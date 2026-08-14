@@ -204,6 +204,7 @@ kotlin {
 dependencies {
     // InnerTube dependencies merged
     implementation(libs.ktor.client.core)
+    implementation("dev.turingcomplete:kotlin-onetimepassword:2.3.1")
     implementation(libs.ktor.client.okhttp)
     implementation(libs.okhttp.dnsoverhttps)
     implementation(libs.ktor.client.content.negotiation)
