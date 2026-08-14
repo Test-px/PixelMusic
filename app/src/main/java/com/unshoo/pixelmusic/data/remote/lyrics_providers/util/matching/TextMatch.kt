@@ -33,7 +33,7 @@ object TextMatch {
 
     private val leadingTrackNo = Regex("""^\s*\d{1,2}\s*[.)\-_]\s*""")
 
-    private val garbledChars = Regex("""\?{2,}|+""")
+    private val garbledChars = Regex("""\?{2,}|\uFFFD+""")
 
     private val channelSuffix = Regex(
         """\s*(?:-\s*Topic|TV|Official(?:\s+(?:Music|Channel))?|Music|Records|Media)\s*$""",
