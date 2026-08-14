@@ -87,6 +87,15 @@ import com.unshoo.pixelmusic.presentation.viewmodel.ExternalServiceAccount
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.ui.text.font.FontFamily
+import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
+
 
 @Composable
 fun AccountsScreen(
@@ -112,6 +121,7 @@ fun AccountsScreen(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    var showTokenDialog by remember { mutableStateOf(false) }
 
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val minTopBarHeight = 64.dp + statusBarHeight
@@ -206,6 +216,7 @@ fun AccountsScreen(
                             onOpenYoutubeAuth = onOpenYoutubeAuth
                         )
                     },
+                    onAdvancedLogin = { showTokenDialog = true }, // ADDED THIS
                     onSync = {
                         viewModel.syncLibrary()
                     },
@@ -283,6 +294,17 @@ fun AccountsScreen(
             expandedTitleStartPadding = 20.dp,
             collapsedTitleStartPadding = 68.dp
         )
+        if (showTokenDialog) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            AdvancedTokenLoginDialog(
+                onDismiss = { showTokenDialog = false },
+                onSaveToken = { token ->
+                    showTokenDialog = false
+                    authViewModel.saveManualCookie(token)
+                    Toast.makeText(context, "Cookie saved! Syncing library...", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 }
 
@@ -713,6 +735,7 @@ private fun YouTubeAccountCard(
     account: ExternalAccountUiModel?,
     isSyncing: Boolean,
     onSignIn: () -> Unit,
+    onAdvancedLogin: () -> Unit,
     onSync: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -907,7 +930,121 @@ private fun YouTubeAccountCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // NEW ADVANCED LOGIN BUTTON
+                OutlinedButton(
+                    onClick = onAdvancedLogin,
+                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Code,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Enter InnerTube Cookie",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
+
+@Composable
+fun AdvancedTokenLoginDialog(
+    onDismiss: () -> Unit,
+    onSaveToken: (String) -> Unit
+) {
+    var tokenInput by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = AbsoluteSmoothCornerShape(28.dp, 60),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = tokenInput,
+                    onValueChange = { tokenInput = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    ),
+                    placeholder = {
+                        Text(
+                            "***INNERTUBE COOKIE*** =\n***VISITOR DATA***\n=CgtPQVo1Tnd...",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                    thickness = 1.dp
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "Info",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "This is an ADVANCED login method. As an alternative to the web portal, you may directly enter or update your login token here. For example, this can speed up logging in on multiple devices. Please note that any invalid token formats the app fails to parse will not be accepted.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSaveToken(tokenInput.trim()) },
+                enabled = tokenInput.isNotBlank()
+            ) {
+                Text("OK", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
