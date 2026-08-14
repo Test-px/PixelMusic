@@ -544,7 +544,7 @@ fun SettingsScreen(
                 }
             )
         }
-        // 1. The Sign In Options Chooser (Premium Custom UI - Portrait Ratio)
+        // 1. The Sign In Options Chooser (Premium Custom UI - Tall Container)
         if (showLoginOptionsDialog) {
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showLoginOptionsDialog = false },
@@ -552,22 +552,23 @@ fun SettingsScreen(
             ) {
                 Surface(
                     modifier = Modifier
-                        .width(450.dp) // Constrains the width so the dialog becomes taller than it is wide
-                        .wrapContentHeight(),
+                        .width(310.dp)
+                        .height(440.dp), // Force the container to be explicitly tall (Portrait ratio)
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 4.dp
                 ) {
                     Column(
-                        modifier = Modifier.padding(top = 28.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp) // Spacing between items
+                        modifier = Modifier
+                            .fillMaxSize() // Make the Column fill the new tall Surface
+                            .padding(top = 32.dp, bottom = 24.dp, start = 24.dp, end = 24.dp)
                     ) {
                         Text(
                             text = "Sign In Options",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 24.dp) // Space below the title
                         )
 
                         // Option 1: Web Login
@@ -580,13 +581,12 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp) // Taller touch target
+                                .height(88.dp) // Back to a normal, elegant height
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // "G" Logo Icon
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
@@ -618,6 +618,8 @@ fun SettingsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp)) // Space between the two buttons
+
                         // Option 2: Token Login
                         Surface(
                             onClick = {
@@ -628,13 +630,12 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp) // Taller touch target
+                                .height(88.dp) // Back to a normal, elegant height
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Premium Key Icon
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
@@ -666,11 +667,13 @@ fun SettingsScreen(
                             }
                         }
 
+                        // This is the magic! It takes up all remaining empty space, 
+                        // pushing the "Cancel" button to the absolute bottom of the tall container.
+                        Spacer(modifier = Modifier.weight(1f))
+
                         // Cancel Button
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
                             TextButton(onClick = { showLoginOptionsDialog = false }) {
