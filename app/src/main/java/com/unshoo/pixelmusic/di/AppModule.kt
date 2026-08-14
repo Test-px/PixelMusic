@@ -294,13 +294,11 @@ object AppModule {
     @Singleton
     fun provideLyricsRepository(
         @ApplicationContext context: Context,
-        lrcLibApiService: LrcLibApiService,
         lyricsDao: LyricsDao,
         okHttpClient: OkHttpClient
     ): LyricsRepository {
         return LyricsRepositoryImpl(
             context = context,
-            lrcLibApiService = lrcLibApiService,
             lyricsDao = lyricsDao,
             okHttpClient = okHttpClient
         )
