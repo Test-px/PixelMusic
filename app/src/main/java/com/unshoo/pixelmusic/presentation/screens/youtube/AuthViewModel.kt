@@ -48,6 +48,17 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun saveManualCookie(cookieString: String) {
+        viewModelScope.launch {
+            val cookies = Cookies(cookieString)
+            saveCookies(cookies)
+            _uiState.update { it.copy(isLoggedIn = true) }
+            _eventsChannel.emit(ScreenEvent.Out.LoginCompleted)
+            // Trigger an immediate background synchronization
+            syncManager.fullSync()
+        }
+    }
+
     private fun saveCookies(cookies: Cookies) {
         printd("Got cookies: $cookies")
         viewModelScope.launch {
