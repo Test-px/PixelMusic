@@ -98,6 +98,8 @@ import com.unshoo.pixelmusic.data.preferences.LaunchTab
 import androidx.compose.material.icons.rounded.Web
 import androidx.compose.material.icons.rounded.Code
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
+import androidx.compose.material.icons.rounded.VpnKey
+
 
 
 // SettingsTopBar removed, replaced by CollapsibleCommonTopBar
@@ -541,31 +543,30 @@ fun SettingsScreen(
                 }
             )
         }
-        // 1. The Sign In Options Chooser (Premium Custom UI)
+        // 1. The Sign In Options Chooser (Premium Custom UI - Portrait Ratio)
         if (showLoginOptionsDialog) {
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showLoginOptionsDialog = false },
-                // This property is the magic that stops Android from squishing the width!
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp), // Leaves a nice 24dp gap on the screen edges
+                        .width(310.dp) // Constrains the width so the dialog becomes taller than it is wide
+                        .wrapContentHeight(),
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 4.dp
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier.padding(top = 28.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp) // Spacing between items
                     ) {
                         Text(
                             text = "Sign In Options",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         // Option 1: Web Login
@@ -578,12 +579,13 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp) // Large expressive touch target
+                                .height(88.dp) // Taller touch target
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // "G" Logo Icon
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
@@ -591,17 +593,17 @@ fun SettingsScreen(
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.primaryContainer)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Web,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(24.dp)
+                                    Text(
+                                        text = "G",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
                                     Text(
-                                        text = "Web Login",
+                                        text = "Google Web Login",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
@@ -625,12 +627,13 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .height(88.dp) // Taller touch target
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Premium Key Icon
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
@@ -639,7 +642,7 @@ fun SettingsScreen(
                                         .background(MaterialTheme.colorScheme.secondaryContainer)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Code,
+                                        imageVector = Icons.Rounded.VpnKey,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(24.dp)
