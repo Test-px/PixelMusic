@@ -4,7 +4,7 @@ import com.unshoo.pixelmusic.data.remote.lyrics_providers.apple.AppleAPI
 import com.unshoo.pixelmusic.data.remote.lyrics_providers.model.SongInfo
 import com.unshoo.pixelmusic.data.remote.lyrics_providers.others.*
 import com.unshoo.pixelmusic.data.remote.lyrics_providers.spotify.SpotifyAPI
-import com.unshoo.pixelmusic.data.remote.lyrics_providers.util.Exceptions.*
+import com.unshoo.pixelmusic.data.remote.lyrics_providers.util.*
 import com.unshoo.pixelmusic.data.remote.lyrics_providers.util.Providers
 import okhttp3.OkHttpClient
 
