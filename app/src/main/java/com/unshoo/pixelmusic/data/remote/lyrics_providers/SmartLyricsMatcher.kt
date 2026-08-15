@@ -50,7 +50,30 @@ class SmartLyricsMatcher(private val client: OkHttpClient) {
         log: (String) -> Unit = { Log.i(TAG, it) },
     ): List<ScoredHit> = coroutineScope {
         val displayName = listOfNotNull(local.artist, local.title).joinToString(" - ").ifBlank { "<unknown>" }
-        log("[match] \"$displayName\"  dur=${local.durationSec?.let { "${it.toInt()}s" } ?: "?"}  candidates=${candidates.size}  providers=${config.providerOrder.size}")
+        log("[match] \"$displayName\"  dur=${local.durationSec?.let { "${it.toInt()}s" } ?: "?"}  candidates=${candidates.size}")
+
+        // -------------------------------------------------------------
+        // FAST-PATH: Try LRCLib on the best 2 candidates first (< 200ms)
+        // -------------------------------------------------------------
+        val fastCandidates = candidates.take(2)
+        for (cand in fastCandidates) {
+            val query = cand.asSearchString()
+            if (query.isNotBlank()) {
+                val lrcHits = searchLrcLib(query, local, cand, config)
+                val instantHit = lrcHits.firstOrNull { 
+                    it.tier == MatchTier.AUTO_ACCEPT && !it.inlineLyrics.isNullOrBlank() 
+                }
+                if (instantHit != null) {
+                    log("  [LRCLib Fast-Path Hit] ${instantHit.result.title} (${instantHit.confidence.percent()}%) -> Instant Return")
+                    return@coroutineScope listOf(instantHit)
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // FALLBACK: If LRCLib didn't find an exact match, query all providers concurrently
+        // -------------------------------------------------------------
+        log("  [Fast-Path missed] Querying full provider ladder in parallel...")
 
         val jobs = config.providerOrder.map { provider ->
             async {
@@ -83,7 +106,7 @@ class SmartLyricsMatcher(private val client: OkHttpClient) {
         }
 
         hits.values.sortedByDescending { it.confidence.score }
-    }
+            }
 
     private suspend fun searchProvider(
         provider: Providers,
