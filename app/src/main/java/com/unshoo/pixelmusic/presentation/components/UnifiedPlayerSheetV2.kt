@@ -671,16 +671,6 @@ fun UnifiedPlayerSheetV2(
                                 alpha = miniReadyAlpha
                                 transformOrigin = TransformOrigin(0.5f, 1f)
                             }
-                            // Always apply Modifier.shadow with the dynamic elevation
-                            // (0.dp renders nothing). Keeping the modifier chain
-                            // structurally stable avoids the costly relayout/redraw
-                            // restructure when the elevation crosses 0.dp during
-                            // expand/collapse or right after play/pause.
-                            .shadow(
-    elevation = visualCardShadowElevation,
-    shape = dynamicPlayerShape,
-    clip = false
-)
 .background(
     color = playerAreaBackground,
     shape = dynamicPlayerShape
