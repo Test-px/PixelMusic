@@ -623,10 +623,14 @@ fun UnifiedPlayerSheetV2(
         shadowElevation = 0.dp,
         color = Color.Transparent
     ) {
+        // Calculate dynamic padding: 8.dp when collapsed (0f), 0.dp when fully expanded (1f)
+        val fraction = playerContentExpansionFraction.value.coerceIn(0f, 1f)
+        val dynamicExtraPadding = 8.dp * (1f - fraction)
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = currentBottomPadding + 8.dp)
+                .padding(bottom = currentBottomPadding + dynamicExtraPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 if (showPlayerContentArea) {
