@@ -1486,6 +1486,8 @@ fun LyricLineRow(
     } else {
         modifier
     }
+    
+    // THIS IS THE FIX: We make sure the blur modifier is ALWAYS attached to the animated modifier
     val animatedModifier = if (useAnimatedLyrics) {
         baseModifier
             .graphicsLayer {
@@ -1596,6 +1598,7 @@ fun LyricLineRow(
         }
 
         Column(
+            // Apply the EXACT SAME animatedModifier (which contains the blur!) to the word-by-word column
             modifier = animatedModifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
@@ -1651,6 +1654,7 @@ fun LyricLineRow(
         }
     }
 }
+            
 
 @Composable
 fun LyricWordSpan(
