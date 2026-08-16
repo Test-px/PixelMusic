@@ -807,12 +807,32 @@ class MainActivity : ComponentActivity() {
         val navBarOccupiedHeight by remember(systemNavBarInset, navBarCompactMode) {
             derivedStateOf { resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode) }
         }
+        val navBarHeight = resolveNavBarSurfaceHeight(navBarStyle, systemNavBarInset, navBarCompactMode)
+        val navBarOccupiedHeight by remember(systemNavBarInset, navBarCompactMode) {
+            derivedStateOf { resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode) }
+        }
+        
+        // 1. Force the bar to start hidden on cold boot, then reveal it to trigger the spring!
+        var isMounted by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            delay(100) // Give the UI a split second to draw before springing up
+            isMounted = true
+        }
+
+        // 2. Dynamically switch between fading out and springing up
+        val targetNavVisibility = if (!isMounted || shouldHideNavigationBar) 0f else 1f
         val navBarVisibilityProgress by animateFloatAsState(
-            targetValue = if (shouldHideNavigationBar) 0f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
+            targetValue = targetNavVisibility,
+            animationSpec = if (targetNavVisibility == 0f) {
+                // Going to Settings: Slow, smooth fade-out and slide down
+                tween(durationMillis = 300, easing = LinearOutSlowInEasing)
+            } else {
+                // Returning / App Opening: Bouncy spring-up!
+                spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            },
             label = "NavBarVisibilityProgress"
         )
         val visibleNavBarOccupiedHeight by remember(navBarOccupiedHeight, navBarVisibilityProgress) {
