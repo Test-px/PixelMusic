@@ -251,10 +251,7 @@ fun UnifiedPlayerSheetV2(
     val visualOvershootScaleY = remember { Animatable(1f) }
     val initialFullPlayerOffsetY = remember(density) { with(density) { 24.dp.toPx() } }
     val sheetAnimationSpec = remember {
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        )
+        tween<Float>(durationMillis = ANIMATION_DURATION_MS, easing = FastOutSlowInEasing)
     }
     val sheetAnimationMutex = remember { MutatorMutex() }
     val sheetExpandedTargetY = 0f
