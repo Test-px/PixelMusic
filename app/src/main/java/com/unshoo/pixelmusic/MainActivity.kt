@@ -806,9 +806,9 @@ class MainActivity : ComponentActivity() {
         }
         val navBarVisibilityProgress by animateFloatAsState(
             targetValue = if (shouldHideNavigationBar) 0f else 1f,
-            animationSpec = tween(
-                durationMillis = 220,
-                easing = LinearOutSlowInEasing
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
             ),
             label = "NavBarVisibilityProgress"
         )
@@ -956,7 +956,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(visibleNavBarOccupiedHeight)
-                                .clipToBounds()
+                                // Removed .clipToBounds() so the bar slides cleanly without being cropped
                         ) {
                             val onSearchIconDoubleTap = remember(playerViewModel) {
                                 { playerViewModel.onSearchNavIconDoubleTapped() }
@@ -968,8 +968,8 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxWidth()
                                     .padding(bottom = bottomBarPadding)
                                     .onSizeChanged { componentHeightPx = it.height }
-                                    .onGloballyPositioned { coordinates ->                       // ← ADD THIS LINE
-                                     playerViewModel.reportBottomChromeTop("nav_bar", coordinates.positionInRoot().y)  // ← AND THIS
+                                    .onGloballyPositioned { coordinates ->
+                                        playerViewModel.reportBottomChromeTop("nav_bar", coordinates.positionInRoot().y)
                                     }
                                     .graphicsLayer {
                                         val hideFraction = if (showPlayerContentArea) {
@@ -977,8 +977,12 @@ class MainActivity : ComponentActivity() {
                                         } else {
                                             0f
                                         }
-                                        translationY = (componentHeightPx + shadowOverflowPx + bottomBarPaddingPx) * hideFraction
-                                        alpha = 1f
+                                        val totalBarHeight = (componentHeightPx + shadowOverflowPx + bottomBarPaddingPx).toFloat()
+                                        val playerExpansionSlide = totalBarHeight * hideFraction
+                                        val navigationVisibilitySlide = (1f - navBarVisibilityProgress) * totalBarHeight
+                                        
+                                        translationY = playerExpansionSlide + navigationVisibilitySlide
+                                        alpha = navBarVisibilityProgress.coerceIn(0f, 1f)
                                     }
                                     .height(navBarHeight)
                                     .padding(horizontal = horizontalPadding),
