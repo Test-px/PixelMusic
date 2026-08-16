@@ -237,8 +237,11 @@ class ModuleSchemaValidator @Inject constructor(
         array.forEachIndexed { i, element ->
             if (!element.isJsonObject) return@forEachIndexed
             val obj = element.asJsonObject
-            val songId = readNumericField(obj, "songId", "song_id")
-            if (!songId.present || songId.value == null || songId.value <= 0L) {
+            
+            // FIX: Read songId as a String to support YouTube/Cloud IDs
+            val songId = readStringField(obj, "songId", "song_id")
+            
+            if (songId.isNullOrBlank()) {
                 errors.add(
                     ValidationError(
                         "INVALID_SONG_ID",
