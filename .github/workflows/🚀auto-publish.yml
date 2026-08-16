@@ -1,7 +1,6 @@
 name: 🚀 Auto Release Build
 
 on:
-  # This single line is all you need for the manual "Run workflow" button!
   workflow_dispatch: 
 
 jobs:
@@ -34,20 +33,14 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
-      - name: Increment & Save Version Code
+      - name: Increment & Save Version Code (Local Only)
         id: code
         run: |
           BASE_CODE=$(grep "^APP_VERSION_CODE=" gradle.properties | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
           NEW_CODE=$((BASE_CODE + 1))
           
+          # Modify the file locally for the build, but DO NOT push yet!
           sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${NEW_CODE}/" gradle.properties
-          
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          git add gradle.properties
-          git commit -m "chore: bump version code to ${NEW_CODE} [skip ci]" || echo "No changes to commit"
-          git push
           
           echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_ENV
 
@@ -69,7 +62,25 @@ jobs:
           echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
 
       - name: Build Release APK
+        # If this step fails, the workflow stops here and NOTHING is pushed to GitHub!
         run: ./gradlew :app:assembleRelease
+
+      - name: Commit & Push Version Code Bump
+        # This step is ONLY reached if the build above succeeds!
+        run: |
+          # 1. Revert gradle.properties to its original state to discard the temporary APP_VERSION_NAME
+          git checkout gradle.properties 
+          
+          # 2. Re-apply ONLY the successful APP_VERSION_CODE bump
+          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${{ env.NEW_CODE }}/" gradle.properties
+          
+          # 3. Commit and push
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          git add gradle.properties
+          git commit -m "chore: bump version code to ${{ env.NEW_CODE }} [skip ci]" || echo "No changes to commit"
+          git push
 
       - name: Read Release Notes from File
         run: |
@@ -86,7 +97,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch the latest 100 release tags, filter OUT the current tag, and delete the rest
           gh release list --limit 100 --json tagName -q ".[].tagName" | grep -v "^${{ env.TAG_NAME }}$" | while read -r tag; do
             if [ -n "$tag" ]; then
               echo "Wiping out old release and tag: $tag"
