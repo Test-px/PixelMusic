@@ -807,10 +807,6 @@ class MainActivity : ComponentActivity() {
         val navBarOccupiedHeight by remember(systemNavBarInset, navBarCompactMode) {
             derivedStateOf { resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode) }
         }
-        val navBarHeight = resolveNavBarSurfaceHeight(navBarStyle, systemNavBarInset, navBarCompactMode)
-        val navBarOccupiedHeight by remember(systemNavBarInset, navBarCompactMode) {
-            derivedStateOf { resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode) }
-        }
         
         // 1. Force the bar to start hidden on cold boot, then reveal it to trigger the spring!
         var isMounted by remember { mutableStateOf(false) }
