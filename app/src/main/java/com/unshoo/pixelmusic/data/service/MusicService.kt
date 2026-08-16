@@ -775,6 +775,35 @@ class MusicService : MediaLibraryService() {
                 startPositionMs: Long
             ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
                 return serviceScope.future {
+                    
+                    // --- NEW: GEMINI / VOICE SEARCH INTERCEPTION ---
+                    // Media3 translates voice commands into a dummy MediaItem containing the search query
+                    val firstItem = mediaItems.firstOrNull()
+                    val searchQuery = firstItem?.requestMetadata?.searchQuery
+                    
+                    if (searchQuery != null) {
+                        Timber.tag(TAG).d("Voice search received from Gemini: '$searchQuery'")
+                        
+                        val queueItems = if (searchQuery.isBlank()) {
+                            // Empty query (e.g., "Play music on Pixel Music") -> Play a random mix
+                            autoMediaBrowseTree.getChildren(AutoMediaBrowseTree.SONGS_ID, 0, 50).shuffled()
+                        } else {
+                            // Specific query (e.g., "Play Arijit Singh on Pixel Music") -> Search the library
+                            autoMediaBrowseTree.search(searchQuery).take(50)
+                        }
+
+                        if (queueItems.isNotEmpty()) {
+                            grantArtworkUriPermissions(controller.packageName, queueItems)
+                            return@future MediaSession.MediaItemsWithStartPosition(
+                                queueItems.toMutableList(), 
+                                0, 
+                                startPositionMs
+                            )
+                        }
+                    }
+                    // --- END GEMINI INTERCEPTION ---
+
+                    // Keep your existing manual playback logic for UI clicks
                     val requestedIndex = startIndex.coerceIn(0, (mediaItems.size - 1).coerceAtLeast(0))
                     val requestedItem = mediaItems.getOrNull(requestedIndex)
 
