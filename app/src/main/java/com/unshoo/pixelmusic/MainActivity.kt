@@ -820,13 +820,13 @@ class MainActivity : ComponentActivity() {
         val navBarVisibilityProgress by animateFloatAsState(
             targetValue = targetNavVisibility,
             animationSpec = if (targetNavVisibility == 0f) {
-                // Going to Settings: Slow, smooth fade-out and slide down
-                tween(durationMillis = 300, easing = LinearOutSlowInEasing)
+                // Going to Settings: Fast fade/collapse so it doesn't feel like a sluggish drop
+                tween(durationMillis = 150)
             } else {
-                // Returning / App Opening: Bouncy spring-up!
+                // Returning / App Opening: Smooth slide-up with ZERO bounce
                 spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
                 )
             },
             label = "NavBarVisibilityProgress"
