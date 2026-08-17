@@ -149,7 +149,7 @@ fun PlayerInternalNavigationBar(
     // bottomBarPadding was previously accepted but silently ignored, which could
     // leave the pill sitting too close to (or clipped by) the gesture nav bar on
     // devices that need extra clearance. It's now applied on top of the base 12dp.
-    val bottomPadding = 12.dp + bottomBarPadding
+    val bottomPadding = 12.dp
 
 Row(
     modifier = modifier
