@@ -151,14 +151,13 @@ fun PlayerInternalNavigationBar(
     // devices that need extra clearance. It's now applied on top of the base 12dp.
     val bottomPadding = 12.dp + bottomBarPadding
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(start = horizontalOuterPadding, end = horizontalOuterPadding, bottom = bottomPadding),
-        horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+Row(
+    modifier = modifier
+        .fillMaxWidth()
+        .padding(start = horizontalOuterPadding, end = horizontalOuterPadding, bottom = bottomPadding),
+    horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+    verticalAlignment = Alignment.CenterVertically
+) {
         HorizontalFloatingToolbar(
             modifier = Modifier.weight(1f),
             expanded = true,
