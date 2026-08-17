@@ -128,16 +128,35 @@ fun PlayerInternalNavigationBar(
 
     val isLargeFont = fontScale > 1.25f
     val isCompactScreen = screenWidth < 400
-    val shouldHideLabel = isLargeFont || (isCompactScreen && mainItems.size > 3)
+    val shouldHideLabel = isLargeFont || (isCompactScreen && mainItems.size > 3) || compactMode
 
     val selectedIndex = mainItems.indexOfFirst { it.screen.route == latestCurrentRoute }
+
+    // IMPORTANT: these sizes must always sum (with the bottom padding below) to
+    // exactly resolveNavBarContentHeight(compactMode), because that is the value
+    // parent screens use to reserve layout space (mini player position, gradient
+    // height, etc). Previously these were hardcoded regardless of compactMode,
+    // so when compactMode flipped to true the reserved space shrank to 64dp but
+    // the bar kept drawing at 76dp worth of content -> squished/cut-off nav bar.
+    //   non-compact: 64dp settings button + 12dp bottom padding = 76dp = NavBarContentHeight
+    //   compact:     52dp settings button + 12dp bottom padding = 64dp = NavBarCompactContentHeight
+    val toolbarRowHeight = if (compactMode) 40.dp else 48.dp
+    val settingsButtonSize = if (compactMode) 52.dp else 64.dp
+    val itemIconSize = if (compactMode) 20.dp else 24.dp
+    val horizontalOuterPadding = if (compactMode) 10.dp else 16.dp
+    val itemSpacing = if (compactMode) 8.dp else 12.dp
+    val selectedItemWeight = if (compactMode) 1.7f else 2.2f
+    // bottomBarPadding was previously accepted but silently ignored, which could
+    // leave the pill sitting too close to (or clipped by) the gesture nav bar on
+    // devices that need extra clearance. It's now applied on top of the base 12dp.
+    val bottomPadding = 12.dp + bottomBarPadding
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(start = horizontalOuterPadding, end = horizontalOuterPadding, bottom = bottomPadding),
+        horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
         HorizontalFloatingToolbar(
@@ -150,7 +169,7 @@ fun PlayerInternalNavigationBar(
             content = {
                 // Ensure the items fill the entire pill width evenly
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().height(toolbarRowHeight),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -171,7 +190,7 @@ fun PlayerInternalNavigationBar(
 
                         // 1. ADD THIS: Animate the weight so the selected tab expands!
                         val animatedWeight by animateFloatAsState(
-                            targetValue = if (isSelected) 2.2f else 1f,
+                            targetValue = if (isSelected) selectedItemWeight else 1f,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
                                 stiffness = Spring.StiffnessLow
@@ -191,7 +210,7 @@ fun PlayerInternalNavigationBar(
                             modifier = Modifier
                                 // 2. CHANGE THIS: Use the animated weight instead of 1f
                                 .weight(animatedWeight)
-                                .height(48.dp),
+                                .height(toolbarRowHeight),
                             shape = CircleShape,
                             color = containerColor,
                             contentColor = contentColor
@@ -211,7 +230,7 @@ fun PlayerInternalNavigationBar(
                                     painter = painterResource(id = iconRes),
                                     contentDescription = item.label,
                                     tint = contentColor,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(itemIconSize)
                                 )
 
                                 AnimatedVisibility(
@@ -223,7 +242,7 @@ fun PlayerInternalNavigationBar(
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = item.label,
-                                            style = MaterialTheme.typography.labelLarge,
+                                            style = if (compactMode) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                                             maxLines = 1,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary,
@@ -248,7 +267,7 @@ fun PlayerInternalNavigationBar(
                     navController.navigateToTopLevelSafely(Screen.Settings.route)
                 }
             },
-            modifier = Modifier.size(64.dp), 
+            modifier = Modifier.size(settingsButtonSize),
             shape = CircleShape,
             color = if (isSettingsSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
             contentColor = if (isSettingsSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onPrimaryContainer,
@@ -258,7 +277,7 @@ fun PlayerInternalNavigationBar(
                 Icon(
                     painter = painterResource(id = R.drawable.rounded_settings_24),
                     contentDescription = "Settings",
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(itemIconSize)
                 )
             }
         }
