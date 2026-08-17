@@ -627,14 +627,16 @@ fun HomeScreen(
         // ---> OUR NEW TRULY INDEPENDENT FAB <---
         HomeShuffleFab(
             isShuffleEnabled = isShuffleEnabled,
-            isPlayerActive = currentSong != null, // Just passing true/false now!
+            isPlayerActive = currentSong != null, 
             onClick = {
                 val songsToUse = quickPicks.ifEmpty { yourMixSongs }
                 if (songsToUse.isNotEmpty()) {
                     playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
                 }
             },
-            modifier = Modifier.align(Alignment.BottomEnd)
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = paddingValuesParent.calculateBottomPadding()) // <-- ADD THIS LINE
         )
     } // <-- End of main screen Box
 
