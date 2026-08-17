@@ -53,6 +53,8 @@ import com.unshoo.pixelmusic.presentation.navigation.Screen
 import com.unshoo.pixelmusic.presentation.navigation.navigateToTopLevelSafely
 import kotlinx.collections.immutable.ImmutableList
 import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.animateFloatAsState
+
 
 
 internal val NavBarContentHeight = 76.dp
