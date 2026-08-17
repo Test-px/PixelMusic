@@ -144,112 +144,81 @@ fun PlayerInternalNavigationBar(
                 toolbarContainerColor = MaterialTheme.colorScheme.primary
             ),
             content = {
-                mainItems.forEachIndexed { index, item ->
-                    val isSelected = index == selectedIndex
+                // Ensure the items fill the entire pill width evenly
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    mainItems.forEachIndexed { index, item ->
+                        val isSelected = index == selectedIndex
 
-                    val itemWidth by animateDpAsState(
-                        targetValue = 48.dp,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        label = "item_width_$index"
-                    )
+                        val containerColor by animateColorAsState(
+                            targetValue = if (isSelected) MaterialTheme.colorScheme.background else Color.Transparent,
+                            animationSpec = tween(200),
+                            label = "container_color_$index"
+                        )
 
-                    val labelWidth by animateDpAsState(
-                        targetValue = if (isSelected && !shouldHideLabel) 80.dp else 0.dp,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        label = "label_width_$index"
-                    )
+                        val contentColor by animateColorAsState(
+                            targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                            animationSpec = tween(200),
+                            label = "content_color_$index"
+                        )
 
-                    val spacerWidth by animateDpAsState(
-                        targetValue = if (index < mainItems.size - 1) 8.dp else 0.dp,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        label = "spacer_width_$index"
-                    )
-
-                    val containerColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary,
-                        animationSpec = tween(200),
-                        label = "container_color_$index"
-                    )
-
-                    val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
-                        animationSpec = tween(200),
-                        label = "content_color_$index"
-                    )
-
-                    Surface(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (latestNavigationEnabled && latestCurrentRoute != item.screen.route) {
-                                navController.navigateToTopLevelSafely(item.screen.route)
-                            } else if (isSelected && item.screen.route == Screen.Search.route) {
-                                // Keeps your double-tap logic intact for Search!
-                                onSearchIconDoubleTap()
-                            }
-                        },
-                        modifier = Modifier
-                            .width(itemWidth + labelWidth)
-                            .height(48.dp),
-                        shape = CircleShape,
-                        color = containerColor,
-                        contentColor = contentColor
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (latestNavigationEnabled && latestCurrentRoute != item.screen.route) {
+                                    navController.navigateToTopLevelSafely(item.screen.route)
+                                } else if (isSelected && item.screen.route == Screen.Search.route) {
+                                    onSearchIconDoubleTap()
+                                }
+                            },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 8.dp)
+                                // Make each tab take up an equal fraction of the pill
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = CircleShape,
+                            color = containerColor,
+                            contentColor = contentColor
                         ) {
-                            val iconRes = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
-                                item.selectedIconResId
-                            } else {
-                                item.iconResId
-                            }
-
-                            Box(
-                                modifier = Modifier.size(24.dp),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
                             ) {
+                                val iconRes = if (isSelected && item.selectedIconResId != null && item.selectedIconResId != 0) {
+                                    item.selectedIconResId
+                                } else {
+                                    item.iconResId
+                                }
+
                                 Icon(
                                     painter = painterResource(id = iconRes),
                                     contentDescription = item.label,
                                     tint = contentColor,
                                     modifier = Modifier.size(24.dp)
                                 )
-                            }
 
-                            AnimatedVisibility(
-                                visible = isSelected && !shouldHideLabel,
-                                enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(expandFrom = Alignment.Start),
-                                exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally(shrinkTowards = Alignment.Start)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = item.label,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        maxLines = 1,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        softWrap = false
-                                    )
+                                AnimatedVisibility(
+                                    visible = isSelected && !shouldHideLabel,
+                                    enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(expandFrom = Alignment.Start),
+                                    exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally(shrinkTowards = Alignment.Start)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = item.label,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            maxLines = 1,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            softWrap = false
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-
-                    if (index < mainItems.size - 1) {
-                        Spacer(modifier = Modifier.width(spacerWidth))
                     }
                 }
             }
