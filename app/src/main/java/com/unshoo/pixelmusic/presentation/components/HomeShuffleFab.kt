@@ -3,10 +3,10 @@ package com.unshoo.pixelmusic.presentation.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.layout.WindowInsets // <-- ADD
-import androidx.compose.foundation.layout.asPaddingValues // <-- ADD
-import androidx.compose.foundation.layout.navigationBars // <-- ADD
-import androidx.compose.foundation.layout.offset // <-- ADD
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,14 +33,14 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 60.dp else 20.dp) }
+    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 88.dp else 16.dp) }
 
     LaunchedEffect(isPlayerActive) {
         if (isPlayerActive) {
-            currentTargetOffset = 64.dp
+            currentTargetOffset = 88.dp 
         } else {
             delay(4000) 
-            currentTargetOffset = 24.dp
+            currentTargetOffset = 16.dp 
         }
     }
 
@@ -53,8 +53,11 @@ fun HomeShuffleFab(
         label = "fabBottomOffset"
     )
 
-    // Calculate the gesture bar height natively
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    
+    // Calculate the exact horizontal shift applied to the Navigation Bar
+    val dynamicHorizontalPadding = if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
+    val dynamicEndPadding = 16.dp + dynamicHorizontalPadding
 
     FloatingActionButton(
         onClick = onClick,
@@ -62,8 +65,8 @@ fun HomeShuffleFab(
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
         modifier = modifier
-            .offset(y = systemNavBarInset) // <-- Push it down to fix the Scaffold's double-padding!
-            .padding(bottom = animatedBottomOffset, end = 16.dp)
+            .offset(y = systemNavBarInset) 
+            .padding(bottom = animatedBottomOffset, end = dynamicEndPadding) // <-- Perfectly aligns with Settings FAB!
             .size(64.dp)
     ) {
         Icon(
