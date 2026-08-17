@@ -6,7 +6,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,14 +32,15 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 88.dp else 16.dp) }
+    // Restored to your original heights to achieve the intended overlap
+    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 64.dp else 24.dp) }
 
     LaunchedEffect(isPlayerActive) {
         if (isPlayerActive) {
-            currentTargetOffset = 88.dp 
+            currentTargetOffset = 64.dp 
         } else {
             delay(4000) 
-            currentTargetOffset = 16.dp 
+            currentTargetOffset = 24.dp 
         }
     }
 
@@ -55,7 +55,7 @@ fun HomeShuffleFab(
 
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     
-    // Calculate the exact horizontal shift applied to the Navigation Bar
+    // Keeps the FAB perfectly centered above the Settings button
     val dynamicHorizontalPadding = if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
     val dynamicEndPadding = 16.dp + dynamicHorizontalPadding
 
@@ -65,8 +65,8 @@ fun HomeShuffleFab(
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
         modifier = modifier
-            .offset(y = systemNavBarInset) 
-            .padding(bottom = animatedBottomOffset, end = dynamicEndPadding) // <-- Perfectly aligns with Settings FAB!
+            // The offset hack is entirely removed! 
+            .padding(bottom = animatedBottomOffset, end = dynamicEndPadding)
             .size(64.dp)
     ) {
         Icon(
