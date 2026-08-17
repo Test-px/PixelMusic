@@ -3,6 +3,10 @@ package com.unshoo.pixelmusic.presentation.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.WindowInsets // <-- ADD
+import androidx.compose.foundation.layout.asPaddingValues // <-- ADD
+import androidx.compose.foundation.layout.navigationBars // <-- ADD
+import androidx.compose.foundation.layout.offset // <-- ADD
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -29,17 +33,12 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // We use a state to hold our current desired height
     var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 60.dp else 20.dp) }
 
-    // When isPlayerActive changes, we trigger this effect.
     LaunchedEffect(isPlayerActive) {
         if (isPlayerActive) {
-            // If the player opens, jump up immediately!
             currentTargetOffset = 64.dp
         } else {
-            // If the player is swiped away, the Undo bar appears.
-            // Wait 4 seconds for the Undo bar to disappear before dropping!
             delay(4000) 
             currentTargetOffset = 24.dp
         }
@@ -54,12 +53,16 @@ fun HomeShuffleFab(
         label = "fabBottomOffset"
     )
 
+    // Calculate the gesture bar height natively
+    val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     FloatingActionButton(
         onClick = onClick,
         containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
         modifier = modifier
+            .offset(y = systemNavBarInset) // <-- Push it down to fix the Scaffold's double-padding!
             .padding(bottom = animatedBottomOffset, end = 16.dp)
             .size(64.dp)
     ) {
