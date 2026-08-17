@@ -167,6 +167,16 @@ fun PlayerInternalNavigationBar(
                             label = "content_color_$index"
                         )
 
+                        // 1. ADD THIS: Animate the weight so the selected tab expands!
+                        val animatedWeight by animateFloatAsState(
+                            targetValue = if (isSelected) 2.2f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            label = "weight_$index"
+                        )
+
                         Surface(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -177,8 +187,8 @@ fun PlayerInternalNavigationBar(
                                 }
                             },
                             modifier = Modifier
-                                // Make each tab take up an equal fraction of the pill
-                                .weight(1f)
+                                // 2. CHANGE THIS: Use the animated weight instead of 1f
+                                .weight(animatedWeight)
                                 .height(48.dp),
                             shape = CircleShape,
                             color = containerColor,
