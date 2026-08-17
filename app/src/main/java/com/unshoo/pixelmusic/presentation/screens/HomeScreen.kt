@@ -634,9 +634,7 @@ fun HomeScreen(
                     playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
                 }
             },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = paddingValuesParent.calculateBottomPadding()) // <-- ADD THIS LINE
+            modifier = Modifier.align(Alignment.BottomEnd) // <-- Back to the original
         )
     } // <-- End of main screen Box
 
