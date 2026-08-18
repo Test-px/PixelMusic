@@ -462,14 +462,36 @@ private fun AboutHeroCard(
                                     if (!latestChangelog.isNullOrBlank()) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         
-                                        Button(
-                                            onClick = { showChangelogDialog = true },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    Button(
+                                        onClick = {
+                                            // 1. Ensure the notification channel exists
+                                            val appContext = context.applicationContext
+                                            val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                                val channel = android.app.NotificationChannel(
+                                                    "app_updates", 
+                                                    "App Updates", 
+                                                    android.app.NotificationManager.IMPORTANCE_LOW
+                                                )
+                                                notificationManager.createNotificationChannel(channel)
+                                            }
+
+                                            // 2. Fire the singleton download manager
+                                            InAppUpdater.startOrResumeDownload(
+                                                context = appContext,
+                                                url = state.downloadUrl,
+                                                versionName = state.versionName
                                             )
-                                        ) {
+                                            
+                                            // 3. Navigate to the beautiful new screen!
+                                            navController.navigateSafely("update_download")
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Download Version ${state.versionName}")
+                                    } 9{
                                             Icon(Icons.Rounded.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
                                             Text("Changes in the latest version")
