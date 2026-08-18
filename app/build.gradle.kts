@@ -65,7 +65,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.unshoo.pixelmusic"
+        applicationId = "com.saurav.pixelmusic"
         minSdk = 30
         targetSdk = 37
         versionCode = (project.findProperty("APP_VERSION_CODE") as? String)?.toInt() ?: 1
