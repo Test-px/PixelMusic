@@ -158,6 +158,11 @@ object InAppUpdater {
         currentFileName = "PixelMusic_$versionName.apk"
         val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), currentFileName!!)
 
+        // ---> BUG FIX 1: Prevent re-downloading if it's already 100% finished! <---
+        if (downloadState.value is GlobalDownloadState.Finished && file.exists()) {
+            return
+        }
+
         downloadState.value = GlobalDownloadState.Downloading(
             progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f, 
             isPaused = false,
@@ -168,7 +173,12 @@ object InAppUpdater {
             try {
                 val requestBuilder = Request.Builder().url(url)
                 
+                // ---> BUG FIX 2: Extra safety against 416 Server Errors <---
                 if (file.exists() && downloadedBytes > 0) {
+                    if (totalBytes > 0 && downloadedBytes >= totalBytes) {
+                        downloadState.value = GlobalDownloadState.Finished(file, versionName)
+                        return@launch
+                    }
                     requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
                 } else {
                     file.delete()
