@@ -147,15 +147,17 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
         val baseAlpha: Float // Natural opacity of the dot
     )
 
-    // Generate 35 random dots
+    // Generate 35 random dots using safe Math.random()
     val particles = remember {
         List(35) {
             Particle(
                 x = Math.random().toFloat(),
                 y = 1.0f + Math.random().toFloat(), // Spawn below the screen to start
-                radius = (2..7).random().toFloat(),
-                speed = (0.05f..0.15f).random().toFloat(),
-                baseAlpha = (0.2f..0.7f).random().toFloat()
+                
+                // Safe random calculations instead of using .random() ranges
+                radius = 2f + (Math.random().toFloat() * 5f),        // Random size between 2dp and 7dp
+                speed = 0.05f + (Math.random().toFloat() * 0.10f),   // Random speed between 0.05 and 0.15
+                baseAlpha = 0.2f + (Math.random().toFloat() * 0.5f)  // Random opacity between 0.2 and 0.7
             )
         }
     }
