@@ -849,17 +849,16 @@ fun LibraryScreen(
             }.distinctUntilChanged()
         }.collectAsStateWithLifecycle(initialValue = true)
 
-
         Box(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
+            modifier = Modifier
+                .padding(top = innerScaffoldPadding.calculateTopPadding())
+                .fillMaxSize()
+        ) {
             Column(
                 modifier = Modifier
                     .background(color = headerContainerColor)
                     .fillMaxSize()
             ) {
-                
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1553,27 +1552,28 @@ fun LibraryScreen(
                 ) {
                     LibrarySyncOverlay(syncManager = syncManager)
                 }
-            } // <--- Closes the main content Column
-
-            // ---> BOTTOM GRADIENT BOX (Safely placed INSIDE the parent Box) <---
-            androidx.compose.foundation.layout.Box(
+            }
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp)
+                    .height(bottomGradientHeight)
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        brush = Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.0f to androidx.compose.ui.graphics.Color.Transparent,
-                                0.2f to androidx.compose.ui.graphics.Color.Transparent,
-                                0.8f to androidx.compose.material3.MaterialTheme.colorScheme.background,
-                                1.0f to androidx.compose.material3.MaterialTheme.colorScheme.background
+                                0.0f to Color.Transparent,
+                                0.2f to Color.Transparent,
+                                0.8f to MaterialTheme.colorScheme.surfaceContainerLowest,
+                                1.0f to MaterialTheme.colorScheme.surfaceContainerLowest
                             )
                         )
                     )
-            )
-        } // <--- Closes the Parent Box
-    } // <--- Closes the Scaffold
+            ) {
+
+            }
+        }
+    }
+
     PlaylistCreationTypeDialog(
         visible = showPlaylistCreationTypeDialog,
         onDismiss = { showPlaylistCreationTypeDialog = false },
@@ -2124,7 +2124,7 @@ fun LibraryScreen(
             }
         )
     }
-} // <--- THIS PERFECTLY RESTORES AND CLOSES THE FUNCTION SCOPE!
+}
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
