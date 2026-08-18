@@ -1,1 +1,4 @@
-Fixed navigation bar 
+- The navigation bar has been fixed.
+- A bottom shade has been added to all pages.
+- Fixed an update related bug.
+- The update page UI has been updated.
