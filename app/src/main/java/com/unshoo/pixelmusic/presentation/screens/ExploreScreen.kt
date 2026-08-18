@@ -219,16 +219,16 @@ fun ExploreScreen(
                         }
                     }
                     val bottomPadding = if (currentSongId != null) MiniPlayerHeight else 0.dp
+                    
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = innerPadding.calculateTopPadding(),
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp
-                    ),
+                        contentPadding = PaddingValues(
+                            top = innerPadding.calculateTopPadding(),
+                            bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        
                         item(key = "explore_filters") {
                             Row(
                                 modifier = Modifier
@@ -326,25 +326,6 @@ fun ExploreScreen(
                                 }
                             }
                         }
-                    }
-                    
-                    // ---> BOTTOM GRADIENT BOX <---
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to androidx.compose.ui.graphics.Color.Transparent,
-                                        0.2f to androidx.compose.ui.graphics.Color.Transparent,
-                                        0.8f to androidx.compose.material3.MaterialTheme.colorScheme.background,
-                                        1.0f to androidx.compose.material3.MaterialTheme.colorScheme.background
-                                    )
-                                )
-                            )
-                    )
 
                         // 2) New Releases
                         if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "New Releases") &&
@@ -414,7 +395,7 @@ fun ExploreScreen(
                             }
                         }
 
-                         // 4) Homepage "For You" sections (includes personal playlists like "Your Playlists" or "Community Playlists" as index 0)
+                         // 4) Homepage "For You" sections
                         if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
 
                             homeSectionsFiltered.forEachIndexed { index, section ->
@@ -473,7 +454,26 @@ fun ExploreScreen(
                                 }
                             }
                         }
-                    }
+                    } // <-- LAZYCOLUMN SAFELY CLOSES HERE
+                    
+                    // ---> BOTTOM GRADIENT BOX PLACED SAFELY OUTSIDE THE LAZYCOLUMN <---
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(paddingValuesParent.calculateBottomPadding() + 160.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to androidx.compose.ui.graphics.Color.Transparent,
+                                        0.2f to androidx.compose.ui.graphics.Color.Transparent,
+                                        0.8f to androidx.compose.material3.MaterialTheme.colorScheme.background,
+                                        1.0f to androidx.compose.material3.MaterialTheme.colorScheme.background
+                                    )
+                                )
+                            )
+                    )
+
                 }
             }
         }
@@ -747,7 +747,6 @@ fun ExploreTopBar(
     }
 }
 
-
 @Composable
 fun SectionHeader(
     title: String,
@@ -903,7 +902,7 @@ fun PlaylistCardItem(
             contentDescription = playlist.title,
             modifier = Modifier
                 .size(140.dp)
-                .clip(shape),
+            .clip(shape),
             contentScale = ContentScale.Crop
         )
         Spacer(modifier = Modifier.height(8.dp))

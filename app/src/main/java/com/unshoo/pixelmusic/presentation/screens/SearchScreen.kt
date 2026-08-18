@@ -496,6 +496,7 @@ fun SearchScreen(
                     )
                 )
         )
+    }
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
