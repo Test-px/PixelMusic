@@ -1585,7 +1585,6 @@ fun LibraryScreen(
             }
         } // <--- Closes the Parent Box
     } // <--- Closes the Scaffold
-
     PlaylistCreationTypeDialog(
         visible = showPlaylistCreationTypeDialog,
         onDismiss = { showPlaylistCreationTypeDialog = false },
@@ -2136,7 +2135,7 @@ fun LibraryScreen(
             }
         )
     }
-}
+} // <--- THIS PERFECTLY RESTORES AND CLOSES THE FUNCTION SCOPE!
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
