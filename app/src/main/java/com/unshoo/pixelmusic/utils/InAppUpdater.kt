@@ -1,18 +1,17 @@
 package com.unshoo.pixelmusic.utils
 
-import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,10 +36,6 @@ sealed class UpdateState {
         val downloadUrl: String,
         val changelog: String? = null
     ) : UpdateState()
-    data class Downloading(
-        val progress: Float,
-        val changelog: String? = null
-    ) : UpdateState()
 }
 
 object InAppUpdater {
@@ -57,7 +52,6 @@ object InAppUpdater {
                 val body = response.body?.string()
                 val release = gson.fromJson(body, GithubRelease::class.java)
                 
-                // Compare tags (e.g., "v2.1" vs "2.0.0")
                 val cleanLatest = release.tagName.replace(Regex("[^0-9.]"), "")
                 val cleanCurrent = currentVersion.replace(Regex("[^0-9.]"), "")
                 
@@ -81,8 +75,29 @@ object InAppUpdater {
             return@withContext UpdateState.UpToDate(changelog = null)
         }
     }
-    
-    // --- NEW LIFECYCLE-INDEPENDENT DOWNLOAD MANAGER ---
+
+    private fun selectBestApkForDevice(assets: List<GithubAsset>): GithubAsset? {
+        if (assets.isEmpty()) return null
+        if (assets.size == 1) return assets.first() 
+
+        val deviceAbis = android.os.Build.SUPPORTED_ABIS.map { it.lowercase() }
+
+        for (abi in deviceAbis) {
+            val abiMatch = when {
+                abi.contains("arm64") -> assets.firstOrNull { it.name.contains("arm64", ignoreCase = true) || it.name.contains("v8a", ignoreCase = true) }
+                abi.contains("v7") -> assets.firstOrNull { it.name.contains("armv7", ignoreCase = true) || it.name.contains("v7a", ignoreCase = true) }
+                abi.contains("x86_64") -> assets.firstOrNull { it.name.contains("x86_64", ignoreCase = true) }
+                abi.contains("x86") -> assets.firstOrNull { it.name.contains("x86", ignoreCase = true) }
+                else -> null
+            }
+            if (abiMatch != null) return abiMatch
+        }
+
+        val universalMatch = assets.firstOrNull { it.name.contains("universal", ignoreCase = true) }
+        if (universalMatch != null) return universalMatch
+
+        return assets.first()
+    }
 
     sealed class GlobalDownloadState {
         object Idle : GlobalDownloadState()
@@ -91,10 +106,10 @@ object InAppUpdater {
         data class Error(val message: String) : GlobalDownloadState()
     }
 
-    private val updaterScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private val updaterScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var downloadJob: kotlinx.coroutines.Job? = null
     
-    val downloadState = kotlinx.coroutines.flow.MutableStateFlow<GlobalDownloadState>(GlobalDownloadState.Idle)
+    val downloadState = MutableStateFlow<GlobalDownloadState>(GlobalDownloadState.Idle)
     
     private var currentDownloadUrl: String? = null
     private var currentFileName: String? = null
@@ -120,7 +135,6 @@ object InAppUpdater {
             try {
                 val requestBuilder = Request.Builder().url(url)
                 
-                // If we have partially downloaded data, use the Range header to resume!
                 if (file.exists() && downloadedBytes > 0) {
                     requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
                 } else {
@@ -136,12 +150,10 @@ object InAppUpdater {
 
                 val body = response.body ?: return@launch
                 if (totalBytes == 0L) {
-                    // Only set total bytes on the first fresh download, otherwise it just returns the remaining size
                     totalBytes = body.contentLength() + downloadedBytes 
                 }
 
                 val inputStream = body.byteStream()
-                // Open in append mode if we are resuming
                 val outputStream = java.io.FileOutputStream(file, downloadedBytes > 0)
                 val buffer = ByteArray(8 * 1024)
                 var bytes = inputStream.read(buffer)
@@ -151,7 +163,6 @@ object InAppUpdater {
                 val notifId = 999
 
                 while (bytes >= 0) {
-                    // Check if the user hit pause or cancel
                     if (!isActive) break 
 
                     outputStream.write(buffer, 0, bytes)
@@ -162,7 +173,6 @@ object InAppUpdater {
                         val progress = downloadedBytes.toFloat() / totalBytes.toFloat()
                         downloadState.value = GlobalDownloadState.Downloading(progress, false, versionName)
                         
-                        // Update Notification
                         val notif = androidx.core.app.NotificationCompat.Builder(context, "app_updates")
                             .setSmallIcon(android.R.drawable.stat_sys_download)
                             .setContentTitle("Downloading Update $versionName")
@@ -183,7 +193,6 @@ object InAppUpdater {
                 if (downloadedBytes == totalBytes && totalBytes > 0) {
                     downloadState.value = GlobalDownloadState.Finished(file, versionName)
                     
-                    // Finished Notification
                     val finishedNotif = androidx.core.app.NotificationCompat.Builder(context, "app_updates")
                         .setSmallIcon(android.R.drawable.stat_sys_download_done)
                         .setContentTitle("Download Complete")
