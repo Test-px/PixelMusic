@@ -1563,27 +1563,28 @@ fun LibraryScreen(
                 ) {
                     LibrarySyncOverlay(syncManager = syncManager)
                 }
-            }
-            Box(
+            } // <--- Closes the main content Column
+
+            // ---> BOTTOM GRADIENT BOX (Safely placed INSIDE the parent Box) <---
+            androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .height(bottomGradientHeight)
+                    .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp)
                     .background(
-                        brush = Brush.verticalGradient(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.0f to Color.Transparent,
-                                0.2f to Color.Transparent,
-                                0.8f to MaterialTheme.colorScheme.surfaceContainerLowest,
-                                1.0f to MaterialTheme.colorScheme.surfaceContainerLowest
+                                0.0f to androidx.compose.ui.graphics.Color.Transparent,
+                                0.2f to androidx.compose.ui.graphics.Color.Transparent,
+                                0.8f to androidx.compose.material3.MaterialTheme.colorScheme.background,
+                                1.0f to androidx.compose.material3.MaterialTheme.colorScheme.background
                             )
                         )
                     )
-            ) {
+            )
 
-            }
-        }
-    }
+        } // <--- Closes the Parent Box
+    } // <--- Closes the Scaffold
 
     PlaylistCreationTypeDialog(
         visible = showPlaylistCreationTypeDialog,
