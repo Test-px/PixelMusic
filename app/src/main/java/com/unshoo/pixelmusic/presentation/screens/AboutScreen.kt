@@ -254,6 +254,7 @@ fun AboutScreen(
         ) {
             item(key = "hero_card") {
                 AboutHeroCard(
+                    navController = navController, // <-- ADD THIS LINE!
                     versionName = versionName,
                     versionCode = versionCode,
                     onVersionLongPress = {
@@ -293,6 +294,7 @@ fun AboutScreen(
 
 @Composable
 private fun AboutHeroCard(
+    navController: NavController, // <-- It receives the controller here
     versionName: String,
     versionCode: Long,
     onVersionLongPress: () -> Unit,
@@ -310,15 +312,12 @@ private fun AboutHeroCard(
         updateState = InAppUpdater.checkForUpdate(versionName)
     }
 
-    // Extract changelog dynamically from whatever state InAppUpdater is in
     val latestChangelog = when (val state = updateState) {
         is UpdateState.UpToDate -> state.changelog
         is UpdateState.Available -> state.changelog
-        is UpdateState.Downloading -> state.changelog
         else -> null
     }
 
-    // The Dialog Box displaying the release body from your Worker proxy
     if (showChangelogDialog) {
         AlertDialog(
             onDismissRequest = { showChangelogDialog = false },
@@ -462,36 +461,14 @@ private fun AboutHeroCard(
                                     if (!latestChangelog.isNullOrBlank()) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         
-                                    Button(
-                                        onClick = {
-                                            // 1. Ensure the notification channel exists
-                                            val appContext = context.applicationContext
-                                            val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                                val channel = android.app.NotificationChannel(
-                                                    "app_updates", 
-                                                    "App Updates", 
-                                                    android.app.NotificationManager.IMPORTANCE_LOW
-                                                )
-                                                notificationManager.createNotificationChannel(channel)
-                                            }
-
-                                            // 2. Fire the singleton download manager
-                                            InAppUpdater.startOrResumeDownload(
-                                                context = appContext,
-                                                url = state.downloadUrl,
-                                                versionName = state.versionName
+                                        Button(
+                                            onClick = { showChangelogDialog = true },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                             )
-                                            
-                                            // 3. Navigate to the beautiful new screen!
-                                            navController.navigateSafely("update_download")
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Download Version ${state.versionName}")
-                                    } 9{
+                                        ) {
                                             Icon(Icons.Rounded.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(Modifier.width(8.dp))
                                             Text("Changes in the latest version")
@@ -539,118 +516,31 @@ private fun AboutHeroCard(
                                         onClick = {
                                             val appContext = context.applicationContext
                                             val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                                            val channelId = "app_updates"
                                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                                                 val channel = android.app.NotificationChannel(
-                                                    channelId, 
+                                                    "app_updates", 
                                                     "App Updates", 
                                                     android.app.NotificationManager.IMPORTANCE_LOW
-                                                ).apply { description = "App update downloads" }
+                                                )
                                                 notificationManager.createNotificationChannel(channel)
                                             }
-                                            val notifId = 999
-                                            val fileName = "PixelMusic_${state.versionName}.apk"
 
-                                            // 1. Set the initial UI state
-                                            updateState = UpdateState.Downloading(0f, state.changelog)
+                                            // Fire off the background singleton
+                                            InAppUpdater.startOrResumeDownload(
+                                                context = appContext,
+                                                url = state.downloadUrl,
+                                                versionName = state.versionName
+                                            )
                                             
-                                            // 2. Launch in a detached background scope so it survives navigation
-                                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                                                InAppUpdater.downloadAndTrackProgress(
-                                                    appContext, 
-                                                    state.downloadUrl, 
-                                                    fileName
-                                                ).collectLatest { progress ->
-                                                    
-                                                    val progressInt = (progress * 100).toInt()
-                                                    
-                                                    // 3. Handle Notification States
-                                                    if (progress < 1.0f) {
-                                                        // Show ongoing progress notification (no intent = no action on tap)
-                                                        val downloadingNotif = androidx.core.app.NotificationCompat.Builder(appContext, channelId)
-                                                            .setSmallIcon(R.drawable.monochrome_player) // Using your existing icon
-                                                            .setContentTitle("Downloading Update")
-                                                            .setContentText("PixelMusic ${state.versionName}")
-                                                            .setProgress(100, progressInt, false)
-                                                            .setOngoing(true)
-                                                            .build()
-                                                        notificationManager.notify(notifId, downloadingNotif)
-                                                    } else {
-                                                        // Download complete - Create intent to open MainActivity and install
-                                                        val installIntent = Intent(appContext, Class.forName("com.unshoo.pixelmusic.MainActivity")).apply {
-                                                            action = "INSTALL_UPDATE"
-                                                            putExtra("apk_file_name", fileName)
-                                                            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                                        }
-                                                        val pendingIntent = android.app.PendingIntent.getActivity(
-                                                            appContext, 
-                                                            notifId, 
-                                                            installIntent, 
-                                                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-                                                        )
-
-                                                        val successNotif = androidx.core.app.NotificationCompat.Builder(appContext, channelId)
-                                                            .setSmallIcon(R.drawable.monochrome_player)
-                                                            .setContentTitle("Update Ready")
-                                                            .setContentText("Tap to install PixelMusic ${state.versionName}")
-                                                            .setProgress(0, 0, false)
-                                                            .setOngoing(false)
-                                                            .setAutoCancel(true)
-                                                            .setContentIntent(pendingIntent)
-                                                            .build()
-                                                        notificationManager.notify(notifId, successNotif)
-                                                    }
-
-                                                    // 4. Safely update the UI state on the Main thread
-                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                        updateState = UpdateState.Downloading(progress, state.changelog)
-                                                    }
-                                                }
-                                            }
+                                            // Launch the new beautiful UI screen!
+                                            navController.navigateSafely("update_download")
                                         },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Install Version ${state.versionName}")
+                                        Text("Download Version ${state.versionName}")
                                     }
-                                }
-                            }
-                            is UpdateState.Downloading -> {
-                                val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-                                    targetValue = state.progress,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    ),
-                                    label = "progress_anim"
-                                )
-                                
-                                val progressColor = MaterialTheme.colorScheme.primary
-                                val trackColor = MaterialTheme.colorScheme.secondaryContainer
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(40.dp)
-                                        .clip(AbsoluteSmoothCornerShape(20.dp, 60))
-                                        .background(trackColor),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .fillMaxWidth(fraction = animatedProgress.coerceIn(0.001f, 1f))
-                                            .background(progressColor)
-                                            .align(Alignment.CenterStart)
-                                    )
-
-                                    Text(
-                                        text = "Downloading... ${(state.progress * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer 
-                                    )
                                 }
                             }
                         }
@@ -665,7 +555,6 @@ private fun AboutHeroCard(
         }
     }
 }
-
 @Composable
 private fun SocialLinksRow() {
     // 1. Swap LocalUriHandler for LocalContext
