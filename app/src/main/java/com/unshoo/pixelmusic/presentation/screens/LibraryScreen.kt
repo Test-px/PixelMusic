@@ -849,11 +849,22 @@ fun LibraryScreen(
             }.distinctUntilChanged()
         }.collectAsStateWithLifecycle(initialValue = true)
 
-        Box(
-            modifier = Modifier
-                .padding(top = innerScaffoldPadding.calculateTopPadding())
-                .fillMaxSize()
-        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Transparent,
+                                0.2f to Color.Transparent,
+                                0.8f to MaterialTheme.colorScheme.background,
+                                1.0f to MaterialTheme.colorScheme.background
+                            )
+                        )
+                    )
+            ) {
             Column(
                 modifier = Modifier
                     .background(color = headerContainerColor)

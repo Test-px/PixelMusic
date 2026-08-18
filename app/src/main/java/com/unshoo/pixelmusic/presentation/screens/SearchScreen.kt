@@ -484,10 +484,18 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(bottomGradientHeight)
-                .background(brush = bottomGradientBrush)
+                .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent,
+                            0.2f to Color.Transparent,
+                            0.8f to MaterialTheme.colorScheme.background,
+                            1.0f to MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
         )
-    }
 
     if (showSongInfoBottomSheet && selectedSongForInfo != null) {
         val currentSong = selectedSongForInfo
@@ -630,7 +638,8 @@ fun SearchHistoryList(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(2.dp),
             contentPadding = PaddingValues(
-                top = 2.dp,
+                top = 8.dp,
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 160.dp
             )
         ) {
             items(historyItems, key = { "history_${it.id ?: it.query}" }, contentType = { "search_history" }) { item ->
@@ -1279,7 +1288,8 @@ fun SearchResultPlaylistItem(
         }
     }
 }
-@androidx.annotation.OptIn(UnstableApi::class)
+
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun SearchFilterChip(
     filterType: SearchFilterType,
