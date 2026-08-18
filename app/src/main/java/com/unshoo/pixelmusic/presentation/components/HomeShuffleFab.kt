@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import com.unshoo.pixelmusic.R
@@ -32,15 +33,39 @@ fun HomeShuffleFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Restored to your original heights to achieve the intended overlap
-    var currentTargetOffset by remember { mutableStateOf(if (isPlayerActive) 64.dp else 24.dp) }
+    val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val isGestureBarVisible = systemNavBarInset > 10.dp 
+    
+    // =========================================================================================
+    // BUTTON HEIGHT CONFIGURATION
+    // =========================================================================================
+    
+    // Increase or decrease these values to manage the height of the button when the Mini-Player is OPEN
+    val activeHeight = if (isGestureBarVisible) {
+        64.dp // <-- Player OPEN & Gesture Bar SHOWN
+    } else {
+        40.dp // <-- Player OPEN & Gesture Bar HIDDEN
+    }
 
-    LaunchedEffect(isPlayerActive) {
+    // Increase or decrease these values to manage the height of the button when the Mini-Player is CLOSED
+    val inactiveHeight = if (isGestureBarVisible) {
+        24.dp // <-- Player CLOSED & Gesture Bar SHOWN
+    } else {
+        0.dp  // <-- Player CLOSED & Gesture Bar HIDDEN
+    }
+    
+    // =========================================================================================
+
+    var currentTargetOffset by remember(isGestureBarVisible) { 
+        mutableStateOf(if (isPlayerActive) activeHeight else inactiveHeight) 
+    }
+
+    LaunchedEffect(isPlayerActive, isGestureBarVisible) {
         if (isPlayerActive) {
-            currentTargetOffset = 64.dp 
+            currentTargetOffset = activeHeight
         } else {
             delay(4000) 
-            currentTargetOffset = 24.dp 
+            currentTargetOffset = inactiveHeight
         }
     }
 
@@ -52,10 +77,7 @@ fun HomeShuffleFab(
         ),
         label = "fabBottomOffset"
     )
-
-    val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     
-    // Keeps the FAB perfectly centered above the Settings button
     val dynamicHorizontalPadding = if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
     val dynamicEndPadding = 16.dp + dynamicHorizontalPadding
 
@@ -65,8 +87,7 @@ fun HomeShuffleFab(
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
         modifier = modifier
-            // The offset hack is entirely removed! 
-            .padding(bottom = animatedBottomOffset, end = dynamicEndPadding)
+            .padding(bottom = animatedBottomOffset.coerceAtLeast(0.dp), end = dynamicEndPadding)
             .size(64.dp)
     ) {
         Icon(
