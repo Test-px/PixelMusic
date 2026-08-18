@@ -117,8 +117,41 @@ object InAppUpdater {
     private var downloadedBytes = 0L
     private var totalBytes = 0L
 
+    // Notification Actions logic
+    private var isReceiverRegistered = false
+    private var appContext: Context? = null
+    private val actionReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                "PIXELMUSIC_PAUSE" -> pauseDownload()
+                "PIXELMUSIC_RESUME" -> resumeDownload(context)
+                "PIXELMUSIC_CANCEL" -> cancelDownload(context)
+            }
+        }
+    }
+
+    private fun registerReceiverIfNeeded(context: Context) {
+        if (!isReceiverRegistered) {
+            val filter = android.content.IntentFilter().apply {
+                addAction("PIXELMUSIC_PAUSE")
+                addAction("PIXELMUSIC_RESUME")
+                addAction("PIXELMUSIC_CANCEL")
+            }
+            androidx.core.content.ContextCompat.registerReceiver(
+                context.applicationContext, 
+                actionReceiver, 
+                filter, 
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            isReceiverRegistered = true
+        }
+    }
+
     fun startOrResumeDownload(context: Context, url: String, versionName: String) {
         if (downloadJob?.isActive == true) return
+        
+        appContext = context.applicationContext
+        registerReceiverIfNeeded(appContext!!)
 
         currentDownloadUrl = url
         currentVersionName = versionName
@@ -144,7 +177,7 @@ object InAppUpdater {
 
                 val response = client.newCall(requestBuilder.build()).execute()
                 if (!response.isSuccessful) {
-                    downloadState.value = GlobalDownloadState.Error("Server rejected request")
+                    downloadState.value = GlobalDownloadState.Error("Server rejected request. Try restarting the download.")
                     return@launch
                 }
 
@@ -159,8 +192,11 @@ object InAppUpdater {
                 var bytes = inputStream.read(buffer)
                 var lastEmitTime = System.currentTimeMillis()
 
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                val notificationManager = appContext!!.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
                 val notifId = 999
+
+                val pauseIntent = android.app.PendingIntent.getBroadcast(appContext, 1, Intent("PIXELMUSIC_PAUSE").setPackage(appContext!!.packageName), android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                val cancelIntent = android.app.PendingIntent.getBroadcast(appContext, 3, Intent("PIXELMUSIC_CANCEL").setPackage(appContext!!.packageName), android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
 
                 while (bytes >= 0) {
                     if (!isActive) break 
@@ -173,10 +209,12 @@ object InAppUpdater {
                         val progress = downloadedBytes.toFloat() / totalBytes.toFloat()
                         downloadState.value = GlobalDownloadState.Downloading(progress, false, versionName)
                         
-                        val notif = androidx.core.app.NotificationCompat.Builder(context, "app_updates")
+                        val notif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
                             .setSmallIcon(android.R.drawable.stat_sys_download)
                             .setContentTitle("Downloading Update $versionName")
                             .setProgress(100, (progress * 100).toInt(), false)
+                            .addAction(android.R.drawable.ic_media_pause, "Pause", pauseIntent)
+                            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelIntent)
                             .setOngoing(true)
                             .build()
                         notificationManager.notify(notifId, notif)
@@ -193,10 +231,18 @@ object InAppUpdater {
                 if (downloadedBytes == totalBytes && totalBytes > 0) {
                     downloadState.value = GlobalDownloadState.Finished(file, versionName)
                     
-                    val finishedNotif = androidx.core.app.NotificationCompat.Builder(context, "app_updates")
+                    val installIntent = Intent(appContext, Class.forName("com.unshoo.pixelmusic.MainActivity")).apply {
+                        action = "INSTALL_UPDATE"
+                        putExtra("apk_file_name", currentFileName)
+                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val pendingInstall = android.app.PendingIntent.getActivity(appContext, 0, installIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                    
+                    val finishedNotif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
                         .setSmallIcon(android.R.drawable.stat_sys_download_done)
                         .setContentTitle("Download Complete")
-                        .setContentText("Ready to install PixelMusic $versionName")
+                        .setContentText("Tap to install PixelMusic $versionName")
+                        .setContentIntent(pendingInstall)
                         .setOngoing(false)
                         .setAutoCancel(true)
                         .build()
@@ -211,11 +257,35 @@ object InAppUpdater {
         }
     }
 
+    // NEW: Proper Resume function
+    fun resumeDownload(context: Context) {
+        if (currentDownloadUrl != null && currentVersionName != null) {
+            startOrResumeDownload(context, currentDownloadUrl!!, currentVersionName!!)
+        }
+    }
+
     fun pauseDownload() {
         downloadJob?.cancel()
         currentVersionName?.let {
             val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f
             downloadState.value = GlobalDownloadState.Downloading(progress, isPaused = true, versionName = it)
+            
+            // Update notification to show Resume state
+            if (appContext != null) {
+                val notificationManager = appContext!!.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                val resumeIntent = android.app.PendingIntent.getBroadcast(appContext, 2, Intent("PIXELMUSIC_RESUME").setPackage(appContext!!.packageName), android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                val cancelIntent = android.app.PendingIntent.getBroadcast(appContext, 3, Intent("PIXELMUSIC_CANCEL").setPackage(appContext!!.packageName), android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                
+                val pausedNotif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
+                    .setContentTitle("Update Paused ($it)")
+                    .setProgress(100, (progress * 100).toInt(), false)
+                    .addAction(android.R.drawable.ic_media_play, "Resume", resumeIntent)
+                    .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelIntent)
+                    .setOngoing(true)
+                    .build()
+                notificationManager.notify(999, pausedNotif)
+            }
         }
     }
 
