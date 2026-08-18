@@ -747,7 +747,8 @@ class MainActivity : ComponentActivity() {
                 Screen.RecentlyPlayed.route,
                 Screen.DeviceCapabilities.route,
                 Screen.EasterEgg.route,
-                Screen.WordDelimiterConfig.route
+                Screen.WordDelimiterConfig.route,
+                "update_download"
             )
         }
         val shouldHideNavigationBar by remember(currentRoute, isSearchBarActive) {
