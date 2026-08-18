@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +29,19 @@ fun UpdateDownloadScreen(
 ) {
     val context = LocalContext.current
     val downloadState by InAppUpdater.downloadState.collectAsStateWithLifecycle()
+
+    // MAGIC FIX: We map the state to a string so AnimatedContent ONLY fires
+    // when the phase actually changes (Idle -> Downloading -> Finished), NOT on every 1% tick.
+    val uiPhase by remember(downloadState) {
+        derivedStateOf {
+            when (downloadState) {
+                is InAppUpdater.GlobalDownloadState.Idle -> "IDLE"
+                is InAppUpdater.GlobalDownloadState.Downloading -> "DOWNLOADING"
+                is InAppUpdater.GlobalDownloadState.Finished -> "FINISHED"
+                is InAppUpdater.GlobalDownloadState.Error -> "ERROR"
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -51,23 +65,22 @@ fun UpdateDownloadScreen(
             contentAlignment = Alignment.Center
         ) {
             AnimatedContent(
-                targetState = downloadState,
+                targetState = uiPhase,
                 transitionSpec = {
                     fadeIn(tween(400)) + scaleIn(initialScale = 0.9f) togetherWith fadeOut(tween(400)) + scaleOut(targetScale = 0.9f)
                 },
                 label = "Download UI State"
-            ) { state ->
-                when (state) {
-                    is InAppUpdater.GlobalDownloadState.Downloading -> {
+            ) { phase ->
+                when (phase) {
+                    "DOWNLOADING" -> {
+                        val state = downloadState as? InAppUpdater.GlobalDownloadState.Downloading
                         DownloadingView(
-                            progress = state.progress,
-                            isPaused = state.isPaused,
-                            versionName = state.versionName,
+                            progress = state?.progress ?: 0f,
+                            isPaused = state?.isPaused ?: false,
+                            versionName = state?.versionName ?: "",
                             onPauseResume = {
-                                if (state.isPaused) {
-                                    // Fetch the URL from wherever you stored it, or pass it via navigation if preferred
-                                    // InAppUpdater already knows the URL from the initial call!
-                                    InAppUpdater.startOrResumeDownload(context, "", state.versionName) 
+                                if (state?.isPaused == true) {
+                                    InAppUpdater.resumeDownload(context) 
                                 } else {
                                     InAppUpdater.pauseDownload()
                                 }
@@ -78,26 +91,29 @@ fun UpdateDownloadScreen(
                             }
                         )
                     }
-                    is InAppUpdater.GlobalDownloadState.Finished -> {
+                    "FINISHED" -> {
+                        val state = downloadState as? InAppUpdater.GlobalDownloadState.Finished
                         FinishedView(
-                            versionName = state.versionName,
-                            onInstall = { InAppUpdater.installApk(context, state.apkFile) },
+                            versionName = state?.versionName ?: "",
+                            onInstall = { InAppUpdater.installApk(context, state!!.apkFile) },
                             onDelete = {
                                 InAppUpdater.deleteApk(context)
                                 navController.popBackStack()
                             }
                         )
                     }
-                    is InAppUpdater.GlobalDownloadState.Error -> {
+                    "ERROR" -> {
+                        val state = downloadState as? InAppUpdater.GlobalDownloadState.Error
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Rounded.ErrorOutline, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.height(16.dp))
                             Text("Download Failed", style = MaterialTheme.typography.headlineMedium)
-                            Text(state.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(state?.message ?: "Unknown error", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(24.dp))
+                            Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
                         }
                     }
                     else -> {
-                        // Failsafe: if the user opens this screen manually without an active download
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("No active download", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(16.dp))
@@ -128,7 +144,6 @@ private fun DownloadingView(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Massive expressive percentage
         Text(
             text = "${(animatedProgress * 100).toInt()}%",
             style = MaterialTheme.typography.displayLarge.copy(
@@ -148,7 +163,6 @@ private fun DownloadingView(
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Rich custom progress bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -164,10 +178,26 @@ private fun DownloadingView(
                     .background(if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary)
             )
         }
+        
+        // NEW WARNING TEXT
+        Spacer(modifier = Modifier.height(24.dp))
+        Surface(
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+            shape = AbsoluteSmoothCornerShape(12.dp, 60)
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Please do not close the app during the update.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Action Buttons
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             FilledTonalButton(
                 onClick = onCancel,
@@ -260,4 +290,3 @@ private fun FinishedView(
         }
     }
 }
-
