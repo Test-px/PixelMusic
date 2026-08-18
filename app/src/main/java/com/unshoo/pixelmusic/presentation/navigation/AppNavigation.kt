@@ -626,6 +626,11 @@ fun AppNavigation(
                     )
                 }
             }
+            composable("update_download") {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    com.unshoo.pixelmusic.presentation.screens.UpdateDownloadScreen(navController = navController)
+                }
+            }
         }
     }
 }
