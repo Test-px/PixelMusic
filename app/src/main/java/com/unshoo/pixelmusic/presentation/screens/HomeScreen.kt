@@ -612,11 +612,11 @@ fun HomeScreen(
                 .height(bottomGradientHeight)
                 .background(
                     brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
+                        colorSteps = arrayOf(
                             0.0f to Color.Transparent,
                             0.2f to Color.Transparent,
-                            0.8f to MaterialTheme.colorScheme.surfaceContainerLowest,
-                            1.0f to MaterialTheme.colorScheme.surfaceContainerLowest
+                            0.8f to MaterialTheme.colorScheme.surfaceContainer,
+                            1.0f to MaterialTheme.colorScheme.surfaceContainer
                         )
                     )
                 )
