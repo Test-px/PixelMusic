@@ -615,8 +615,8 @@ fun HomeScreen(
                         colorStops = arrayOf(
                             0.0f to Color.Transparent,
                             0.2f to Color.Transparent,
-                            0.8f to MaterialTheme.colorScheme.surfaceContainer,
-                            1.0f to MaterialTheme.colorScheme.surfaceContainer
+                            0.8f to MaterialTheme.colorScheme.secondaryContainer,
+                            1.0f to MaterialTheme.colorScheme.secondaryContainer
                         )
                     )
                 )
