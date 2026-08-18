@@ -1582,7 +1582,6 @@ fun LibraryScreen(
                         )
                     )
             )
-            }
         } // <--- Closes the Parent Box
     } // <--- Closes the Scaffold
     PlaylistCreationTypeDialog(
