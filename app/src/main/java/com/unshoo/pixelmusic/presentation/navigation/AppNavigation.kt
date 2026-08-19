@@ -626,11 +626,14 @@ fun AppNavigation(
                     )
                 }
             }
-            composable("update_download") {
-                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
-                    com.unshoo.pixelmusic.presentation.screens.UpdateDownloadScreen(navController = navController)
-                }
+        composable(
+            route = "update_download",
+            deepLinks = listOf(androidx.navigation.navDeepLink { uriPattern = "pixelmusic://update_download" })
+        ) {
+            ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                com.unshoo.pixelmusic.presentation.screens.UpdateDownloadScreen(navController = navController)
             }
+        }
         }
     }
 }
