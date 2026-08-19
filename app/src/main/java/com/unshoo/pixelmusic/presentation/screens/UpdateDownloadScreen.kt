@@ -136,7 +136,7 @@ fun UpdateDownloadScreen(
     }
 }
 
-// ---> THE CUSTOM PARTICLE ENGINE <---
+// ---> THE CUSTOM SILKY SMOOTH PARTICLE ENGINE <---
 @Composable
 private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     class Particle(
@@ -153,8 +153,6 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
             Particle(
                 x = Math.random().toFloat(),
                 y = 1.0f + Math.random().toFloat(), // Spawn below the screen to start
-                
-                // Safe random calculations instead of using .random() ranges
                 radius = 2f + (Math.random().toFloat() * 5f),        // Random size between 2dp and 7dp
                 speed = 0.05f + (Math.random().toFloat() * 0.10f),   // Random speed between 0.05 and 0.15
                 baseAlpha = 0.2f + (Math.random().toFloat() * 0.5f)  // Random opacity between 0.2 and 0.7
@@ -163,31 +161,39 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     }
 
     var frameTime by remember { mutableLongStateOf(0L) }
+    
+    // ---> BUG FIX: Silently capture the latest progress without restarting the physics loop! <---
+    val currentProgress by rememberUpdatedState(progress)
 
-    LaunchedEffect(isPaused, progress) {
+    // Only depend on 'isPaused', NOT 'progress'!
+    LaunchedEffect(isPaused) {
         // Only run physics if active, unpaused, and before they vanish (97%)
-        if (!isPaused && progress > 0f && progress < 0.97f) {
+        if (!isPaused) {
             var lastTime = withFrameNanos { it }
             while (true) {
                 val currentTime = withFrameNanos { it }
                 val deltaSeconds = (currentTime - lastTime) / 1_000_000_000f
                 lastTime = currentTime
 
-                // Physics logic: At 70%, the speed drops smoothly to 0 by 96%
-                val speedMultiplier = when {
-                    progress < 0.70f -> 1f
-                    progress < 0.96f -> 1f - ((progress - 0.70f) / 0.26f).coerceIn(0f, 1f)
-                    else -> 0f
-                }
+                val prog = currentProgress // Read latest progress safely
+                
+                if (prog > 0f && prog < 0.97f) {
+                    // Physics logic: At 70%, the speed drops smoothly to 0 by 96%
+                    val speedMultiplier = when {
+                        prog < 0.70f -> 1f
+                        prog < 0.96f -> 1f - ((prog - 0.70f) / 0.26f).coerceIn(0f, 1f)
+                        else -> 0f
+                    }
 
-                // Move particles
-                for (p in particles) {
-                    p.y -= (p.speed * deltaSeconds * speedMultiplier)
-                    
-                    // If a particle floats off the top, respawn it at the bottom
-                    if (p.y < -0.1f) {
-                        p.y = 1.1f + Math.random().toFloat() * 0.2f
-                        p.x = Math.random().toFloat()
+                    // Move particles
+                    for (p in particles) {
+                        p.y -= (p.speed * deltaSeconds * speedMultiplier)
+                        
+                        // If a particle floats off the top, respawn it at the bottom
+                        if (p.y < -0.1f) {
+                            p.y = 1.1f + Math.random().toFloat() * 0.2f
+                            p.x = Math.random().toFloat()
+                        }
                     }
                 }
                 
@@ -201,16 +207,17 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val currentTick = frameTime // Read state to force redraw
+        val prog = currentProgress // Read latest progress safely
 
         // Master Opacity logic:
         // 0% -> Invisible. 
         // 1-5% -> Fades in smoothly.
         // 80-96% -> Fades out completely and vanishes.
         val globalAlpha = when {
-            progress <= 0.01f -> 0f
-            progress < 0.05f -> (progress - 0.01f) / 0.04f
-            progress < 0.80f -> 1f
-            progress < 0.96f -> 1f - ((progress - 0.80f) / 0.16f).coerceIn(0f, 1f)
+            prog <= 0.01f -> 0f
+            prog < 0.05f -> (prog - 0.01f) / 0.04f
+            prog < 0.80f -> 1f
+            prog < 0.96f -> 1f - ((prog - 0.80f) / 0.16f).coerceIn(0f, 1f)
             else -> 0f
         }
 
@@ -225,7 +232,6 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
         }
     }
 }
-// ------------------------------------
 
 @Composable
 private fun DownloadingView(
