@@ -276,7 +276,6 @@ dependencies {
     implementation(libs.taglib)
     implementation(libs.jaudiotagger)
     implementation(libs.vorbisjava.core)
-    implementation(libs.wavy.slider)
     implementation(libs.androidx.graphics.shapes)
 
     // Networking & Serialization
@@ -305,7 +304,6 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.generativeai)
     implementation(libs.smooth.corner.rect.android.compose)
-    implementation(libs.reorderables)
     implementation(libs.codeview)
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
