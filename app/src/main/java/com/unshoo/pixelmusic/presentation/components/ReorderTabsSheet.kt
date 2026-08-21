@@ -25,7 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MediumExtendedFloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,8 +60,6 @@ import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -112,20 +110,6 @@ fun ReorderTabsSheet(
     val view = LocalView.current
     val appHapticsConfig = LocalAppHapticsConfig.current
 
-    val reorderableState = rememberReorderableLazyListState(
-        onMove = { from, to ->
-            localTabs = localTabs.toMutableList().apply {
-                add(to.index, removeAt(from.index))
-            }
-            // Haptic feedback on reorder
-            performAppCompatHapticFeedback(
-                view,
-                appHapticsConfig,
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
-            )
-        },
-        lazyListState = listState
-    )
     var isLoading by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -187,16 +171,27 @@ fun ReorderTabsSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(localTabs, key = { it }) { tab ->
-                            ReorderableItem(reorderableState, key = tab) { isDragging ->
-                                LaunchedEffect(isDragging) {
-                                    if (isDragging) {
-                                        performAppCompatHapticFeedback(
-                                            view,
-                                            appHapticsConfig,
-                                            HapticFeedbackConstants.GESTURE_START
-                                        )
-                                    }
+                            val isDragging = false
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(CircleShape),
+                                shadowElevation = 0.dp,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.DragIndicator,
+                                        contentDescription = stringResource(R.string.cd_drag_handle)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text(text = tab, style = MaterialTheme.typography.bodyLarge)
                                 }
+                            }
+                        }
 
                                 Surface(
                                     modifier = Modifier
@@ -270,7 +265,7 @@ fun FloatingToolBar(
                 )
             }
 
-            MediumExtendedFloatingActionButton(
+            ExtendedFloatingActionButton(
                 modifier = Modifier
                     .align(Alignment.CenterVertically),
                 shape = CircleShape,
