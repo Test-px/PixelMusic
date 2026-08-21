@@ -139,7 +139,6 @@ import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import android.content.pm.PackageManager
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -351,10 +350,6 @@ fun CastBottomSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 12.dp
     ) {
-        // AQUÍ APLICAMOS EL FIX: Anulamos la fábrica de overscroll para todo lo que esté aquí adentro
-        CompositionLocalProvider(
-            LocalOverscrollFactory provides null
-        ) {
             Box(
                 modifier = Modifier
                     .padding(bottom = 18.dp)
@@ -408,7 +403,6 @@ fun CastBottomSheet(
                     )
                 }
             }
-        }
     }
 }
 
