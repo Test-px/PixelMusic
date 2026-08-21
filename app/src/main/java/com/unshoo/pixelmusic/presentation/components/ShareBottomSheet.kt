@@ -15,7 +15,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,7 +67,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -205,7 +204,6 @@ fun ShareBottomSheet(
             typography = MaterialTheme.typography,
             shapes = MaterialTheme.shapes
         ) {
-            CompositionLocalProvider(LocalOverscrollFactory provides null) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -682,7 +680,6 @@ fun ShareBottomSheet(
             }
         }
     }
-    }
 
     if (isCapturing) {
         Box(
@@ -1066,18 +1063,13 @@ private fun SongMiniCard(
                     fontSize = 8.sp,
                     color = lightScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
-                LinearWavyProgressIndicator(
+                LinearProgressIndicator(
                     progress = { 0.4f },
                     modifier = Modifier
                         .weight(1f)
                         .height(12.dp),
                     color = lightScheme.primary,
-                    trackColor = lightScheme.primary.copy(alpha = 0.22f),
-                    stroke = stroke,
-                    trackStroke = stroke,
-                    wavelength = 12.dp,
-                    amplitude = { 0.5f },
-                    waveSpeed = 4.dp
+                    trackColor = lightScheme.primary.copy(alpha = 0.22f)
                 )
                 Text(
                     text = formattedDuration,
