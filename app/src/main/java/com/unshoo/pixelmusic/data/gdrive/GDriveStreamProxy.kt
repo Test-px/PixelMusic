@@ -51,7 +51,7 @@ class GDriveStreamProxy @Inject constructor(
         )
     }
 
-    private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
+    private var server: ApplicationEngine? = null
     private var actualPort: Int = 0
     private val proxyScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var startJob: Job? = null
@@ -132,7 +132,7 @@ class GDriveStreamProxy @Inject constructor(
         Timber.d("GDriveStreamProxy stopped")
     }
 
-    private fun createServer(port: Int): EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration> {
+    private fun createServer(port: Int): ApplicationEngine {
         return embeddedServer(CIO, port = port, host = "127.0.0.1") {
             routing {
                 get("/gdrive/{fileId}") {
@@ -211,7 +211,7 @@ class GDriveStreamProxy @Inject constructor(
                                 return@get
                             }
 
-                            val body = upstream.body
+                            val body = upstream.body!!
 
                             val contentTypeHeader = upstream.header("Content-Type")
                             if (!CloudStreamSecurity.isSupportedAudioContentType(contentTypeHeader)) {
