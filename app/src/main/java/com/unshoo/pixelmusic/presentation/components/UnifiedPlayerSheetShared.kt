@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -108,7 +107,7 @@ internal fun MiniPlayerContentInternal(
                     color = LocalMaterialTheme.current.onPrimaryContainer
                 )
             } else if (isPreparingPlayback) {
-                CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
             }
         }
         Spacer(modifier = Modifier.width(12.dp))
@@ -188,7 +187,7 @@ internal fun MiniPlayerContentInternal(
             contentAlignment = Alignment.Center
         ) {
             if (isPreparingPlayback || isBuffering) {
-                CircularWavyProgressIndicator(
+                CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     color = LocalMaterialTheme.current.onPrimary
                 )
