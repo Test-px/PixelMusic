@@ -163,8 +163,6 @@ import com.unshoo.pixelmusic.presentation.utils.LocalAppHapticsConfig
 import com.unshoo.pixelmusic.presentation.utils.performAppCompatHapticFeedback
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -456,34 +454,7 @@ fun QueueBottomSheet(
         return keyToLocalIndex[stableKey]
     }
 
-    val reorderableState = rememberReorderableLazyListState(
-        lazyListState = listState,
-        onMove = { from, to ->
-            if (reorderPreviewOrder == null) {
-                reorderPreviewBaseQueue = queue
-            }
-            val currentOrder = activeOrder
-            val currentKeys = activeKeys
-
-            val fromLocalIndex = mapKeyToLocalIndex(from.key, activeKeyToLocalIndex) ?: return@rememberReorderableLazyListState
-            val toLocalIndex = mapKeyToLocalIndex(to.key, activeKeyToLocalIndex) ?: return@rememberReorderableLazyListState
-            if (fromLocalIndex == toLocalIndex) return@rememberReorderableLazyListState
-
-            reorderPreviewOrder = currentOrder.toMutableList().apply {
-                add(toLocalIndex, removeAt(fromLocalIndex))
-            }
-            reorderPreviewKeys = currentKeys.toMutableList().apply {
-                add(toLocalIndex, removeAt(fromLocalIndex))
-            }
-            if (lastMovedFrom == null) {
-                lastMovedFrom = fromLocalIndex
-            }
-            lastMovedTo = toLocalIndex
-        },
-    )
-    val isReordering by remember {
-        derivedStateOf { reorderableState.isAnyItemDragging }
-    }
+    val isReordering = false
     val updatedIsReordering by rememberUpdatedState(isReordering)
     // ----------------------
 
@@ -491,8 +462,8 @@ fun QueueBottomSheet(
     // This prevents annoying jumps when adding/removing other items in the queue.
     var isFirstScrollByCurrentSongId by remember(currentSongId) { mutableStateOf(true) }
 
-    LaunchedEffect(currentSongId) {
-        if (!isReordering && !reorderHandleInUse && currentSongDisplayIndex >= 0 && currentSongDisplayIndex < displaySongCount) {
+    LaunchedEffect(isReordering) {
+        if (!isReordering) {
             val firstVisible = listState.firstVisibleItemIndex
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             
@@ -796,32 +767,15 @@ fun QueueBottomSheet(
                                 val itemStableKey = activeKeys[index]
                                 val song = activeSongSource[queueIndex]
                                 val canReorder = index > currentSongDisplayIndex
-                                ReorderableItem(
-                                    state = reorderableState,
-                                    key = itemStableKey,
-                                    enabled = canReorder,
-                                    animateItemModifier = when {
-                                        isReordering || reorderHandleInUse || reorderPreviewOrder != null -> Modifier.animateItem(
-                                            placementSpec = spring(
-                                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        )
-                                        else -> Modifier.animateItem(
-                                            fadeInSpec = tween(durationMillis = 140),
-                                            fadeOutSpec = tween(durationMillis = 120),
-                                            placementSpec = tween(durationMillis = 180)
-                                        )
-                                    }
-                                ) { isDragging ->
-                                    val scale by animateFloatAsState(
-                                        targetValue = if (isDragging) 1.015f else 1f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
-                                        label = "scaleAnimation"
+                                val isDragging = false
+                                val scale = 1f
+                                Box(
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = tween(durationMillis = 140),
+                                        fadeOutSpec = tween(durationMillis = 120),
+                                        placementSpec = tween(durationMillis = 180)
                                     )
+                                ) {
 
                                     QueuePlaylistSongItem(
                                         modifier = Modifier
