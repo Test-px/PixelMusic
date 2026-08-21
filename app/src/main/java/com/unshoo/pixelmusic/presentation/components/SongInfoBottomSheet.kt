@@ -12,7 +12,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -235,10 +234,6 @@ fun SongInfoBottomSheet(
             typography = MaterialTheme.typography,
             shapes = MaterialTheme.shapes
         ) {
-            // AQUÍ APLICAMOS EL FIX: Anulamos la fábrica de overscroll para todo lo que esté aquí adentro
-            CompositionLocalProvider(
-                LocalOverscrollFactory provides null
-            ) {
             val view = LocalView.current
             LaunchedEffect(view) {
                 var parent = view.parent
@@ -810,7 +805,6 @@ fun SongInfoBottomSheet(
                     }
                 }
             }
-        }
         }
     }
 
