@@ -65,7 +65,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.rounded.ViewModule
 import com.unshoo.pixelmusic.presentation.components.ToggleSegmentButton
 import androidx.compose.material3.LoadingIndicator
@@ -203,7 +203,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import kotlinx.collections.immutable.ImmutableList
@@ -2326,18 +2326,18 @@ private fun ImportPlaylistProgressOverlay(
                 )
                 
                 if (importProgress.totalTracks > 0) {
-                    LinearWavyProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(50)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    )
-                } else {
-                    LinearWavyProgressIndicator(
-                        modifier = Modifier
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(RoundedCornerShape(50)),
@@ -2568,13 +2568,13 @@ private fun LibraryInlineSyncIndicator(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
-            LinearWavyProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            )
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
         }
     }
 }
@@ -4130,10 +4130,10 @@ private fun ImportPlaylistFileDialog(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        CircularWavyProgressIndicator(
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                } else {
                         Text(
                             text = "Confirm playlist name:",
                             style = MaterialTheme.typography.bodyMedium
@@ -4238,8 +4238,8 @@ private fun ImportPlaylistFileDialog(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (isProcessingDuplicate) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CircularWavyProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator()
                     }
                 }
             },
