@@ -129,7 +129,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ModalBottomSheet
 import android.widget.Toast
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.layout.ContentScale
 import com.unshoo.pixelmusic.presentation.components.SmartImage
@@ -1269,7 +1268,6 @@ fun FullPlayerContent(
                 typography = MaterialTheme.typography,
                 shapes = MaterialTheme.shapes
             ) {
-                CompositionLocalProvider(LocalOverscrollFactory provides null) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1533,7 +1531,6 @@ fun FullPlayerContent(
                 }
             }
         }
-    }
 }
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
