@@ -1,5 +1,6 @@
 package com.unshoo.pixelmusic.presentation.components
 
+import sh.calvin.reorderable.draggableHandle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -454,6 +455,7 @@ fun QueueBottomSheet(
         return keyToLocalIndex[stableKey]
     }
 
+    val reorderableState = sh.calvin.reorderable.rememberReorderableLazyListState(lazyListState = listState, onMove = {_,_ -> })
     val isReordering = false
     val updatedIsReordering by rememberUpdatedState(isReordering)
     // ----------------------

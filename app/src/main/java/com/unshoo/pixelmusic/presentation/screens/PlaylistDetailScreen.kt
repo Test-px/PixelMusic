@@ -1,5 +1,6 @@
 package com.unshoo.pixelmusic.presentation.screens
 
+import sh.calvin.reorderable.draggableHandle
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
 import android.widget.Toast
@@ -647,7 +648,7 @@ fun PlaylistDetailScreen(
                                 key = { index, item -> "${item.id}_$index" },
                                 contentType = { _, _ -> "playlist_song" }) { index, song ->
                                 ReorderableItem(
-                                    state = reorderableState,
+                                    reorderableState = reorderableState,
                                     key = "${song.id}_$index",
                                 ) { isDragging ->
                                     val scale by animateFloatAsState(

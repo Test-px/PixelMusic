@@ -64,7 +64,7 @@ class UpdateWorker(
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.pixelmusic_base_monochrome) 
+            .setSmallIcon(R.drawable.ic_shortcut_playlist) 
             .setContentTitle("PixelMusic Update Available")
             .setContentText("Version $versionName is out! Tap to install.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

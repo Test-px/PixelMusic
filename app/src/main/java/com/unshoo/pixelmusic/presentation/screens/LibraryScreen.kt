@@ -2868,7 +2868,7 @@ private fun rememberLibraryNavigationPillTitleStyle(widthAxis: Float): TextStyle
         TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(400),
                         FontVariation.width(widthAxis.coerceIn(

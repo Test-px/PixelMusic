@@ -76,7 +76,7 @@ private const val GoogleSansFlexRond = 100f
 @OptIn(ExperimentalTextApi::class)
 val ActualGoogleSansRounded = FontFamily(
     androidx.compose.ui.text.font.Font(
-        resId = R.font.gflex_variable,
+        resId = R.font.genre_variable,
         weight = FontWeight.Light,
         variationSettings = FontVariation.Settings(
             FontVariation.weight(FontWeight.Light.weight),
@@ -84,7 +84,7 @@ val ActualGoogleSansRounded = FontFamily(
         )
     ),
     androidx.compose.ui.text.font.Font(
-        resId = R.font.gflex_variable,
+        resId = R.font.genre_variable,
         weight = FontWeight.Normal,
         variationSettings = FontVariation.Settings(
             FontVariation.weight(FontWeight.Normal.weight),
@@ -92,7 +92,7 @@ val ActualGoogleSansRounded = FontFamily(
         )
     ),
     androidx.compose.ui.text.font.Font(
-        resId = R.font.gflex_variable,
+        resId = R.font.genre_variable,
         weight = FontWeight.Medium,
         variationSettings = FontVariation.Settings(
             FontVariation.weight(FontWeight.Medium.weight),
@@ -100,7 +100,7 @@ val ActualGoogleSansRounded = FontFamily(
         )
     ),
     androidx.compose.ui.text.font.Font(
-        resId = R.font.gflex_variable,
+        resId = R.font.genre_variable,
         weight = FontWeight.SemiBold,
         variationSettings = FontVariation.Settings(
             FontVariation.weight(FontWeight.SemiBold.weight),
@@ -108,7 +108,7 @@ val ActualGoogleSansRounded = FontFamily(
         )
     ),
     androidx.compose.ui.text.font.Font(
-        resId = R.font.gflex_variable,
+        resId = R.font.genre_variable,
         weight = FontWeight.Bold,
         variationSettings = FontVariation.Settings(
             FontVariation.weight(FontWeight.Bold.weight),

@@ -507,7 +507,7 @@ private fun rememberRecentlyPlayedTitleStyle(): TextStyle {
         TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(560),
                         FontVariation.width(122f),

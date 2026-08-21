@@ -184,7 +184,7 @@ private fun rememberGoogleSansFlexFontFamily(
     return remember(fontWeight, sanitizedWidthAxis) {
         FontFamily(
             Font(
-                resId = R.font.gflex_variable,
+                resId = R.font.genre_variable,
                 weight = fontWeight,
                 variationSettings = FontVariation.Settings(
                     FontVariation.weight(fontWeight.weight),

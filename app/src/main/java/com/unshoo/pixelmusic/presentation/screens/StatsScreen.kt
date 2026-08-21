@@ -963,7 +963,7 @@ private fun rememberStatsSectionTitleStyle(): TextStyle {
         androidx.compose.ui.text.TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(570)
                     )
@@ -989,7 +989,7 @@ private fun rememberStatsAxisLabelStyle(range: StatsTimeRange): TextStyle {
         TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(520)
                     )

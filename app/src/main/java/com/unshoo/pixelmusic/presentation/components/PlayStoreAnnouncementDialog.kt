@@ -114,7 +114,7 @@ fun PlayStoreAnnouncementDialog(
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.pixelmusic_base_monochrome),
+                            painter = painterResource(id = R.drawable.ic_shortcut_playlist),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier

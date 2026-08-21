@@ -171,7 +171,6 @@ fun ReorderTabsSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(localTabs, key = { it }) { tab ->
-                            val isDragging = false
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -189,29 +188,6 @@ fun ReorderTabsSheet(
                                     )
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Text(text = tab, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                        }
-
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(CircleShape),
-                                    shadowElevation = if (isDragging) 4.dp else 0.dp,
-                                    color = MaterialTheme.colorScheme.surfaceContainerLowest
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.DragIndicator,
-                                            contentDescription = stringResource(R.string.cd_drag_handle),
-                                            modifier = Modifier.draggableHandle()
-                                        )
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Text(text = tab, style = MaterialTheme.typography.bodyLarge)
-                                    }
                                 }
                             }
                         }

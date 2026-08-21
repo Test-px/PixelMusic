@@ -38,7 +38,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
-import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.ApplicationEngine
 import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer

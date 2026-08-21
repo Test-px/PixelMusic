@@ -353,7 +353,7 @@ object GenreTypography {
         return TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(weight),
                         FontVariation.width(width),

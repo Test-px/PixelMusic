@@ -624,7 +624,7 @@ private fun rememberDailyMixTitleStyle(): TextStyle {
         TextStyle(
             fontFamily = FontFamily(
                 Font(
-                    resId = R.font.gflex_variable,
+                    resId = R.font.genre_variable,
                     variationSettings = FontVariation.Settings(
                         FontVariation.weight(436),
                         FontVariation.width(102f),

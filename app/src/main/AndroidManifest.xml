@@ -146,47 +146,17 @@
             </intent-filter>
             </activity>
 
-        <activity
-            android:name=".presentation.telegram.auth.TelegramLoginActivity"
-            android:exported="false"
-            android:label="Telegram Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
-        <activity
-            android:name=".presentation.netease.auth.NeteaseLoginActivity"
-            android:exported="false"
-            android:label="Netease Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
-        <activity
-            android:name=".presentation.gdrive.auth.GDriveLoginActivity"
-            android:exported="false"
-            android:label="Google Drive Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
-        <activity
-            android:name=".presentation.qqmusic.auth.QqMusicLoginActivity"
-            android:exported="false"
-            android:label="QQ Music Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
-        <activity
-            android:name=".presentation.navidrome.auth.NavidromeLoginActivity"
-            android:exported="false"
-            android:label="Navidrome Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
-        <activity
-            android:name=".presentation.jellyfin.auth.JellyfinLoginActivity"
-            android:exported="false"
-            android:label="Jellyfin Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        
 
 
         <activity
@@ -231,53 +201,15 @@
             </intent-filter>
         </service>
 
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
+        
 
-        <receiver
-            android:name=".ui.glancewidget.PixelMusicGlanceWidgetReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/pixelmusic_glance_widget_info" />
-        </receiver>
+        
 
-        <receiver
-            android:name=".ui.glancewidget.BarWidget4x1Receiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/bar_widget_4x1_info" />
-        </receiver>
+        
 
-        <receiver
-            android:name=".ui.glancewidget.ControlWidget4x2Receiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/control_widget_4x2_info" />
-        </receiver>
+        
 
-        <receiver
-            android:name=".ui.glancewidget.GridWidget2x2Receiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/grid_widget_2x2_info" />
-        </receiver>
+        
 
         <receiver android:name=".data.service.SleepTimerReceiver" android:exported="false" />
 
@@ -303,11 +235,7 @@
                 tools:node="remove" />
         </provider>
 
-        <receiver android:name=".ui.glancewidget.WidgetUpdateReceiver" android:exported="false">
-            <intent-filter>
-                <action android:name="com.unshoo.pixelmusic.ACTION_WIDGET_UPDATE_PLAYBACK_STATE" />
-            </intent-filter>
-        </receiver>
+        
 
         <service
             android:name=".data.service.http.MediaFileHttpServerService"

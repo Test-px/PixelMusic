@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.dagger.hilt.android)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.baselineprofile)
+    
     id("kotlin-parcelize")
 }
 
@@ -168,13 +168,6 @@ composeCompiler {
     // StrongSkipping is now enabled by default.
 }
 
-baselineProfile {
-    // Keep release builds fast to invoke locally, but make generated profiles usable as
-    // startup dex-layout input once they are checked into the app.
-    automaticGenerationDuringBuild = false
-    saveInSrc = true
-    dexLayoutOptimization = true
-}
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -216,7 +209,7 @@ dependencies {
     // Core & Optimization
     // coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.profileinstaller)
-    "baselineProfile"(project(":baselineprofile"))
+    
 
     // AndroidX & Compose
     implementation(libs.androidx.core.ktx)
@@ -243,6 +236,7 @@ dependencies {
     implementation("androidx.webkit:webkit:1.16.0")
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation("io.ktor:ktor-server-host-common:2.3.12")
 
     // DI & Navigation
     implementation(libs.hilt.android)
@@ -372,4 +366,6 @@ tasks.withType<Test> {
 
 configurations.all {
     exclude(group = "org.jetbrains.kotlin", module = "kotlin-android-extensions-runtime")
+}
+dependencies {
 }

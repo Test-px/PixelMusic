@@ -205,7 +205,7 @@ fun HomeGradientTopBar(
                 modifier = Modifier.padding(start = 16.dp)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.pixelmusic_base_monochrome),
+                    painter = painterResource(R.drawable.ic_shortcut_playlist),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
