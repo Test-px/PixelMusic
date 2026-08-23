@@ -44,7 +44,7 @@ fun HomeShuffleFab(
     val activeHeight = if (isGestureBarVisible) {
         74.dp // <-- Player OPEN & Gesture Bar SHOWN
     } else {
-        50.dp // <-- Player OPEN & Gesture Bar HIDDEN
+        55.dp // <-- Player OPEN & Gesture Bar HIDDEN
     }
 
     // Increase or decrease these values to manage the height of the button when the Mini-Player is CLOSED
