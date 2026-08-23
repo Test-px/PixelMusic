@@ -33,7 +33,6 @@ import com.unshoo.pixelmusic.data.database.SongEntity
 import com.unshoo.pixelmusic.data.database.SourceType
 import com.unshoo.pixelmusic.data.database.FavoritesDao
 import com.unshoo.pixelmusic.data.database.FavoritesEntity
-import com.unshoo.pixelmusic.data.database.resolveAlbumArtUri
 import com.unshoo.pixelmusic.data.database.serializeArtistRefs
 import com.unshoo.pixelmusic.data.model.ArtistRef
 import com.unshoo.pixelmusic.data.media.AudioMetadataReader
