@@ -1394,15 +1394,6 @@ class PlaylistViewModel @Inject constructor(
         }
     }
 
-    fun setShowTelegramCloudPlaylists(show: Boolean) {
-        if (_uiState.value.showTelegramCloudPlaylists == show) return
-
-        _uiState.update { it.copy(showTelegramCloudPlaylists = show) }
-        viewModelScope.launch {
-            playlistPreferencesRepository.setShowTelegramCloudPlaylists(show)
-        }
-    }
-
     fun sortPlaylistSongs(sortOption: SortOption) {
         val playlistId = _uiState.value.currentPlaylistDetails?.id
 
