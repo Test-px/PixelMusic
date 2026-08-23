@@ -1753,20 +1753,10 @@ constructor(
             preferences[PreferencesKeys.IS_FOLDERS_PLAYLIST_VIEW] ?: false
         }
 
-    val showTelegramCloudPlaylistsFlow: Flow<Boolean> = dataStore.data
-        .map { preferences ->
-            preferences[PreferencesKeys.SHOW_TELEGRAM_CLOUD_PLAYLISTS] ?: true
-        }
-
     val hideLocalMediaFlow: Flow<Boolean> = dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.HIDE_LOCAL_MEDIA] ?: false
         }.distinctUntilChanged()
-
-    val telegramTopicDisplayModeFlow: Flow<TelegramTopicDisplayMode> = dataStore.data
-        .map { preferences ->
-            TelegramTopicDisplayMode.fromStorageKey(preferences[PreferencesKeys.TELEGRAM_TOPIC_DISPLAY_MODE])
-        }
 
     val foldersSourceFlow: Flow<FolderSource> = dataStore.data
         .map { preferences ->
@@ -1795,21 +1785,9 @@ constructor(
         }
     }
 
-    suspend fun setShowTelegramCloudPlaylists(show: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SHOW_TELEGRAM_CLOUD_PLAYLISTS] = show
-        }
-    }
-
     suspend fun setHideLocalMedia(hide: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.HIDE_LOCAL_MEDIA] = hide
-        }
-    }
-
-    suspend fun setTelegramTopicDisplayMode(mode: TelegramTopicDisplayMode) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.TELEGRAM_TOPIC_DISPLAY_MODE] = mode.storageKey
         }
     }
 
