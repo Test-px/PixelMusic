@@ -15,21 +15,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ArtistEntity::class,
         TransitionRuleEntity::class,
         SongArtistCrossRef::class,
-        TelegramSongEntity::class,
-        TelegramChannelEntity::class,
         SongEngagementEntity::class,
         FavoritesEntity::class,
         LyricsEntity::class,
-        GDriveSongEntity::class,
-        GDriveFolderEntity::class,
         PlaylistEntity::class,
         PlaylistSongEntity::class,
-        TelegramTopicEntity::class,
         AiCacheEntity::class,
         AiUsageEntity::class,
         RelatedSongMap::class
     ],
-    version = 45,
+    version = 46,
     exportSchema = true
 )
 abstract class PixelMusicDatabase : RoomDatabase() {
@@ -37,11 +32,9 @@ abstract class PixelMusicDatabase : RoomDatabase() {
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun musicDao(): MusicDao
     abstract fun transitionDao(): TransitionDao
-    abstract fun telegramDao(): TelegramDao
     abstract fun engagementDao(): EngagementDao
     abstract fun favoritesDao(): FavoritesDao
     abstract fun lyricsDao(): LyricsDao
-    abstract fun gdriveDao(): GDriveDao
     abstract fun localPlaylistDao(): LocalPlaylistDao
     abstract fun aiCacheDao(): AiCacheDao
     abstract fun aiUsageDao(): AiUsageDao
@@ -109,46 +102,6 @@ abstract class PixelMusicDatabase : RoomDatabase() {
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE artists ADD COLUMN image_url TEXT DEFAULT NULL")
-            }
-        }
-
-        val MIGRATION_11_12 = object : Migration(11, 12) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS telegram_songs (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        chat_id INTEGER NOT NULL,
-                        message_id INTEGER NOT NULL,
-                        file_id INTEGER NOT NULL,
-                        title TEXT NOT NULL,
-                        artist TEXT NOT NULL,
-                        duration INTEGER NOT NULL,
-                        file_path TEXT NOT NULL,
-                        mime_type TEXT NOT NULL,
-                        date_added INTEGER NOT NULL
-                    )
-                """.trimIndent())
-            }
-        }
-
-        val MIGRATION_12_13 = object : Migration(12, 13) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE telegram_songs ADD COLUMN album_art_uri TEXT DEFAULT NULL")
-            }
-        }
-
-        val MIGRATION_13_14 = object : Migration(13, 14) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS telegram_channels (
-                        chat_id INTEGER NOT NULL PRIMARY KEY,
-                        title TEXT NOT NULL,
-                        username TEXT,
-                        song_count INTEGER NOT NULL DEFAULT 0,
-                        last_sync_time INTEGER NOT NULL DEFAULT 0,
-                        photo_path TEXT
-                    )
-                """.trimIndent())
             }
         }
 
@@ -333,116 +286,6 @@ abstract class PixelMusicDatabase : RoomDatabase() {
         }
 
         /**
-         * Reconcile Telegram tables: drop and recreate to match current entity definitions.
-         * Telegram data is re-syncable cache, so this is safe.
-         */
-        val MIGRATION_19_20 = object : Migration(19, 20) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                // Drop existing Telegram tables that may have schema drift
-                db.execSQL("DROP TABLE IF EXISTS telegram_songs")
-                db.execSQL("DROP TABLE IF EXISTS telegram_channels")
-
-                // Recreate telegram_songs matching TelegramSongEntity exactly
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS telegram_songs (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        chat_id INTEGER NOT NULL,
-                        message_id INTEGER NOT NULL,
-                        file_id INTEGER NOT NULL,
-                        title TEXT NOT NULL,
-                        artist TEXT NOT NULL,
-                        duration INTEGER NOT NULL,
-                        file_path TEXT NOT NULL,
-                        mime_type TEXT NOT NULL,
-                        date_added INTEGER NOT NULL,
-                        album_art_uri TEXT
-                    )
-                """.trimIndent())
-
-                // Recreate telegram_channels matching TelegramChannelEntity exactly
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS telegram_channels (
-                        chat_id INTEGER NOT NULL PRIMARY KEY,
-                        title TEXT NOT NULL,
-                        username TEXT,
-                        song_count INTEGER NOT NULL DEFAULT 0,
-                        last_sync_time INTEGER NOT NULL DEFAULT 0,
-                        photo_path TEXT
-                    )
-                """.trimIndent())
-            }
-        }
-
-        /**
-         * Add Netease Cloud Music tables.
-         */
-        val MIGRATION_20_21 = object : Migration(20, 21) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS netease_songs (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        netease_id INTEGER NOT NULL,
-                        playlist_id INTEGER NOT NULL,
-                        title TEXT NOT NULL,
-                        artist TEXT NOT NULL,
-                        album TEXT NOT NULL,
-                        album_id INTEGER NOT NULL,
-                        duration INTEGER NOT NULL,
-                        album_art_url TEXT,
-                        mime_type TEXT NOT NULL,
-                        bitrate INTEGER,
-                        date_added INTEGER NOT NULL
-                    )
-                """.trimIndent())
-
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS netease_playlists (
-                        id INTEGER NOT NULL PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        cover_url TEXT,
-                        song_count INTEGER NOT NULL,
-                        last_sync_time INTEGER NOT NULL
-                    )
-                """.trimIndent())
-            }
-        }
-
-        /**
-         * Add Google Drive tables.
-         */
-        val MIGRATION_21_22 = object : Migration(21, 22) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS gdrive_songs (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        drive_file_id TEXT NOT NULL,
-                        folder_id TEXT NOT NULL,
-                        title TEXT NOT NULL,
-                        artist TEXT NOT NULL,
-                        album TEXT NOT NULL,
-                        album_id INTEGER NOT NULL,
-                        duration INTEGER NOT NULL,
-                        album_art_url TEXT,
-                        mime_type TEXT NOT NULL,
-                        bitrate INTEGER,
-                        file_size INTEGER NOT NULL,
-                        date_added INTEGER NOT NULL,
-                        date_modified INTEGER NOT NULL
-                    )
-                """.trimIndent())
-
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS gdrive_folders (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        song_count INTEGER NOT NULL DEFAULT 0,
-                        last_sync_time INTEGER NOT NULL DEFAULT 0
-                    )
-                """.trimIndent())
-            }
-        }
-
-        /**
          * Add custom_image_uri column to artists table.
          * Allows users to associate a custom image with each artist.
          * Nullable with DEFAULT NULL so this migration is safe and additive.
@@ -480,18 +323,6 @@ abstract class PixelMusicDatabase : RoomDatabase() {
         val MIGRATION_25_26 = object : Migration(25, 26) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Cloud/source tables: add query indexes.
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_telegram_songs_chat_id ON telegram_songs(chat_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_telegram_songs_message_id ON telegram_songs(message_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_telegram_songs_file_id ON telegram_songs(file_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_telegram_songs_chat_id_message_id ON telegram_songs(chat_id, message_id)")
-
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_netease_songs_netease_id ON netease_songs(netease_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_netease_songs_playlist_id ON netease_songs(playlist_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_netease_songs_playlist_id_date_added ON netease_songs(playlist_id, date_added)")
-
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_gdrive_songs_drive_file_id ON gdrive_songs(drive_file_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_gdrive_songs_folder_id ON gdrive_songs(folder_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_gdrive_songs_folder_id_date_added ON gdrive_songs(folder_id, date_added)")
 
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_album_art_themes_albumArtUriString_paletteStyle ON album_art_themes(albumArtUriString, paletteStyle)")
 
@@ -1509,12 +1340,6 @@ abstract class PixelMusicDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE songs ADD COLUMN source_type INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_songs_source_type ON songs(source_type)")
-                // Backfill source_type from content_uri_string for existing rows
-                db.execSQL("UPDATE songs SET source_type = 1 WHERE content_uri_string LIKE 'telegram://%'")
-                db.execSQL("UPDATE songs SET source_type = 2 WHERE content_uri_string LIKE 'netease://%'")
-                db.execSQL("UPDATE songs SET source_type = 3 WHERE content_uri_string LIKE 'gdrive://%'")
-                db.execSQL("UPDATE songs SET source_type = 4 WHERE content_uri_string LIKE 'qqmusic://%'")
-                db.execSQL("UPDATE songs SET source_type = 5 WHERE content_uri_string LIKE 'navidrome://%'")
             }
         }
 
@@ -1525,6 +1350,5 @@ abstract class PixelMusicDatabase : RoomDatabase() {
                 rebuildSongsSearchIndex(db)
             }
         }
-
     }
 }
