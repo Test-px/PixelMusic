@@ -1035,6 +1035,7 @@ fun FullPlayerContent(
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     targetSize = coil.size.Size.ORIGINAL,
+                                    isThumbnail = false,
                                     modifier = Modifier.fillMaxSize()
                                 )
                                 Box(
@@ -1099,6 +1100,7 @@ fun FullPlayerContent(
                         contentDescription = null,
                         contentScale = ContentScale.Crop, 
                         targetSize = coil.size.Size.ORIGINAL,
+                        isThumbnail = false,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
