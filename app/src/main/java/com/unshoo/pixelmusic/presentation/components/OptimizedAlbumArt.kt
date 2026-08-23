@@ -46,6 +46,7 @@ fun OptimizedAlbumArt(
     title: String,
     modifier: Modifier = Modifier,
     targetSize: Size = SafeOriginalAlbumArtSize,
+    albumArtQuality: com.unshoo.pixelmusic.data.preferences.AlbumArtQuality = com.unshoo.pixelmusic.data.preferences.AlbumArtQuality.LOW, // ADD THIS
     placeholderModel: Any? = null
 ) {
     val context = LocalContext.current
@@ -82,15 +83,15 @@ fun OptimizedAlbumArt(
     SmartImageCache.albumArtQualityWifi
 }
 
-val optimizedUri = remember(uri, effectiveQuality) {
-    if (uri is String) {
-        val size = if (effectiveQuality.maxSize > 0) effectiveQuality.maxSize else 1200
-        uri.replace(Regex("=w\\d+-h\\d+"), "=w$size-h$size")
-           .replace(Regex("-w\\d+-h\\d+"), "-w$size-h$size")
-    } else {
-        uri
+    val optimizedUri = remember(uri, albumArtQuality) {
+        if (uri is String && (uri.contains("ggpht.com") || uri.contains("googleusercontent.com"))) {
+            val size = if (albumArtQuality.maxSize > 0) albumArtQuality.maxSize else 1200
+            uri.replace(Regex("=w\\d+-h\\d+"), "=w$size-h$size")
+               .replace(Regex("=s\\d+"), "=s$size")
+        } else {
+            uri
+        }
     }
-}
 
     val memoryCacheKey = remember(uri, requestTargetSize) {
         albumArtMemoryCacheKey(uri, requestTargetSize)
