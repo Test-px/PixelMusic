@@ -141,6 +141,15 @@ class ExploreViewModel @Inject constructor(
             val hasCachedData = _uiState.value.homePageSections.isNotEmpty() ||
                     _uiState.value.newReleaseAlbums.isNotEmpty() ||
                     _uiState.value.chartsPage != null
+            
+            // --- NEW CODE: STOP AUTO-REFRESH ---
+            // If we already have cached data and this is NOT a manual swipe-to-refresh,
+            // we stop right here to save network data!
+            if (hasCachedData) {
+                return
+            }
+            // -----------------------------------
+
             _uiState.update { it.copy(isLoading = !hasCachedData, error = null) }
         }
         try {
