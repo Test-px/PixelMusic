@@ -20,7 +20,6 @@ import com.unshoo.pixelmusic.PixelMusicApplication
 import com.unshoo.pixelmusic.data.database.AlbumArtThemeDao
 import com.unshoo.pixelmusic.data.database.EngagementDao
 import com.unshoo.pixelmusic.data.database.FavoritesDao
-import com.unshoo.pixelmusic.data.database.GDriveDao
 import com.unshoo.pixelmusic.data.database.LyricsDao
 import com.unshoo.pixelmusic.data.database.AiCacheDao
 import com.unshoo.pixelmusic.data.database.AiUsageDao
@@ -134,27 +133,17 @@ object AppModule {
             PixelMusicDatabase.MIGRATION_8_9,
             PixelMusicDatabase.MIGRATION_9_10,
             PixelMusicDatabase.MIGRATION_10_11,
-            PixelMusicDatabase.MIGRATION_11_12,
-            PixelMusicDatabase.MIGRATION_12_13,
-            PixelMusicDatabase.MIGRATION_13_14,
             PixelMusicDatabase.MIGRATION_14_15,
             PixelMusicDatabase.MIGRATION_15_16,
             PixelMusicDatabase.MIGRATION_16_17,
             PixelMusicDatabase.MIGRATION_17_18,
             PixelMusicDatabase.MIGRATION_18_19,
-            PixelMusicDatabase.MIGRATION_19_20,
-            PixelMusicDatabase.MIGRATION_20_21,
-            PixelMusicDatabase.MIGRATION_21_22,
             PixelMusicDatabase.MIGRATION_22_23,
             PixelMusicDatabase.MIGRATION_23_24,
             PixelMusicDatabase.MIGRATION_24_25,
             PixelMusicDatabase.MIGRATION_25_26,
             PixelMusicDatabase.MIGRATION_26_27,
-            PixelMusicDatabase.MIGRATION_27_28,
-            PixelMusicDatabase.MIGRATION_28_29,
-            PixelMusicDatabase.MIGRATION_29_30,
             PixelMusicDatabase.MIGRATION_30_31,
-            PixelMusicDatabase.MIGRATION_31_32,
             PixelMusicDatabase.MIGRATION_32_33,
             PixelMusicDatabase.MIGRATION_33_34,
             PixelMusicDatabase.MIGRATION_34_35,
@@ -167,7 +156,8 @@ object AppModule {
             PixelMusicDatabase.MIGRATION_41_42,
             PixelMusicDatabase.MIGRATION_42_43,
             PixelMusicDatabase.MIGRATION_43_44,
-            PixelMusicDatabase.MIGRATION_44_45
+            PixelMusicDatabase.MIGRATION_44_45,
+            PixelMusicDatabase.MIGRATION_45_46
         )
             .addCallback(PixelMusicDatabase.createRuntimeArtifactsCallback())
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -226,12 +216,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideGDriveDao(database: PixelMusicDatabase): GDriveDao {
-        return database.gdriveDao()
-    }
-
-    @Singleton
-    @Provides
     fun provideLocalPlaylistDao(database: PixelMusicDatabase): LocalPlaylistDao {
         return database.localPlaylistDao()
     }
@@ -252,27 +236,7 @@ object AppModule {
     fun provideImageLoader(
         @ApplicationContext context: Context
     ): ImageLoader {
-        // Add interceptor for QQ Music images
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val request = chain.request()
-                val url = request.url.toString()
-
-                // Add Referer header for QQ Music images
-                val newRequest = if (url.contains("y.qq.com")) {
-                    request.newBuilder()
-                        .header("Referer", "https://y.qq.com/")
-                        .build()
-                } else {
-                    request
-                }
-
-                chain.proceed(newRequest)
-            }
-            .build()
-
         return ImageLoader.Builder(context)
-            .okHttpClient(okHttpClient)
             .dispatcher(Dispatchers.Default) // Use CPU-bound dispatcher for decoding
             .allowHardware(true) // Re-enable hardware bitmaps for better performance
             .memoryCache {
@@ -398,9 +362,6 @@ object AppModule {
             redactHeader("Cookie")
             redactHeader("Set-Cookie")
             redactHeader("x-goog-api-key")
-            redactHeader("X-Emby-Token")
-            redactHeader("X-Emby-Authorization")
-            redactHeader("X-MediaBrowser-Token")
         }
         
         // Connection pool with optimized connections for better performance
