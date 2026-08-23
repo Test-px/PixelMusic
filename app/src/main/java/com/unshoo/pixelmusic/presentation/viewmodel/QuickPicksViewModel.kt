@@ -67,7 +67,8 @@ class QuickPicksViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.discoverFlow.collect { _ ->
                 if (_selectedCategory.value == "All") {
-                    loadQuickPicks("All")
+                    // Changed to prevent auto-refresh on app launch
+                    loadQuickPicks("All", forceRefresh = false)
                 }
             }
         }
@@ -76,11 +77,11 @@ class QuickPicksViewModel @Inject constructor(
     fun setCategory(category: String) {
         if (_selectedCategory.value == category && !_isLoading.value) return
         _selectedCategory.value = category
-        loadQuickPicks(category)
+        loadQuickPicks(category, forceRefresh = true) // Fetch new data when category changes
     }
 
     fun refresh() {
-        loadQuickPicks(_selectedCategory.value)
+        loadQuickPicks(_selectedCategory.value, forceRefresh = true) // Manual swipe down
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -171,8 +172,16 @@ class QuickPicksViewModel @Inject constructor(
     // Main load entry point
     // ─────────────────────────────────────────────────────────────────────────
 
-    private fun loadQuickPicks(category: String) {
+    // Added 'forceRefresh' parameter
+    private fun loadQuickPicks(category: String, forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            // --- NEW CODE: STOP AUTO-REFRESH ---
+            // If we already have cached data and it's not a manual refresh, do nothing!
+            if (!forceRefresh && _quickPicks.value.isNotEmpty()) {
+                return@launch
+            }
+            // -----------------------------------
+
             if (_quickPicks.value.isEmpty()) {
                 _isLoading.value = true
             }
