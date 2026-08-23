@@ -31,13 +31,26 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
+      - name: Patch App for Testing
+        run: |
+          # 1. Change the InAppUpdater URL (References the hardcoded URL from 57393.jpg)
+          sed -i 's|https://api.github.com/repos/atappu805/PixelMusic/releases/latest|https://api.github.com/repos/YOUR_USERNAME/yyy/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
+
+          # 2. Change the Application ID (Assuming build.gradle; adjust if using build.gradle.kts)
+          sed -i 's/applicationId "com.unshoo.pixelmusic"/applicationId "com.unshoo.pixelmusic.test"/g' app/build.gradle
+          
+          # 3. (Optional) Change App Name so you can easily tell them apart on your phone
+          sed -i 's/<string name="app_name">PixelMusic<\/string>/<string name="app_name">PixelMusic Test<\/string>/g' app/src/main/res/values/strings.xml
+
       - name: Build Release APK
         run: ./gradlew :app:assembleRelease
 
-      - name: Upload Signed Release APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload to Testing Repository (yyy)
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-release-signed
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 7
+          repository: YOUR_USERNAME/yyy  # Replace with the target repo
+          token: ${{ secrets.TEST_REPO_PAT }} # The PAT you created in Step 1
+          tag_name: test-build-${{ github.run_number }}
+          name: Test Build ${{ github.run_number }}
+          files: app/build/outputs/apk/release/*.apk
 
