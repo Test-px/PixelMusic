@@ -896,50 +896,7 @@ fun LibraryScreen(
                         }
 
                         val playlistUiState by playlistViewModel.uiState.collectAsStateWithLifecycle()
-                        val visiblePlaylists = remember(
-                            playlistUiState.playlists,
-                            playlistUiState.showTelegramCloudPlaylists,
-                            playlistUiState.telegramTopicDisplayMode
-                        ) {
-                            val mode = playlistUiState.telegramTopicDisplayMode
-                            val allPlaylists = playlistUiState.playlists
-
-                            if (!playlistUiState.showTelegramCloudPlaylists) {
-                                return@remember allPlaylists.filterNot {
-                                    it.source == "TELEGRAM" || it.source == "TELEGRAM_TOPIC"
-                                }
-                            }
-
-                            allPlaylists.filter { playlist ->
-                                when (playlist.source) {
-                                    "TELEGRAM_TOPIC" -> when (mode) {
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY ->
-                                            false
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY,
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS ->
-                                            playlist.songIds.isNotEmpty()
-                                    }
-                                    "TELEGRAM" -> when (mode) {
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY ->
-                                            true
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY -> {
-                                            val chatId = playlist.id
-                                                .removePrefix("telegram_channel:")
-                                                .toLongOrNull()
-                                            if (chatId != null) {
-                                                allPlaylists.none { p ->
-                                                    p.source == "TELEGRAM_TOPIC" &&
-                                                            p.id.startsWith("telegram_topic:${chatId}_")
-                                                }
-                                            } else true
-                                        }
-                                        com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS ->
-                                            true
-                                    }
-                                    else -> true
-                                }
-                            }
-                        }
+                        val visiblePlaylists = playlistUiState.playlists    
                         val allSongsLazyPagingItems = libraryViewModel.songsPagingFlow.collectAsLazyPagingItems()
                         val albumsLazyPagingItems = libraryViewModel.albumsPagingFlow.collectAsLazyPagingItems()
                         val artistsLazyPagingItems = libraryViewModel.artistsPagingFlow.collectAsLazyPagingItems()
@@ -955,19 +912,6 @@ fun LibraryScreen(
                                 .map { it.isShuffleEnabled }
                                 .distinctUntilChanged()
                         }.collectAsStateWithLifecycle(initialValue = false)
-
-                        LaunchedEffect(
-                            playlistUiState.showTelegramCloudPlaylists,
-                            selectedPlaylists
-                        ) {
-                            if (playlistUiState.showTelegramCloudPlaylists) return@LaunchedEffect
-
-                            selectedPlaylists
-                                .filter { it.source == "TELEGRAM" || it.source == "TELEGRAM_TOPIC" }
-                                .forEach { playlist ->
-                                    playlistMultiSelectionState.removeFromSelection(playlist.id)
-                                }
-                        }
 
                         val currentSelectedSortOption: SortOption? = when (currentTabId) {
                             LibraryTabId.SONGS -> playerUiState.currentSongSortOption
@@ -1153,28 +1097,12 @@ fun LibraryScreen(
                                 onDirectionToggle = { option ->
                                     onSortOptionChanged(option)
                                 },
-                                showViewToggle = isFoldersTab || isPlaylistsTab,
-                                viewSectionTitle = if (isPlaylistsTab) {
-                                    stringResource(R.string.presentation_batch_d_view_section_cloud)
-                                } else {
-                                    stringResource(R.string.presentation_batch_d_view_section_view)
-                                },
-                                viewToggleLabel = if (isPlaylistsTab) {
-                                    stringResource(R.string.presentation_batch_d_telegram_cloud_channels)
-                                } else {
-                                    stringResource(R.string.presentation_batch_d_playlist_view)
-                                },
-                                viewToggleChecked = if (isPlaylistsTab) {
-                                    playlistUiState.showTelegramCloudPlaylists
-                                } else {
-                                    playerUiState.isFoldersPlaylistView
-                                },
-                                onViewToggleChange = { isChecked ->
-                                    if (isPlaylistsTab) {
-                                        playlistViewModel.setShowTelegramCloudPlaylists(isChecked)
-                                    } else {
-                                        playerViewModel.setFoldersPlaylistView(isChecked)
-                                    }
+                                showViewToggle = isFoldersTab,
+viewSectionTitle = stringResource(R.string.presentation_batch_d_view_section_view),
+viewToggleLabel = stringResource(R.string.presentation_batch_d_playlist_view),
+viewToggleChecked = playerUiState.isFoldersPlaylistView,
+onViewToggleChange = { isChecked ->
+    playerViewModel.setFoldersPlaylistView(isChecked)
                                 },
                                 viewToggleContent = if (isAlbumTab) {
                                     {
