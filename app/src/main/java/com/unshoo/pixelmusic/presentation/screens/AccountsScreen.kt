@@ -97,8 +97,6 @@ import androidx.compose.ui.text.font.FontFamily
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import androidx.compose.ui.unit.sp
 
-
-
 @Composable
 fun AccountsScreen(
     onBackClick: () -> Unit,
@@ -218,7 +216,7 @@ fun AccountsScreen(
                             onOpenYoutubeAuth = onOpenYoutubeAuth
                         )
                     },
-                    onAdvancedLogin = { showTokenDialog = true }, // ADDED THIS
+                    onAdvancedLogin = { showTokenDialog = true }, 
                     onSync = {
                         viewModel.syncLibrary()
                     },
@@ -400,14 +398,11 @@ private fun ConnectedAccountCard(
     onLogout: () -> Unit,
     painter: androidx.compose.ui.graphics.painter.Painter? = null
 ) {
-    val statusSoon = stringResource(R.string.presentation_batch_b_accounts_status_soon)
     val statusConnected = stringResource(R.string.presentation_batch_b_accounts_status_connected)
     val openService = stringResource(R.string.presentation_batch_b_accounts_open_service)
-    val comingSoonShort = stringResource(R.string.presentation_batch_b_accounts_coming_soon_short)
     val loggingOut = stringResource(R.string.presentation_batch_b_accounts_logging_out)
     val logOut = stringResource(R.string.cd_logout)
     val palette = servicePalette(account.service)
-    val isComingSoon = account.service == ExternalServiceAccount.GOOGLE_DRIVE
     val cardShape = AbsoluteSmoothCornerShape(28.dp, 60)
 
     Card(
@@ -421,65 +416,62 @@ private fun ConnectedAccountCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically
-) {
-        Surface(
-            shape = AbsoluteSmoothCornerShape(16.dp, 60),
-            color = palette.iconContainer
-        ) {
-            if (painter != null) {
-                Icon(
-                    painter = painter,
-                    contentDescription = null,
-                    tint = palette.iconTint,
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .size(20.dp)
-                )
-            } else {
-                ServiceIcon(
-                    service = account.service,
-                    tint = palette.iconTint,
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .size(20.dp)
-                )
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                    color = palette.iconContainer
+                ) {
+                    if (painter != null) {
+                        Icon(
+                            painter = painter,
+                            contentDescription = null,
+                            tint = palette.iconTint,
+                            modifier = Modifier.padding(10.dp).size(20.dp)
+                        )
+                    } else {
+                        ServiceIcon(
+                            service = account.service,
+                            tint = palette.iconTint,
+                            modifier = Modifier.padding(10.dp).size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.size(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = account.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = account.accountLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Surface(
+                    shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                    color = palette.statusContainer
+                ) {
+                    Text(
+                        text = statusConnected,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = palette.statusTint,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
-        }
-
-    Spacer(Modifier.size(12.dp))
-
-    Column(modifier = Modifier.weight(1f)) {
-        Text(
-            text = account.title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = account.accountLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-
-    Surface(
-    shape = AbsoluteSmoothCornerShape(12.dp, 60),
-    color = palette.statusContainer
-) {
-    Text(
-        text = statusConnected,
-        style = MaterialTheme.typography.labelMedium,
-        color = palette.statusTint,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-    )
-    }
 
             Surface(
                 shape = AbsoluteSmoothCornerShape(14.dp, 60),
@@ -507,26 +499,26 @@ private fun ConnectedAccountCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
 
             FilledTonalButton(
-    onClick = onManage,
-    enabled = !account.isLoggingOut,
-    shape = AbsoluteSmoothCornerShape(18.dp, 60),
-    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-        containerColor = palette.primaryActionContainer,
-        contentColor = palette.primaryActionTint,
-        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    ),
-    modifier = Modifier.fillMaxWidth().height(48.dp)
-) {
-    Icon(
-        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-        contentDescription = null
-    )
-    Spacer(modifier = Modifier.size(8.dp))
-    Text(
-        text = openService,
-        fontWeight = FontWeight.SemiBold
-    )
+                onClick = onManage,
+                enabled = !account.isLoggingOut,
+                shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                    containerColor = palette.primaryActionContainer,
+                    contentColor = palette.primaryActionTint,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(
+                    text = openService,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             OutlinedButton(
@@ -565,7 +557,6 @@ private fun EmptyAccountsCard(
     body: String = stringResource(R.string.presentation_batch_b_accounts_no_linked_body)
 ) {
     val connectTemplate = stringResource(R.string.presentation_batch_b_accounts_connect_service)
-    val serviceSoonTemplate = stringResource(R.string.presentation_batch_b_accounts_service_paren_coming_soon)
     Card(
         shape = AbsoluteSmoothCornerShape(28.dp, 60),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -592,33 +583,32 @@ private fun EmptyAccountsCard(
                     ExternalServiceAccount.YOUTUBE -> null
                     ExternalServiceAccount.LASTFM -> null
                 }
-
                 FilledTonalButton(
-    onClick = { onConnect(service) },
-    shape = AbsoluteSmoothCornerShape(18.dp, 60),
-    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-    ),
-    modifier = Modifier.fillMaxWidth().height(48.dp)
-) {
-    if (painter != null) {
-        Icon(
-            painter = painter,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-    } else {
-        Icon(
-            imageVector = accountIcon(service),
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-    }
-    Spacer(modifier = Modifier.size(8.dp))
-    Text(
-        text = connectTemplate.format(serviceDisplayName(service))
-    )
+                    onClick = { onConnect(service) },
+                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    if (painter != null) {
+                        Icon(
+                            painter = painter,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = accountIcon(service),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = connectTemplate.format(serviceDisplayName(service))
+                    )
                 }
             }
         }
@@ -855,7 +845,6 @@ private fun YouTubeAccountCard(
                     }
                 }
 
-                // ---> PASTE THE NEW BUTTON RIGHT HERE <---
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedButton(
@@ -937,7 +926,6 @@ private fun YouTubeAccountCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // NEW ADVANCED LOGIN BUTTON
                 OutlinedButton(
                     onClick = onAdvancedLogin,
                     shape = AbsoluteSmoothCornerShape(18.dp, 60),
@@ -974,7 +962,6 @@ fun AdvancedTokenLoginDialog(
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val context = LocalContext.current
 
-    // Auto-fill the text field when the token loads from the database
     LaunchedEffect(currentCookie) {
         if (currentCookie.isNotBlank() && tokenInput.isBlank()) {
             tokenInput = currentCookie
@@ -1055,7 +1042,6 @@ fun AdvancedTokenLoginDialog(
             }
         },
         dismissButton = {
-            // Added a Row to hold both Copy and Cancel beautifully
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
                     onClick = { 
@@ -1073,3 +1059,4 @@ fun AdvancedTokenLoginDialog(
         }
     )
 }
+
