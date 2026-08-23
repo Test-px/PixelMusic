@@ -2,7 +2,6 @@ package com.unshoo.pixelmusic.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.unshoo.pixelmusic.data.gdrive.GDriveRepository
 import com.unshoo.pixelmusic.data.repository.MusicRepository
 import com.unshoo.pixelmusic.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,15 +12,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 enum class ExternalServiceAccount {
-    GOOGLE_DRIVE,
     YOUTUBE,
     LASTFM
 }
@@ -43,7 +39,6 @@ data class AccountsUiState(
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
-    private val gDriveRepository: GDriveRepository,
     private val datastoreRepository: com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository,
     private val syncManager: com.unshoo.pixelmusic.data.worker.SyncManager,
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -59,13 +54,6 @@ class AccountsViewModel @Inject constructor(
     }
 
     private val loggingOutServices = MutableStateFlow<Set<ExternalServiceAccount>>(emptySet())
-
-    private val gDriveStateFlow = combine(
-        gDriveRepository.isLoggedInFlow,
-        gDriveRepository.getFolders().map { it.size }
-    ) { connected, folderCount ->
-        connected to folderCount
-    }
 
     private val youtubeStateFlow = combine(
         datastoreRepository.cookies.map { it.toRawCookie().isNotEmpty() }.distinctUntilChanged(),
@@ -85,7 +73,6 @@ class AccountsViewModel @Inject constructor(
     val uiState: StateFlow<AccountsUiState> = combine(
         combine(
             listOf(
-                gDriveStateFlow,
                 youtubeStateFlow,
                 lastfmStateFlow
             )
@@ -93,36 +80,15 @@ class AccountsViewModel @Inject constructor(
         loggingOutServices,
         datastoreRepository.ytUsername
     ) { states, activeLogouts, ytName ->
-        val (gDriveConnected, gDriveFolderCount) = states[0] as Pair<Boolean, Int>
-        val (youtubeConnected, youtubePlaylistCount) = states[1] as Pair<Boolean, Int>
-        val (lastfmConnected, lastfmUsername, lastfmScrobbleEnabled) = states[2] as Triple<Boolean, String, Boolean>
+        val (youtubeConnected, youtubePlaylistCount) = states[0] as Pair<Boolean, Int>
+        val (lastfmConnected, lastfmUsername, lastfmScrobbleEnabled) = states[1] as Triple<Boolean, String, Boolean>
 
         val calculatedUserName = when {
-            gDriveConnected && !gDriveRepository.userDisplayName.isNullOrBlank() -> gDriveRepository.userDisplayName
             youtubeConnected && ytName.isNotBlank() -> ytName
             else -> null
         }
 
         val connectedAccounts = buildList {
-            if (gDriveConnected) {
-                add(
-                    ExternalAccountUiModel(
-                        service = ExternalServiceAccount.GOOGLE_DRIVE,
-                        title = "Google Drive",
-                        accountLabel = gDriveRepository.userDisplayName
-                            ?.takeIf { it.isNotBlank() }
-                            ?: gDriveRepository.userEmail
-                                ?.takeIf { it.isNotBlank() }
-                            ?: "Google account connected",
-                        syncedContentLabel = formatCount(
-                            count = gDriveFolderCount,
-                            singular = "synced folder",
-                            plural = "synced folders"
-                        ),
-                        isLoggingOut = ExternalServiceAccount.GOOGLE_DRIVE in activeLogouts
-                    )
-                )
-            }
             if (youtubeConnected) {
                 add(
                     ExternalAccountUiModel(
@@ -152,7 +118,6 @@ class AccountsViewModel @Inject constructor(
         }
 
         val disconnectedServices = buildList {
-            if (!gDriveConnected) add(ExternalServiceAccount.GOOGLE_DRIVE)
             if (!youtubeConnected) add(ExternalServiceAccount.YOUTUBE)
             if (!lastfmConnected) add(ExternalServiceAccount.LASTFM)
         }
@@ -172,7 +137,6 @@ class AccountsViewModel @Inject constructor(
             try {
                 runCatching {
                     when (service) {
-                        ExternalServiceAccount.GOOGLE_DRIVE -> gDriveRepository.logout()
                         ExternalServiceAccount.YOUTUBE -> {
                             datastoreRepository.saveCookies(com.unshoo.pixelmusic.data.model.youtube.Cookies(""))
                             datastoreRepository.saveDataSyncId("")
@@ -205,3 +169,4 @@ class AccountsViewModel @Inject constructor(
         }
     }
 }
+
