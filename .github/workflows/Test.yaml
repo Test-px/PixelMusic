@@ -39,8 +39,8 @@ jobs:
           # 2. Change the Application ID in build.gradle.kts
           sed -i 's/applicationId = "com.unshoo.pixelmusic"/applicationId = "com.unshoo.pixelmusic.test"/g' app/build.gradle.kts
           
-          # 3. (Optional) Change App Name so you can easily tell them apart on your phone
-          sed -i 's/<string name="app_name">PixelMusic<\/string>/<string name="app_name">PixelMusic Test<\/string>/g' app/src/main/res/values/strings.xml
+          # 3. Change App Name to strictly "Test" (Using wildcard to ensure it catches it regardless of formatting)
+          sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Test<\/string>/g' app/src/main/res/values/strings.xml
 
       - name: Build Release APK
         run: ./gradlew :app:assembleRelease
@@ -52,5 +52,6 @@ jobs:
           token: ${{ secrets.TEST_REPO_PAT }}
           tag_name: test-build-${{ github.run_number }}
           name: Test Build ${{ github.run_number }}
+          body_path: changelog.txt
           files: app/build/outputs/apk/release/*.apk
 
