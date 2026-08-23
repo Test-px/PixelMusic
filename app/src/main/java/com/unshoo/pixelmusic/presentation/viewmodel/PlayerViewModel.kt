@@ -2262,10 +2262,13 @@ class PlayerViewModel @Inject constructor(
 
 
     private fun checkAndUpdateDailyMixIfNeeded() {
-        // Delegate to DailyMixStateHolder
+        // STOP AUTO-REFRESH: Commenting this out so it doesn't refresh automatically on app start.
+        // It will now only update when you manually pull-to-refresh on the Home screen.
+        /*
         dailyMixStateHolder.checkAndUpdateIfNeeded(
             favoriteSongIdsFlow = favoriteSongIds
         )
+        */
     }
 
     private fun preloadThemesAndInitialData() {
@@ -2297,7 +2300,8 @@ class PlayerViewModel @Inject constructor(
         try {
             Log.d("PlayerViewModel", "resetAndLoadInitialData called by $caller")
             loadInitialLibraryDataParallel()
-            updateDailyMix()
+            // STOP AUTO-REFRESH: Prevent network usage when the library initially loads
+            // updateDailyMix() 
         } finally {
             Trace.endSection()
         }
