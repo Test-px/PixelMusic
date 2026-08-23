@@ -33,6 +33,7 @@ import coil.request.ImageRequest
 import coil.size.Dimension
 import coil.size.Size
 import com.unshoo.pixelmusic.R
+import com.unshoo.pixelmusic.data.preferences.AlbumArtQua
 import com.unshoo.pixelmusic.utils.LocalArtworkUri
 
 internal const val MaxSafeAlbumArtDimensionPx = 2048
@@ -73,6 +74,24 @@ fun OptimizedAlbumArt(
         return
     }
 
+    val effectiveQuality = if (SmartImageCache.performanceModeEnabled) {
+    AlbumArtQuality.LOW
+} else if (SmartImageCache.isMeteredNetwork) {
+    SmartImageCache.albumArtQualityMobile
+} else {
+    SmartImageCache.albumArtQualityWifi
+}
+
+val optimizedUri = remember(uri, effectiveQuality) {
+    if (uri is String) {
+        val size = if (effectiveQuality.maxSize > 0) effectiveQuality.maxSize else 1200
+        uri.replace(Regex("=w\\d+-h\\d+"), "=w$size-h$size")
+           .replace(Regex("-w\\d+-h\\d+"), "-w$size-h$size")
+    } else {
+        uri
+    }
+}
+
     val memoryCacheKey = remember(uri, requestTargetSize) {
         albumArtMemoryCacheKey(uri, requestTargetSize)
     }
@@ -84,17 +103,17 @@ fun OptimizedAlbumArt(
             else -> memoryCacheKey?.let { MemoryCache.Key(it) }
         }
     }
-    val requestModel = remember(context, uri, requestTargetSize) {
-        when (uri) {
-            is ImageRequest -> uri.newBuilder(context).apply {
+    val requestModel = remember(context, optimizedUri, requestTargetSize) {
+    when (optimizedUri) {
+        is ImageRequest -> optimizedUri.newBuilder(context).apply {
                 size(requestTargetSize)
                 if (uri.memoryCacheKey == null) {
                     memoryCacheKey(memoryCacheKey)
                 }
                 placeholderMemoryCacheKey(placeholderMemoryCacheKey)
             }.build()
-            else -> ImageRequest.Builder(context)
-                .data(uri)
+        else -> ImageRequest.Builder(context)
+            .data(optimizedUri)
                 .crossfade(350) // Use Coil's native crossfade
                 .error(R.drawable.ic_music_placeholder)
                 .size(requestTargetSize)
