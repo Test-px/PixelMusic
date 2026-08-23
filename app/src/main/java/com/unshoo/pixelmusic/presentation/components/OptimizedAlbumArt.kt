@@ -83,9 +83,9 @@ fun OptimizedAlbumArt(
     SmartImageCache.albumArtQualityWifi
 }
 
-    val optimizedUri = remember(uri, albumArtQuality) {
+    val optimizedUri = remember(uri, effectiveQuality) { // UPDATE: Re-key to effectiveQuality
         if (uri is String && (uri.contains("ggpht.com") || uri.contains("googleusercontent.com"))) {
-            val size = if (albumArtQuality.maxSize > 0) albumArtQuality.maxSize else 1200
+            val size = if (effectiveQuality.maxSize > 0) effectiveQuality.maxSize else 1200 // UPDATE: Use effectiveQuality
             uri.replace(Regex("=w\\d+-h\\d+"), "=w$size-h$size")
                .replace(Regex("=s\\d+"), "=s$size")
         } else {
