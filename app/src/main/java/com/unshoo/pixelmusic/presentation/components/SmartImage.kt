@@ -79,6 +79,7 @@ fun SmartImage(
     alpha: Float = 1f,
     placeholderModel: Any? = null,
     placeHolderBackgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    isThumbnail: Boolean = true,
     onState: ((AsyncImagePainter.State) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -97,12 +98,12 @@ fun SmartImage(
     val albumArtQualityMobile = SmartImageCache.albumArtQualityMobile
     val performanceModeEnabled = SmartImageCache.performanceModeEnabled
 
-    val effectiveQuality = if (performanceModeEnabled) {
-        AlbumArtQuality.LOW
-    } else if (isMeteredNetwork) {
-        albumArtQualityMobile
-    } else {
-        albumArtQualityWifi
+    val effectiveQuality = if (isThumbnail || performanceModeEnabled) {
+    AlbumArtQuality.LOW
+} else if (isMeteredNetwork) {
+    albumArtQualityMobile
+} else {
+    albumArtQualityWifi
     }
 
     val clippedModifier = modifier.clip(shape)
@@ -144,23 +145,34 @@ fun SmartImage(
         return
     }
 
-    val request = remember(
-        context,
-        model,
-        crossfadeDurationMillis,
-        useDiskCache,
-        useMemoryCache,
-        allowHardware,
-        requestTargetSize
-    ) {
-        if (model is ImageRequest) {
-            model.newBuilder(context)
-                .size(requestTargetSize)
-                .build()
-        } else {
-            ImageRequest.Builder(context)
-                .data(model)
-                .memoryCacheKey("$model|$requestTargetSize")
+    val optimizedModel = remember(model, effectiveQuality) {
+    if (model is String) {
+        val size = if (effectiveQuality.maxSize > 0) effectiveQuality.maxSize else 1200
+        // Rewrites YouTube URL params to download a smaller file over the network
+        model.replace(Regex("=w\\d+-h\\d+"), "=w$size-h$size")
+             .replace(Regex("-w\\d+-h\\d+"), "-w$size-h$size")
+    } else {
+        model
+    }
+}
+
+val request = remember(
+    context,
+    optimizedModel, // UPDATE: Use optimizedModel here
+    crossfadeDurationMillis,
+    useDiskCache,
+    useMemoryCache,
+    allowHardware,
+    requestTargetSize
+) {
+    if (optimizedModel is ImageRequest) {
+        optimizedModel.newBuilder(context) // UPDATE: Use optimizedModel
+            .size(requestTargetSize)
+            .build()
+    } else {
+        ImageRequest.Builder(context)
+            .data(optimizedModel) // UPDATE: Use optimizedModel
+            .memoryCacheKey("$optimizedModel|$requestTargetSize")
                 .crossfade(crossfadeDurationMillis)
                 .diskCachePolicy(if (useDiskCache) CachePolicy.ENABLED else CachePolicy.DISABLED)
                 .memoryCachePolicy(if (useMemoryCache) CachePolicy.ENABLED else CachePolicy.DISABLED)
