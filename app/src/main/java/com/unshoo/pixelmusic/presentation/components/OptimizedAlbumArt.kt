@@ -33,7 +33,7 @@ import coil.request.ImageRequest
 import coil.size.Dimension
 import coil.size.Size
 import com.unshoo.pixelmusic.R
-import com.unshoo.pixelmusic.data.preferences.AlbumArtQua
+import com.unshoo.pixelmusic.data.preferences.AlbumArtQuality
 import com.unshoo.pixelmusic.utils.LocalArtworkUri
 
 internal const val MaxSafeAlbumArtDimensionPx = 2048
@@ -93,28 +93,31 @@ fun OptimizedAlbumArt(
         }
     }
 
-    val memoryCacheKey = remember(uri, requestTargetSize) {
-        albumArtMemoryCacheKey(uri, requestTargetSize)
+    val memoryCacheKey = remember(optimizedUri, requestTargetSize) {
+        albumArtMemoryCacheKey(optimizedUri, requestTargetSize)
     }
-    val placeholderMemoryCacheKey = remember(memoryCacheKey, uri) {
-        when (uri) {
-            is ImageRequest -> uri.placeholderMemoryCacheKey
-                ?: uri.memoryCacheKey
+    
+    val placeholderMemoryCacheKey = remember(memoryCacheKey, optimizedUri) {
+        when (optimizedUri) {
+            is ImageRequest -> optimizedUri.placeholderMemoryCacheKey
+                ?: optimizedUri.memoryCacheKey
                 ?: memoryCacheKey?.let { MemoryCache.Key(it) }
             else -> memoryCacheKey?.let { MemoryCache.Key(it) }
         }
     }
+    
     val requestModel = remember(context, optimizedUri, requestTargetSize) {
-    when (optimizedUri) {
-        is ImageRequest -> optimizedUri.newBuilder(context).apply {
+        when (optimizedUri) {
+            is ImageRequest -> optimizedUri.newBuilder(context).apply {
                 size(requestTargetSize)
-                if (uri.memoryCacheKey == null) {
+                // FIXED: Changed `uri` to `optimizedUri` here so the smart cast works
+                if (optimizedUri.memoryCacheKey == null) {
                     memoryCacheKey(memoryCacheKey)
                 }
                 placeholderMemoryCacheKey(placeholderMemoryCacheKey)
             }.build()
-        else -> ImageRequest.Builder(context)
-            .data(optimizedUri)
+            else -> ImageRequest.Builder(context)
+                .data(optimizedUri)
                 .crossfade(350) // Use Coil's native crossfade
                 .error(R.drawable.ic_music_placeholder)
                 .size(requestTargetSize)
