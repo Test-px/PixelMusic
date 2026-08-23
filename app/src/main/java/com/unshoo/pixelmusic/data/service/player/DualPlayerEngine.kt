@@ -75,7 +75,6 @@ data class ActiveDecoderInfo(
 @Singleton
 class DualPlayerEngine @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val gdriveStreamProxy: com.unshoo.pixelmusic.data.gdrive.GDriveStreamProxy,
     private val connectivityStateHolder: com.unshoo.pixelmusic.presentation.viewmodel.ConnectivityStateHolder,
     private val exoCache: com.unshoo.pixelmusic.data.remote.youtube.ExoCache,
     private val userPreferencesRepository: UserPreferencesRepository
@@ -258,9 +257,10 @@ class DualPlayerEngine @Inject constructor(
 
                         for (uriToResolve in itemsToPreResolve) {
                             val scheme = uriToResolve.scheme
-                            if (scheme == "netease" || scheme == "qqmusic" || scheme == "navidrome" || scheme == "jellyfin" || scheme == "gdrive" || scheme == "youtube") {
-                                resolveCloudUri(uriToResolve)
-                            }
+                        if (scheme == "youtube") {
+                           resolveCloudUri(uriToResolve)
+                        }
+
                         }
                     }
                 } catch (e: Exception) {
@@ -663,7 +663,7 @@ class DualPlayerEngine @Inject constructor(
                 val uri = dataSpec.uri
                 val scheme = uri.scheme
                 // Only resolve custom schemes that cannot be loaded natively by ExoPlayer
-                if (scheme == "telegram" || scheme == "gdrive" || scheme == "youtube") {
+                if (scheme == "youtube") {
                     val originalUri = uri.toString()
                     val localPath = localFilePathCache[originalUri]
                     if (localPath != null && java.io.File(localPath).exists()) {
@@ -782,9 +782,8 @@ class DualPlayerEngine @Inject constructor(
         val deferred = activeResolutions.getOrPut(uriString) {
             scope.async(Dispatchers.IO) {
                 val resolved: Uri? = when (uri.scheme) {
-                    "gdrive" -> resolveGDriveUriAsync(uriString)
-                    "youtube" -> resolveYoutubeUriAsync(uriString)
-                    else -> null
+                         "youtube" -> resolveYoutubeUriAsync(uriString)
+                else -> null
                 }
                 
                 if (resolved != null) {
@@ -805,15 +804,6 @@ class DualPlayerEngine @Inject constructor(
         } finally {
             activeResolutions.remove(uriString)
         }
-    }
-
-    private suspend fun resolveGDriveUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
-        if (!connectivityStateHolder.isOnline.value) {
-            connectivityStateHolder.triggerOfflineBlockedEvent()
-            return@withContext null
-        }
-        if (!gdriveStreamProxy.ensureReady(5_000L)) return@withContext null
-        gdriveStreamProxy.resolveGDriveUri(uriString)?.let { Uri.parse(it) }
     }
 
     private suspend fun resolveYoutubeUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
