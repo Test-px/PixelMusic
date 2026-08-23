@@ -469,26 +469,17 @@ private fun ConnectedAccountCard(
     }
 
     Surface(
-        shape = AbsoluteSmoothCornerShape(12.dp, 60),
-        color = if (isComingSoon) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            palette.statusContainer
-        }
-    ) {
-        Text(
-            text = if (isComingSoon) statusSoon else statusConnected,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isComingSoon) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                palette.statusTint
-            },
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-        )
+    shape = AbsoluteSmoothCornerShape(12.dp, 60),
+    color = palette.statusContainer
+) {
+    Text(
+        text = statusConnected,
+        style = MaterialTheme.typography.labelMedium,
+        color = palette.statusTint,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+    )
     }
-}
 
             Surface(
                 shape = AbsoluteSmoothCornerShape(14.dp, 60),
@@ -516,26 +507,26 @@ private fun ConnectedAccountCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
 
             FilledTonalButton(
-                onClick = onManage,
-                enabled = !account.isLoggingOut && !isComingSoon,
-                shape = AbsoluteSmoothCornerShape(18.dp, 60),
-                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                    containerColor = palette.primaryActionContainer,
-                    contentColor = palette.primaryActionTint,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                Icon(
-                    imageVector = if (isComingSoon) Icons.Rounded.Link else Icons.AutoMirrored.Rounded.OpenInNew,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = if (isComingSoon) comingSoonShort else openService,
-                    fontWeight = FontWeight.SemiBold
-                )
+    onClick = onManage,
+    enabled = !account.isLoggingOut,
+    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+        containerColor = palette.primaryActionContainer,
+        contentColor = palette.primaryActionTint,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ),
+    modifier = Modifier.fillMaxWidth().height(48.dp)
+) {
+    Icon(
+        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+        contentDescription = null
+    )
+    Spacer(modifier = Modifier.size(8.dp))
+    Text(
+        text = openService,
+        fontWeight = FontWeight.SemiBold
+    )
             }
 
             OutlinedButton(
@@ -597,43 +588,37 @@ private fun EmptyAccountsCard(
             )
 
             disconnectedServices.forEach { service ->
-                val isComingSoon = service == ExternalServiceAccount.GOOGLE_DRIVE
                 val painter = when (service) {
-                    ExternalServiceAccount.GOOGLE_DRIVE -> painterResource(R.drawable.rounded_drive_export_24)
                     ExternalServiceAccount.YOUTUBE -> null
                     ExternalServiceAccount.LASTFM -> null
                 }
+
                 FilledTonalButton(
-                    onClick = { if (!isComingSoon) onConnect(service) },
-                    enabled = !isComingSoon,
-                    shape = AbsoluteSmoothCornerShape(18.dp, 60),
-                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    if (painter != null) {
-                        Icon(
-                            painter = painter,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = accountIcon(service),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = if (isComingSoon) {
-                            serviceSoonTemplate.format(serviceDisplayName(service))
-                        } else {
-                            connectTemplate.format(serviceDisplayName(service))
-                        }
-                    )
+    onClick = { onConnect(service) },
+    shape = AbsoluteSmoothCornerShape(18.dp, 60),
+    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ),
+    modifier = Modifier.fillMaxWidth().height(48.dp)
+) {
+    if (painter != null) {
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+    } else {
+        Icon(
+            imageVector = accountIcon(service),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+    Spacer(modifier = Modifier.size(8.dp))
+    Text(
+        text = connectTemplate.format(serviceDisplayName(service))
+    )
                 }
             }
         }
@@ -652,14 +637,6 @@ private data class ServicePalette(
 @Composable
 private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
     return when (service) {
-        ExternalServiceAccount.GOOGLE_DRIVE -> ServicePalette(
-            iconContainer = MaterialTheme.colorScheme.secondaryContainer,
-            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
-            statusContainer = Color(0xFFD7F4D0),
-            statusTint = Color(0xFF1E5E18),
-            primaryActionContainer = MaterialTheme.colorScheme.secondaryContainer,
-            primaryActionTint = MaterialTheme.colorScheme.onSecondaryContainer
-        )
         ExternalServiceAccount.YOUTUBE -> ServicePalette(
             iconContainer = MaterialTheme.colorScheme.errorContainer,
             iconTint = MaterialTheme.colorScheme.onErrorContainer,
@@ -681,7 +658,6 @@ private fun servicePalette(service: ExternalServiceAccount): ServicePalette {
 
 private fun accountIcon(service: ExternalServiceAccount): ImageVector {
     return when (service) {
-        ExternalServiceAccount.GOOGLE_DRIVE -> Icons.Rounded.CloudQueue
         ExternalServiceAccount.YOUTUBE -> Icons.Rounded.MusicNote
         ExternalServiceAccount.LASTFM -> Icons.Rounded.MusicNote
     }
@@ -700,7 +676,6 @@ private fun ServiceIcon(service: ExternalServiceAccount, tint: Color, modifier: 
 @Composable
 private fun serviceDisplayName(service: ExternalServiceAccount): String {
     return when (service) {
-        ExternalServiceAccount.GOOGLE_DRIVE -> stringResource(R.string.auth_gdrive_title)
         ExternalServiceAccount.YOUTUBE -> "YouTube Client"
         ExternalServiceAccount.LASTFM -> "Last.fm"
     }
@@ -713,9 +688,6 @@ private fun openService(
     onOpenLastfmSettings: () -> Unit = {}
 ) {
     when (service) {
-        ExternalServiceAccount.GOOGLE_DRIVE -> {
-            Toast.makeText(context, context.getString(R.string.accounts_google_drive_soon), Toast.LENGTH_SHORT).show()
-        }
         ExternalServiceAccount.YOUTUBE -> {
             onOpenYoutubeAuth()
         }
