@@ -1265,59 +1265,26 @@ fun LibraryScreen(
                                     }
                                 } else null,
                                 extraContent = {
-                                    if (isPlaylistsTab && playlistUiState.showTelegramCloudPlaylists) {
-                                        Text(
-                                            text = stringResource(R.string.presentation_batch_d_topics_display),
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontFamily = com.unshoo.pixelmusic.ui.theme.GoogleSansRounded,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
-                                        )
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(48.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            listOf(
-                                                com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_ONLY to stringResource(R.string.presentation_batch_d_topic_mode_channels),
-                                                com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.TOPICS_ONLY to stringResource(R.string.presentation_batch_d_topic_mode_topics),
-                                                com.unshoo.pixelmusic.data.preferences.TelegramTopicDisplayMode.CHANNELS_AND_TOPICS to stringResource(R.string.presentation_batch_d_topic_mode_both)
-                                            ).forEach { (mode, label) ->
-                                                ToggleSegmentButton(
-                                                    modifier = Modifier.weight(1f),
-                                                    active = playlistUiState.telegramTopicDisplayMode == mode,
-                                                    activeColor = MaterialTheme.colorScheme.primary,
-                                                    inactiveColor = MaterialTheme.colorScheme.surfaceVariant,
-                                                    activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    activeCornerRadius = 32.dp,
-                                                    onClick = { playlistViewModel.setTelegramTopicDisplayMode(mode) },
-                                                    text = label
-                                                )
-                                            }
-                                        }
-                                    }
-                                    if (!isFoldersTab) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = stringResource(R.string.presentation_batch_d_cloud_sources_heading),
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontFamily = com.unshoo.pixelmusic.ui.theme.GoogleSansRounded,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
-                                        )
-                                        com.unshoo.pixelmusic.presentation.components.LibrarySheetToggleCard(
-                                            label = stringResource(R.string.presentation_batch_d_cloud_only),
-                                            checked = playerUiState.hideLocalMedia,
-                                            boxBackgroundColor = if (playerUiState.hideLocalMedia)
-                                                MaterialTheme.colorScheme.tertiary
-                                            else
-                                                MaterialTheme.colorScheme.surfaceContainerLow,
-                                            boxCornerRadius = if (playerUiState.hideLocalMedia) 18.dp else 50.dp,
-                                            onCheckedChange = { playerViewModel.setHideLocalMedia(it) }
-                                        )
-                                    }
+    if (!isFoldersTab) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.presentation_batch_d_cloud_sources_heading),
+            style = MaterialTheme.typography.headlineSmall,
+            fontFamily = com.unshoo.pixelmusic.ui.theme.GoogleSansRounded,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
+        )
+        com.unshoo.pixelmusic.presentation.components.LibrarySheetToggleCard(
+            label = stringResource(R.string.presentation_batch_d_cloud_only),
+            checked = playerUiState.hideLocalMedia,
+            boxBackgroundColor = if (playerUiState.hideLocalMedia)
+                MaterialTheme.colorScheme.tertiary
+            else
+                MaterialTheme.colorScheme.surfaceContainerLow,
+            boxCornerRadius = if (playerUiState.hideLocalMedia) 18.dp else 50.dp,
+            onCheckedChange = { playerViewModel.setHideLocalMedia(it) }
+        )
+    }
                                 }
                             )
                         }
