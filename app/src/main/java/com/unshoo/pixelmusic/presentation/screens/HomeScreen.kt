@@ -387,11 +387,14 @@ fun HomeScreen(
         val lastVersionSeen = userPrefs.lastSeenChangelogVersionFlow.first()
         val lastCheckTime = userPrefs.lastGithubCheckTimeFlow.first()
         val cachedLatestVersion = userPrefs.latestGithubVersionCacheFlow.first()
+        // Fetch our newly cached changelog!
+        val cachedLatestChangelog = userPrefs.latestGithubChangelogCacheFlow.first()
         
         val now = System.currentTimeMillis()
         val oneDayMs = 24 * 60 * 60 * 1000L
 
         var latestAvailableVersion = cachedLatestVersion
+        var latestAvailableChangelog = cachedLatestChangelog
 
         // If the app JUST updated, the cache is definitely stale! Clear it instantly.
         if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
@@ -404,8 +407,9 @@ fun HomeScreen(
             val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
             if (updateState is com.unshoo.pixelmusic.utils.UpdateState.Available) {
                 latestAvailableVersion = updateState.versionName
-                sheetChangelog = updateState.changelog
+                latestAvailableChangelog = updateState.changelog ?: ""
                 userPrefs.setLatestGithubVersionCache(latestAvailableVersion)
+                userPrefs.setLatestGithubChangelogCache(latestAvailableChangelog)
             } else {
                 latestAvailableVersion = currentAppVersion // Mark as up to date locally
                 userPrefs.setLatestGithubVersionCache(currentAppVersion)
@@ -423,6 +427,8 @@ fun HomeScreen(
             if (now - lastPrompt > oneDayMs) {
                 isUpdateAvailableState = true
                 sheetVersionName = latestAvailableVersion
+                // Use the cached changelog so it's never empty!
+                sheetChangelog = latestAvailableChangelog.takeIf { it.isNotEmpty() } 
                 showUpdateSheet = true
             }
         } else {
@@ -748,7 +754,7 @@ fun HomeScreen(
         }
     }
 
-    if (showUpdateSheet) {
+    if (showUpdateSheet && !shouldShowCleanInstallDisclaimer) {
         UpdateNotificationSheet(
             isUpdateAvailable = isUpdateAvailableState,
             versionName = sheetVersionName,
