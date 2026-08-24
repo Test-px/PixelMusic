@@ -1,5 +1,5 @@
-- Optimised for better performance with less network. 
-- Save data on metered network. 
-- Automatic crush reporting system.
-- Improved update screen.
-- Polished login methods. 
+👍Optimised for better performance 🚀 with less network 📶.
+🔋Save data on metered networks ⚡.
+Automatic crush reporting system 📊.
+Improved update screen 🔄.
+Polished login methods ⚙️✨.
