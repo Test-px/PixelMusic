@@ -101,7 +101,8 @@ object InAppUpdater {
 
     sealed class GlobalDownloadState {
         object Idle : GlobalDownloadState()
-        data class Downloading(val progress: Float, val isPaused: Boolean, val versionName: String) : GlobalDownloadState()
+        // Added totalBytes here:
+        data class Downloading(val progress: Float, val isPaused: Boolean, val versionName: String, val totalBytes: Long) : GlobalDownloadState()
         data class Finished(val apkFile: File, val versionName: String) : GlobalDownloadState()
         data class Error(val message: String) : GlobalDownloadState()
     }
@@ -164,7 +165,8 @@ object InAppUpdater {
         downloadState.value = GlobalDownloadState.Downloading(
             progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f, 
             isPaused = false,
-            versionName = versionName
+            versionName = versionName,
+            totalBytes = totalBytes
         )
 
         downloadJob = updaterScope.launch {
@@ -223,7 +225,7 @@ object InAppUpdater {
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - lastEmitTime > 150 || downloadedBytes == totalBytes) {
                         val progress = downloadedBytes.toFloat() / totalBytes.toFloat()
-                        downloadState.value = GlobalDownloadState.Downloading(progress, false, versionName)
+                        downloadState.value = GlobalDownloadState.Downloading(progress, false, versionName, totalBytes)
                         
                         val notif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
                             .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -284,7 +286,7 @@ object InAppUpdater {
         downloadJob?.cancel()
         currentVersionName?.let {
             val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f
-            downloadState.value = GlobalDownloadState.Downloading(progress, isPaused = true, versionName = it)
+            downloadState.value = GlobalDownloadState.Downloading(progress, isPaused = true, versionName = it, totalBytes = totalBytes)
             
             if (appContext != null) {
                 val notificationManager = appContext!!.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
