@@ -371,9 +371,7 @@ fun HomeScreen(
     // Drawer state for sidebar
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
-    // Declare userPrefs FIRST so it can be used below
     val userPrefs = playerViewModel.userPreferencesRepository
-    
     val lastPromptTime by userPrefs.lastUpdatePromptTimeFlow.collectAsStateWithLifecycle(initialValue = 0L)
     val lastSeenVersion by userPrefs.lastSeenChangelogVersionFlow.collectAsStateWithLifecycle(initialValue = "LOADING")
     
@@ -442,7 +440,43 @@ fun HomeScreen(
         }
     }
     
-    quickPicksViewModel.refresh()
+    val shouldShowCleanInstallDisclaimer =
+        settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
+            !cleanInstallDisclaimerDismissedThisSession
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                HomeGradientTopBar(
+                    onNavigationIconClick = {
+                        navController.navigateSafely(Screen.Settings.route)
+                    },
+                    onMoreOptionsClick = {
+                        showChangelogBottomSheet = true
+                    },
+                    onBetaClick = {
+                        showBetaInfoBottomSheet = true
+                    },
+                    onTelegramClick = {
+                         showStreamingProviderSheet = true
+                    },
+                    onMenuClick = {
+                        // onOpenSidebar() // Disabled
+                    },
+                    isScrolled = isScrolledPastThreshold.value
+                )
+            }
+        ) { innerPadding ->
+            val pullRefreshState = rememberPullToRefreshState()
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    homePlaceholderRefreshGeneration++
+                    quickPicksViewModel.refresh()
                     playerViewModel.forceUpdateDailyMix()
                     scope.launch {
                         delay(2000)
