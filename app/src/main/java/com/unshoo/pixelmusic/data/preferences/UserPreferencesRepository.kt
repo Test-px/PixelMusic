@@ -147,8 +147,9 @@ constructor(
         val ALLOWED_DIRECTORIES = stringSetPreferencesKey("allowed_directories")
         val BLOCKED_DIRECTORIES = stringSetPreferencesKey("blocked_directories")
         val INITIAL_SETUP_DONE = booleanPreferencesKey("initial_setup_done")
-        // val GLOBAL_THEME_PREFERENCE = stringPreferencesKey("global_theme_preference_v2") //
-        // Removed
+        val LAST_UPDATE_PROMPT_TIME = longPreferencesKey("last_update_prompt_time")
+        val LAST_SEEN_CHANGELOG_VERSION = stringPreferencesKey("last_seen_changelog_version")
+        
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
         val APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
@@ -336,6 +337,20 @@ constructor(
         val SCROBBLE_MIN_SONG_DURATION = intPreferencesKey("scrobble_min_song_duration")
         val SCROBBLE_DELAY_SECONDS = intPreferencesKey("scrobble_delay_seconds")
         val GENERATED_PLAYLISTS_RETENTION_PERIOD = stringPreferencesKey("generated_playlists_retention_period")
+    }
+
+    val lastUpdatePromptTimeFlow: Flow<Long> =
+        dataStore.data.map { it[PreferencesKeys.LAST_UPDATE_PROMPT_TIME] ?: 0L }
+
+    suspend fun setLastUpdatePromptTime(timeMs: Long) {
+        dataStore.edit { it[PreferencesKeys.LAST_UPDATE_PROMPT_TIME] = timeMs }
+    }
+
+    val lastSeenChangelogVersionFlow: Flow<String> =
+        dataStore.data.map { it[PreferencesKeys.LAST_SEEN_CHANGELOG_VERSION] ?: "" }
+
+    suspend fun setLastSeenChangelogVersion(version: String) {
+        dataStore.edit { it[PreferencesKeys.LAST_SEEN_CHANGELOG_VERSION] = version }
     }
 
     val preferTelegramAlternativeFlow: Flow<Boolean> =
