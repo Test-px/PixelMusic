@@ -1,15 +1,17 @@
 package com.unshoo.pixelmusic.utils
 
+import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.SharedPreferences
-import java.io.PrintWriter
-import java.io.StringWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.util.Log
+import kotlin.system.exitProcess
+import com.unshoo.pixelmusic.BuildConfig
 
 /**
- * Data class representing a saved crash log entry.
+ * Dummy data class to prevent compilation errors if other files (like MainActivity) 
+ * still reference the old crash log system.
  */
 data class CrashLogData(
     val timestamp: Long,
@@ -17,42 +19,25 @@ data class CrashLogData(
     val exceptionMessage: String,
     val stackTrace: String
 ) {
-    /**
-     * Returns the full crash log formatted for display or sharing.
-     */
-    fun getFullLog(): String {
-        return buildString {
-            appendLine("=== PixelMusic Crash Report ===")
-            appendLine("Date: $formattedDate")
-            appendLine("Exception: $exceptionMessage")
-            appendLine()
-            appendLine("Stack Trace:")
-            appendLine(stackTrace)
-        }
-    }
+    fun getFullLog(): String = ""
 }
 
 /**
- * Custom UncaughtExceptionHandler that saves crash information to SharedPreferences
- * so it can be displayed to the user when the app restarts.
+ * Automated Telegram/Email Crash Reporter.
+ * Intercepts fatal crashes and instantly fires an intent to send the log.
  */
 object CrashHandler : Thread.UncaughtExceptionHandler {
-
-    private const val PREFS_NAME = "crash_handler_prefs"
-    private const val KEY_HAS_CRASH = "has_crash"
-    private const val KEY_TIMESTAMP = "crash_timestamp"
-    private const val KEY_EXCEPTION_MESSAGE = "crash_exception_message"
-    private const val KEY_STACK_TRACE = "crash_stack_trace"
 
     private lateinit var appContext: Context
     private var defaultHandler: Thread.UncaughtExceptionHandler? = null
 
-    private val prefs: SharedPreferences
-        get() = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    // Your credentials
+    private const val DEV_EMAIL = "vita47177@gmail.com"
+    private const val TG_USERNAME = "Saurav124x"
 
     /**
-     * Installs this crash handler as the default uncaught exception handler.
-     * Should be called in Application.onCreate().
+     * Installs this crash handler.
+     * Keep this exactly as is so your PixelMusicApplication.kt doesn't break!
      */
     fun install(context: Context) {
         appContext = context.applicationContext
@@ -61,75 +46,57 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
     }
 
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
+        // 1. Extract the exact reason for the crash
+        val stackTrace = Log.getStackTraceString(throwable)
+        
+        // 2. Build the pre-filled report
+        val crashReport = """
+            🚨 PixelMusic Crash Report 🚨
+            
+            Device: ${Build.MANUFACTURER} ${Build.MODEL}
+            Android Version: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})
+            App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})
+            
+            What went wrong:
+            ${throwable.message}
+            
+            Stacktrace:
+            $stackTrace
+        """.trimIndent()
+
+        // 3. Attempt to launch Telegram directly to your username
+        val telegramUri = Uri.parse("tg://resolve?domain=$TG_USERNAME&text=${Uri.encode(crashReport)}")
+        val telegramIntent = Intent(Intent.ACTION_VIEW, telegramUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        }
+
         try {
-            saveCrashLog(throwable)
-        } catch (e: Exception) {
-            // Ignore any errors during crash saving
+            appContext.startActivity(telegramIntent)
+        } catch (e: ActivityNotFoundException) {
+            // 4. Fallback to Gmail/Email if Telegram is not installed
+            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:$DEV_EMAIL")
+                putExtra(Intent.EXTRA_SUBJECT, "PixelMusic Automated Crash Report")
+                putExtra(Intent.EXTRA_TEXT, crashReport)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            try {
+                appContext.startActivity(emailIntent)
+            } catch (ex: ActivityNotFoundException) {
+                // Failsafe if absolutely no messaging apps are installed
+                Log.e("CrashHandler", "No apps found to handle crash report.")
+            }
         }
 
-        // Call the default handler to allow normal crash behavior
+        // 5. Let the system kill the dead app process cleanly
         defaultHandler?.uncaughtException(thread, throwable)
+        exitProcess(1)
     }
 
-    private fun saveCrashLog(throwable: Throwable) {
-        val timestamp = System.currentTimeMillis()
-        val stackTrace = getStackTraceString(throwable)
-        val exceptionMessage = throwable.message ?: throwable.javaClass.simpleName
-
-        // Use commit() instead of apply() to ensure data is written synchronously
-        // before the process terminates
-        prefs.edit().apply {
-            putBoolean(KEY_HAS_CRASH, true)
-            putLong(KEY_TIMESTAMP, timestamp)
-            putString(KEY_EXCEPTION_MESSAGE, exceptionMessage)
-            putString(KEY_STACK_TRACE, stackTrace)
-            commit() // Synchronous write - ensures data is saved before process dies
-        }
-    }
-
-    private fun getStackTraceString(throwable: Throwable): String {
-        val sw = StringWriter()
-        val pw = PrintWriter(sw)
-        throwable.printStackTrace(pw)
-        return sw.toString()
-    }
-
-    /**
-     * Checks if there is a saved crash log from a previous session.
-     */
-    fun hasCrashLog(): Boolean {
-        if (!::appContext.isInitialized) return false
-        return prefs.getBoolean(KEY_HAS_CRASH, false)
-    }
-
-    /**
-     * Retrieves the saved crash log data.
-     * Returns null if no crash log exists.
-     */
-    fun getCrashLog(): CrashLogData? {
-        if (!hasCrashLog()) return null
-
-        val timestamp = prefs.getLong(KEY_TIMESTAMP, 0)
-        val exceptionMessage = prefs.getString(KEY_EXCEPTION_MESSAGE, "Unknown error") ?: "Unknown error"
-        val stackTrace = prefs.getString(KEY_STACK_TRACE, "") ?: ""
-
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-        val formattedDate = dateFormat.format(Date(timestamp))
-
-        return CrashLogData(
-            timestamp = timestamp,
-            formattedDate = formattedDate,
-            exceptionMessage = exceptionMessage,
-            stackTrace = stackTrace
-        )
-    }
-
-    /**
-     * Clears the saved crash log.
-     * Should be called after the user has acknowledged the crash report.
-     */
-    fun clearCrashLog() {
-        if (!::appContext.isInitialized) return
-        prefs.edit().clear().apply()
-    }
+    // --- DUMMY METHODS TO PREVENT COMPILER ERRORS ---
+    // These ensure that if MainActivity is still checking for old crashes, 
+    // it won't crash the compiler, but will always think there are no old logs.
+    fun hasCrashLog(): Boolean = false
+    fun getCrashLog(): CrashLogData? = null
+    fun clearCrashLog() {}
 }
