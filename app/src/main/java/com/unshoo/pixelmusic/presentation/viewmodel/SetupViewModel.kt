@@ -262,7 +262,7 @@ class SetupViewModel @Inject constructor(
     fun setColorPalette(palette: String) {
         _uiState.update { it.copy(colorPalette = palette) }
         viewModelScope.launch {
-            themePreferencesRepository.setColorPalette(palette)
+            themePreferencesRepository.setColorPalettePreference(palette)
         }
     }
 
