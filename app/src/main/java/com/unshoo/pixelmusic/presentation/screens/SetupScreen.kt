@@ -534,6 +534,7 @@ sealed class SetupPage {
     object BackupRestore : SetupPage()
     object DirectorySelection : SetupPage()
     object ThemeSelection : SetupPage()
+    object PaletteSelection : SetupPage()
     object NotificationsPermission : SetupPage()
     object AlarmsPermission : SetupPage()
     object LibraryLayout : SetupPage()
@@ -554,6 +555,7 @@ private fun buildSetupPages(sdkInt: Int): List<SetupPage> {
     pages += SetupPage.BackupRestore
     pages += SetupPage.DirectorySelection
     pages += SetupPage.ThemeSelection
+    pages += SetupPage.PaletteSelection
     pages += SetupPage.LibraryLayout
 
     if (sdkInt >= Build.VERSION_CODES.S) {
