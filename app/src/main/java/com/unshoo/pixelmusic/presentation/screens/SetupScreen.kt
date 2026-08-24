@@ -992,7 +992,7 @@ fun ThemeSelectionPage(
             mode = AppThemeMode.FOLLOW_SYSTEM,
             title = stringResource(R.string.setup_theme_follow_title),
             description = stringResource(R.string.setup_theme_follow_description),
-            icon = Icons.Rounded.PhoneAndroid
+            icon = Icons.Rounded.PhoneAndroid,
             recommended = true
         )
     )
