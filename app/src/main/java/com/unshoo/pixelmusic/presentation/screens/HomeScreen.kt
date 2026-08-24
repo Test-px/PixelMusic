@@ -1262,12 +1262,12 @@ fun UpdateNotificationSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.65f) // Slightly taller to fit the awesome art
+                .fillMaxHeight(0.65f)
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Text Content Area (Scrollable for large release notes)
+            // 1. SCROLLABLE AREA (Text AND Visuals)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1308,68 +1308,66 @@ fun UpdateNotificationSheet(
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
-            }
 
-            // 2. Exact Welcome Page Visuals (No floating, just the beautiful liquid wave)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .clip(RoundedCornerShape(20.dp))
-            ) {
-                // If you have a different visual for "After Update", change the R.drawable here!
-                val imageRes = if (isUpdateAvailable) R.drawable.welcome_art else R.drawable.welcome_art
-
-                MaterialYouVectorDrawable(
-                    modifier = Modifier.fillMaxSize(),
-                    drawableResId = imageRes
-                )
-                
-                // The "Liquid Floor" effect exactly matching the SetupScreen
-                SineWaveLine(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .height(32.dp)
-                        .padding(horizontal = 8.dp)
-                        .padding(bottom = 4.dp),
-                    animate = true,
-                    color = MaterialTheme.colorScheme.surfaceContainerLow, // Matches sheet background perfectly
-                    alpha = 0.95f,
-                    strokeWidth = 16.dp,
-                    amplitude = 4.dp,
-                    waves = 7.6f,
-                    phase = 0f
-                )
+                // ---> MOVED VISUALS HERE! Now they scroll with the text <---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .height(22.dp)
-                        .background(color = MaterialTheme.colorScheme.surfaceContainerLow) // Matches sheet background perfectly
-                        .padding(horizontal = 8.dp)
-                        .padding(bottom = 4.dp)
-                )
-                SineWaveLine(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .height(32.dp)
-                        .padding(horizontal = 8.dp)
-                        .padding(bottom = 4.dp),
-                    animate = true,
-                    color = MaterialTheme.colorScheme.primary,
-                    alpha = 0.95f,
-                    strokeWidth = 4.dp,
-                    amplitude = 4.dp,
-                    waves = 7.6f,
-                    phase = 0f
-                )
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                ) {
+                    val imageRes = if (isUpdateAvailable) R.drawable.welcome_art else R.drawable.welcome_art
+
+                    MaterialYouVectorDrawable(
+                        modifier = Modifier.fillMaxSize(),
+                        drawableResId = imageRes
+                    )
+                    
+                    SineWaveLine(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp),
+                        animate = true,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow, 
+                        alpha = 0.95f,
+                        strokeWidth = 16.dp,
+                        amplitude = 4.dp,
+                        waves = 7.6f,
+                        phase = 0f
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(22.dp)
+                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp)
+                    )
+                    SineWaveLine(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp),
+                        animate = true,
+                        color = MaterialTheme.colorScheme.primary,
+                        alpha = 0.95f,
+                        strokeWidth = 4.dp,
+                        amplitude = 4.dp,
+                        waves = 7.6f,
+                        phase = 0f
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp)) // Padding at bottom of scroll
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 3. Action Buttons
+            // 2. FIXED ACTION BUTTONS (Stays pinned at bottom)
             Column(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
@@ -1388,7 +1386,6 @@ fun UpdateNotificationSheet(
                     )
                 }
                 
-                // Show the snooze button only if it's an update prompt!
                 if (isUpdateAvailable) {
                     Spacer(modifier = Modifier.height(12.dp))
                     TextButton(
