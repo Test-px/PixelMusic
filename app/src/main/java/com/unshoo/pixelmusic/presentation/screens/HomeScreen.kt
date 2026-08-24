@@ -142,6 +142,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.unshoo.pixelmusic.presentation.components.subcomps.MaterialYouVectorDrawable
 import com.unshoo.pixelmusic.presentation.components.subcomps.SineWaveLine
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.material3.Button
+
 
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
