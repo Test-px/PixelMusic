@@ -65,24 +65,27 @@ jobs:
         run: ./gradlew :app:assembleRelease -PAPP_VERSION_NAME="test-build-${{ env.NEXT_NUM }}"
 
       - name: Clean Up Old Releases and Tags
-        # This step only runs if the build step above was successful!
+        # Use the built-in GitHub CLI (gh) for a much cleaner deletion process
+        env:
+          GH_TOKEN: ${{ secrets.TEST_REPO_PAT }}
         run: |
           echo "Build succeeded! Wiping old releases and tags to keep the repo clean..."
           
-          # Fetch all releases
-          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases)
-          
-          # Loop through and delete every old release ID
-          echo "$RELEASES" | jq -r '.[].id' | while read id; do
-            if [ "$id" != "null" ] && [ -n "$id" ]; then
-              curl -X DELETE -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases/$id
+          # 1. Find all releases and forcefully delete them AND their associated tags
+          RELEASES=$(gh release list --repo Test-px/PixelMusic --limit 500 --json tagName --jq '.[].tagName')
+          for tag in $RELEASES; do
+            if [ -n "$tag" ]; then
+              echo "Deleting release and tag: $tag"
+              gh release delete "$tag" --repo Test-px/PixelMusic --cleanup-tag -y || true
             fi
           done
           
-          # Loop through and delete every old tag
-          echo "$RELEASES" | jq -r '.[].tag_name' | while read tag; do
-            if [ "$tag" != "null" ] && [ -n "$tag" ]; then
-              curl -X DELETE -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/git/refs/tags/$tag
+          # 2. Sweep for any leftover dangling tags that didn't have an associated release
+          DANGLING_TAGS=$(gh api repos/Test-px/PixelMusic/git/matching-refs/tags/test-build- --jq '.[].ref' 2>/dev/null || echo "")
+          for ref in $DANGLING_TAGS; do
+            if [ -n "$ref" ]; then
+              echo "Deleting dangling ref: $ref"
+              gh api -X DELETE repos/Test-px/PixelMusic/git/$ref || true
             fi
           done
 
