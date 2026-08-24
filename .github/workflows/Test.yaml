@@ -42,16 +42,57 @@ jobs:
           # 3. Change App Name to strictly "Test"
           sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Test<\/string>/g' app/src/main/res/values/strings.xml
 
+      - name: Calculate Sequential Version
+        run: |
+          # Fetch the latest successful release tag from the Test-px repository
+          LATEST_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases/latest | jq -r .tag_name)
+          
+          # If no releases exist yet, start at 1. Otherwise, extract the number and add 1.
+          if [ "$LATEST_TAG" == "null" ] || [ -z "$LATEST_TAG" ]; then
+            NEXT_NUM=1
+          else
+            LAST_NUM=$(echo "$LATEST_TAG" | sed 's/[^0-9]*//g')
+            NEXT_NUM=$((LAST_NUM + 1))
+          fi
+          
+          echo "Next version will be test-build-$NEXT_NUM"
+          
+          # Save the new number to GitHub Environments so the next steps can use it
+          echo "NEXT_NUM=$NEXT_NUM" >> $GITHUB_ENV
+
       - name: Build Release APK
-        run: ./gradlew :app:assembleRelease -PAPP_VERSION_NAME="test-build-${{ github.run_number }}"
+        # We use env.NEXT_NUM instead of github.run_number
+        run: ./gradlew :app:assembleRelease -PAPP_VERSION_NAME="test-build-${{ env.NEXT_NUM }}"
+
+      - name: Clean Up Old Releases and Tags
+        # This step only runs if the build step above was successful!
+        run: |
+          echo "Build succeeded! Wiping old releases and tags to keep the repo clean..."
+          
+          # Fetch all releases
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases)
+          
+          # Loop through and delete every old release ID
+          echo "$RELEASES" | jq -r '.[].id' | while read id; do
+            if [ "$id" != "null" ] && [ -n "$id" ]; then
+              curl -X DELETE -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases/$id
+            fi
+          done
+          
+          # Loop through and delete every old tag
+          echo "$RELEASES" | jq -r '.[].tag_name' | while read tag; do
+            if [ "$tag" != "null" ] && [ -n "$tag" ]; then
+              curl -X DELETE -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/git/refs/tags/$tag
+            fi
+          done
 
       - name: Upload to Testing Repository
         uses: softprops/action-gh-release@v2
         with:
           repository: Test-px/PixelMusic
           token: ${{ secrets.TEST_REPO_PAT }}
-          tag_name: test-build-${{ github.run_number }}
-          name: Test Build ${{ github.run_number }}
+          tag_name: test-build-${{ env.NEXT_NUM }}
+          name: Test Build ${{ env.NEXT_NUM }}
           body_path: changelog.txt
           files: app/build/outputs/apk/release/*.apk
 
@@ -64,4 +105,4 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/Test-px/PixelMusic/merge-upstream \
             -d '{"branch":"main"}'
-
+            
