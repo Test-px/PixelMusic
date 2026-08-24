@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.unshoo.pixelmusic.utils.InAppUpdater
@@ -43,131 +45,134 @@ fun UpdateDownloadScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+    Dialog(
+        onDismissRequest = { navController.popBackStack() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize()) {
 
-            // ---> THE NEW DYNAMIC PARTICLE BACKGROUND <---
-            if (downloadState is InAppUpdater.GlobalDownloadState.Downloading) {
-                val state = downloadState as InAppUpdater.GlobalDownloadState.Downloading
-                FloatingParticlesBackground(progress = state.progress, isPaused = state.isPaused)
-            }
+                if (downloadState is InAppUpdater.GlobalDownloadState.Downloading) {
+                    val state = downloadState as InAppUpdater.GlobalDownloadState.Downloading
+                    FloatingParticlesBackground(progress = state.progress, isPaused = state.isPaused)
+                }
 
-            // Foreground UI
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = uiPhase,
-                    transitionSpec = {
-                        fadeIn(tween(400)) + scaleIn(initialScale = 0.9f) togetherWith fadeOut(tween(400)) + scaleOut(targetScale = 0.9f)
-                    },
-                    label = "Download UI State"
-                ) { phase ->
-                    when (phase) {
-                        "DOWNLOADING" -> {
-                            val state = downloadState as? InAppUpdater.GlobalDownloadState.Downloading
-                            DownloadingView(
-                                progress = state?.progress ?: 0f,
-                                isPaused = state?.isPaused ?: false,
-                                versionName = state?.versionName ?: "",
-                                onPauseResume = {
-                                    if (state?.isPaused == true) {
-                                        InAppUpdater.resumeDownload(context) 
-                                    } else {
-                                        InAppUpdater.pauseDownload()
+                // Foreground UI
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedContent(
+                        targetState = uiPhase,
+                        transitionSpec = {
+                            fadeIn(tween(400)) + scaleIn(initialScale = 0.9f) togetherWith fadeOut(tween(400)) + scaleOut(targetScale = 0.9f)
+                        },
+                        label = "Download UI State"
+                    ) { phase ->
+                        when (phase) {
+                            "DOWNLOADING" -> {
+                                val state = downloadState as? InAppUpdater.GlobalDownloadState.Downloading
+                                DownloadingView(
+                                    progress = state?.progress ?: 0f,
+                                    isPaused = state?.isPaused ?: false,
+                                    versionName = state?.versionName ?: "",
+                                    totalBytes = state?.totalBytes ?: 0L,
+                                    onPauseResume = {
+                                        if (state?.isPaused == true) {
+                                            InAppUpdater.resumeDownload(context) 
+                                        } else {
+                                            InAppUpdater.pauseDownload()
+                                        }
+                                    },
+                                    onCancel = {
+                                        InAppUpdater.cancelDownload(context)
+                                        navController.popBackStack()
                                     }
-                                },
-                                onCancel = {
-                                    InAppUpdater.cancelDownload(context)
-                                    navController.popBackStack()
-                                }
-                            )
-                        }
-                        "FINISHED" -> {
-                            val state = downloadState as? InAppUpdater.GlobalDownloadState.Finished
-                            FinishedView(
-                                versionName = state?.versionName ?: "",
-                                onInstall = { InAppUpdater.installApk(context, state!!.apkFile) },
-                                onDelete = {
-                                    InAppUpdater.deleteApk(context)
-                                    navController.popBackStack()
-                                }
-                            )
-                        }
-                        "ERROR" -> {
-                            val state = downloadState as? InAppUpdater.GlobalDownloadState.Error
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Rounded.ErrorOutline, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
-                                Spacer(Modifier.height(16.dp))
-                                Text("Download Failed", style = MaterialTheme.typography.headlineMedium)
-                                Text(state?.message ?: "Unknown error", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                                Spacer(Modifier.height(24.dp))
-                                Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
+                                )
                             }
-                        }
-                        else -> {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("No active download", style = MaterialTheme.typography.titleMedium)
-                                Spacer(Modifier.height(16.dp))
-                                Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
+                            "FINISHED" -> {
+                                val state = downloadState as? InAppUpdater.GlobalDownloadState.Finished
+                                FinishedView(
+                                    versionName = state?.versionName ?: "",
+                                    apkFile = state?.apkFile,
+                                    onInstall = { state?.apkFile?.let { InAppUpdater.installApk(context, it) } },
+                                    onDelete = {
+                                        InAppUpdater.deleteApk(context)
+                                        navController.popBackStack()
+                                    }
+                                )
+                            }
+                            "ERROR" -> {
+                                val state = downloadState as? InAppUpdater.GlobalDownloadState.Error
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Rounded.ErrorOutline, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+                                    Spacer(Modifier.height(16.dp))
+                                    Text("Download Failed", style = MaterialTheme.typography.headlineMedium)
+                                    Text(state?.message ?: "Unknown error", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                                    Spacer(Modifier.height(24.dp))
+                                    Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
+                                }
+                            }
+                            else -> {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("No active download", style = MaterialTheme.typography.titleMedium)
+                                    Spacer(Modifier.height(16.dp))
+                                    Button(onClick = { navController.popBackStack() }) { Text("Go Back") }
+                                }
                             }
                         }
                     }
+                }
+
+                // Floating Back Button
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .padding(8.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
                 }
             }
         }
     }
 }
 
-// ---> THE CUSTOM SILKY SMOOTH PARTICLE ENGINE <---
 @Composable
 private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     class Particle(
-        var x: Float, // Relative width (0f to 1f)
-        var y: Float, // Relative height (0f to 1f)
-        val radius: Float, // Size in dp (mix of small and big)
-        val speed: Float, // Upward velocity
-        val baseAlpha: Float // Natural opacity of the dot
+        var x: Float,
+        var y: Float,
+        val radius: Float,
+        val speed: Float,
+        val baseAlpha: Float
     )
 
-    // Generate 35 random dots using safe Math.random()
     val particles = remember {
         List(35) {
             Particle(
                 x = Math.random().toFloat(),
-                y = 1.0f + Math.random().toFloat(), // Spawn below the screen to start
-                radius = 2f + (Math.random().toFloat() * 5f),        // Random size between 2dp and 7dp
-                speed = 0.05f + (Math.random().toFloat() * 0.10f),   // Random speed between 0.05 and 0.15
-                baseAlpha = 0.2f + (Math.random().toFloat() * 0.5f)  // Random opacity between 0.2 and 0.7
+                y = 1.0f + Math.random().toFloat(),
+                radius = 2f + (Math.random().toFloat() * 5f),
+                speed = 0.05f + (Math.random().toFloat() * 0.10f),
+                baseAlpha = 0.2f + (Math.random().toFloat() * 0.5f)
             )
         }
     }
 
     var frameTime by remember { mutableLongStateOf(0L) }
-    
-    // ---> BUG FIX: Silently capture the latest progress without restarting the physics loop! <---
     val currentProgress by rememberUpdatedState(progress)
 
-    // Only depend on 'isPaused', NOT 'progress'!
     LaunchedEffect(isPaused) {
-        // Only run physics if active, unpaused, and before they vanish (97%)
         if (!isPaused) {
             var lastTime = withFrameNanos { it }
             while (true) {
@@ -175,29 +180,23 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
                 val deltaSeconds = (currentTime - lastTime) / 1_000_000_000f
                 lastTime = currentTime
 
-                val prog = currentProgress // Read latest progress safely
+                val prog = currentProgress
                 
                 if (prog > 0f && prog < 0.97f) {
-                    // Physics logic: At 70%, the speed drops smoothly to 0 by 96%
                     val speedMultiplier = when {
                         prog < 0.70f -> 1f
                         prog < 0.96f -> 1f - ((prog - 0.70f) / 0.26f).coerceIn(0f, 1f)
                         else -> 0f
                     }
 
-                    // Move particles
                     for (p in particles) {
                         p.y -= (p.speed * deltaSeconds * speedMultiplier)
-                        
-                        // If a particle floats off the top, respawn it at the bottom
                         if (p.y < -0.1f) {
                             p.y = 1.1f + Math.random().toFloat() * 0.2f
                             p.x = Math.random().toFloat()
                         }
                     }
                 }
-                
-                // Trigger canvas redraw
                 frameTime = currentTime
             }
         }
@@ -206,13 +205,9 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     val dotColor = MaterialTheme.colorScheme.onSurface
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val currentTick = frameTime // Read state to force redraw
-        val prog = currentProgress // Read latest progress safely
+        val currentTick = frameTime
+        val prog = currentProgress
 
-        // Master Opacity logic:
-        // 0% -> Invisible. 
-        // 1-5% -> Fades in smoothly.
-        // 80-96% -> Fades out completely and vanishes.
         val globalAlpha = when {
             prog <= 0.01f -> 0f
             prog < 0.05f -> (prog - 0.01f) / 0.04f
@@ -238,6 +233,7 @@ private fun DownloadingView(
     progress: Float,
     isPaused: Boolean,
     versionName: String,
+    totalBytes: Long,
     onPauseResume: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -246,6 +242,15 @@ private fun DownloadingView(
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "progress"
     )
+
+    val sizeString = remember(totalBytes) {
+        if (totalBytes > 0) {
+            val sizeMb = totalBytes / (1024f * 1024f)
+            String.format(java.util.Locale.US, "%.1f MB", sizeMb)
+        } else {
+            "Calculating size..."
+        }
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -263,10 +268,24 @@ private fun DownloadingView(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = if (isPaused) "Paused" else "Downloading $versionName...",
+            text = if (isPaused) "Paused" else "Downloading $versionName",
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Surface(
+            shape = AbsoluteSmoothCornerShape(10.dp, 60),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest
+        ) {
+            Text(
+                text = sizeString,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(48.dp))
 
@@ -337,9 +356,19 @@ private fun DownloadingView(
 @Composable
 private fun FinishedView(
     versionName: String,
+    apkFile: java.io.File?,
     onInstall: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val sizeString = remember(apkFile) {
+        if (apkFile != null && apkFile.exists()) {
+            val sizeMb = apkFile.length() / (1024f * 1024f)
+            String.format(java.util.Locale.US, "%.1f MB", sizeMb)
+        } else {
+            "Unknown Size"
+        }
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
@@ -369,6 +398,20 @@ private fun FinishedView(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Surface(
+            shape = AbsoluteSmoothCornerShape(12.dp, 60),
+            color = MaterialTheme.colorScheme.secondaryContainer
+        ) {
+            Text(
+                text = sizeString,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(48.dp))
 
