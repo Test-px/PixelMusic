@@ -1,7 +1,6 @@
 package com.unshoo.pixelmusic.presentation.components
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,10 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.unshoo.pixelmusic.R
+import com.unshoo.pixelmusic.presentation.components.subcomps.MaterialYouVectorDrawable
+import com.unshoo.pixelmusic.presentation.components.subcomps.SineWaveLine
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,17 +34,16 @@ fun UpdateNotificationSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.55f) // Dynamically takes up ~half the screen
+                .fillMaxHeight(0.6f) // Takes up a generous half of the screen
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Text Content Area (Scrollable)
+            // 1. Text Content Area (Scrollable for large release notes)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -54,10 +55,11 @@ fun UpdateNotificationSheet(
                     text = if (isUpdateAvailable) "Update Available! 🚀" else "You're up to date! 🎉",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 Surface(
                     shape = AbsoluteSmoothCornerShape(12.dp, 60),
@@ -65,14 +67,14 @@ fun UpdateNotificationSheet(
                 ) {
                     Text(
                         text = "Version $versionName",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
                     text = changelog ?: "Bug fixes and performance improvements.",
@@ -84,40 +86,51 @@ fun UpdateNotificationSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 2. Animated Image Area
+            // 2. Animated Visual Area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp),
+                    .height(180.dp),
                 contentAlignment = Alignment.Center
             ) {
                 val infiniteTransition = rememberInfiniteTransition(label = "floating_image")
                 val floatOffset by infiniteTransition.animateFloat(
-                    initialValue = -8f,
-                    targetValue = 8f,
+                    initialValue = -12f,
+                    targetValue = 12f,
                     animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = EaseInOutSine),
+                        animation = tween(1500, easing = FastOutSlowInEasing),
                         repeatMode = RepeatMode.Reverse
                     ),
                     label = "float_offset"
                 )
 
-                // Swap these drawables with your exact welcome screen illustration names!
-                val imageRes = if (isUpdateAvailable) {
-                    R.drawable.ic_launcher_foreground // Replace with your "Before Update" visual
-                } else {
-                    R.drawable.ic_launcher_foreground // Replace with your "After Update" visual
-                }
-
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = null,
+                // The floating welcome art
+                MaterialYouVectorDrawable(
                     modifier = Modifier
-                        .size(120.dp)
-                        .graphicsLayer {
-                            translationY = floatOffset
-                        }
+                        .fillMaxSize()
+                        .padding(bottom = 24.dp) // Leave room for the wave
+                        .graphicsLayer { translationY = floatOffset },
+                    drawableResId = R.drawable.welcome_art
                 )
+
+                // Only show the animated Sine Wave if the update is completed (celebration vibe!)
+                if (!isUpdateAvailable) {
+                    SineWaveLine(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp),
+                        animate = true,
+                        color = MaterialTheme.colorScheme.primary,
+                        alpha = 0.95f,
+                        strokeWidth = 4.dp,
+                        amplitude = 4.dp,
+                        waves = 7.6f,
+                        phase = 0f
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -134,11 +147,11 @@ fun UpdateNotificationSheet(
                 shape = AbsoluteSmoothCornerShape(20.dp, 60)
             ) {
                 Text(
-                    text = if (isUpdateAvailable) "Update Now" else "Awesome",
-                    fontWeight = FontWeight.Bold
+                    text = if (isUpdateAvailable) "Update Now" else "Awesome!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
             }
         }
     }
 }
-
