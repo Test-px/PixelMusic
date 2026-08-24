@@ -429,6 +429,10 @@ fun HomeScreen(
                 sheetVersionName = latestAvailableVersion
                 // Use the cached changelog so it's never empty!
                 sheetChangelog = latestAvailableChangelog.takeIf { it.isNotEmpty() } 
+                
+                // ---> NEW: Graceful 2.5 second delay so it doesn't jump scare the user <---
+                delay(2500)
+                
                 showUpdateSheet = true
             }
         } else {
@@ -437,6 +441,10 @@ fun HomeScreen(
                 isUpdateAvailableState = false
                 sheetVersionName = currentAppVersion
                 sheetChangelog = "Welcome to the latest version of PixelMusic! 🎉"
+                
+                // ---> NEW: Graceful 2.5 second delay so it doesn't jump scare the user <---
+                delay(2500)
+                
                 showUpdateSheet = true
                 userPrefs.setLastSeenChangelogVersion(currentAppVersion)
             } else if (lastVersionSeen.isEmpty()) {
