@@ -138,6 +138,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalConfiguration
 import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.unshoo.pixelmusic.presentation.components.subcomps.MaterialYouVectorDrawable
+import com.unshoo.pixelmusic.presentation.components.subcomps.SineWaveLine
+
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
@@ -351,6 +356,52 @@ fun HomeScreen(
 
     // Drawer state for sidebar
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val userPrefs = playerViewModel.userPreferencesRepository
+    val lastPromptTime by userPrefs.lastUpdatePromptTimeFlow.collectAsStateWithLifecycle(initialValue = 0L)
+    val lastSeenVersion by userPrefs.lastSeenChangelogVersionFlow.collectAsStateWithLifecycle(initialValue = "LOADING")
+    
+    var showUpdateSheet by remember { mutableStateOf(false) }
+    var isUpdateAvailableState by remember { mutableStateOf(false) }
+    var sheetVersionName by remember { mutableStateOf("") }
+    var sheetChangelog by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(lastPromptTime, lastSeenVersion) {
+        if (lastSeenVersion == "LOADING") return@LaunchedEffect // Wait for prefs to load
+        
+        val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
+        val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
+        
+        val now = System.currentTimeMillis()
+        val oneDayMs = 24 * 60 * 60 * 1000L
+
+        when (updateState) {
+            is com.unshoo.pixelmusic.utils.UpdateState.Available -> {
+                // Rule 1: Show "Update Available" once a day
+                if (now - lastPromptTime > oneDayMs) {
+                    isUpdateAvailableState = true
+                    sheetVersionName = updateState.versionName
+                    sheetChangelog = updateState.changelog
+                    showUpdateSheet = true
+                    userPrefs.setLastUpdatePromptTime(now)
+                }
+            }
+            is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
+                // Rule 2: Show "What's New" exactly once after a successful update
+                if (lastSeenVersion.isNotEmpty() && lastSeenVersion != currentAppVersion) {
+                    isUpdateAvailableState = false
+                    sheetVersionName = currentAppVersion
+                    sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
+                    showUpdateSheet = true
+                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+                } else if (lastSeenVersion.isEmpty()) {
+                    // First launch ever, establish the baseline so we don't spam them
+                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+                }
+            }
+            else -> {}
+        }
+    }
+    
     val shouldShowCleanInstallDisclaimer =
         settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
             !cleanInstallDisclaimerDismissedThisSession
@@ -656,6 +707,21 @@ fun HomeScreen(
                 }
             )
         }
+    }
+
+    if (showUpdateSheet) {
+        UpdateNotificationSheet(
+            isUpdateAvailable = isUpdateAvailableState,
+            versionName = sheetVersionName,
+            changelog = sheetChangelog,
+            onDismiss = { showUpdateSheet = false },
+            onConfirmClick = {
+                if (isUpdateAvailableState) {
+                    // Take the user to the about screen where the update is handled
+                    navController.navigateSafely("about")
+                }
+            }
+        )
     }
     
     if (showChangelogBottomSheet) {
@@ -1123,5 +1189,142 @@ fun HomeGreetingHeader(userName: String?) {
             ),
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UpdateNotificationSheet(
+    isUpdateAvailable: Boolean,
+    versionName: String,
+    changelog: String?,
+    onDismiss: () -> Unit,
+    onConfirmClick: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.6f) // Takes up a generous half of the screen
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 1. Text Content Area (Scrollable for large release notes)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isUpdateAvailable) "Update Available! 🚀" else "You're up to date! 🎉",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Surface(
+                    shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "Version $versionName",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = changelog ?: "Bug fixes and performance improvements.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // 2. Animated Visual Area
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val infiniteTransition = rememberInfiniteTransition(label = "floating_image")
+                val floatOffset by infiniteTransition.animateFloat(
+                    initialValue = -12f,
+                    targetValue = 12f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1500, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "float_offset"
+                )
+
+                // The floating welcome art
+                MaterialYouVectorDrawable(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 24.dp) // Leave room for the wave
+                        .graphicsLayer { translationY = floatOffset },
+                    drawableResId = R.drawable.welcome_art
+                )
+
+                // Only show the animated Sine Wave if the update is completed (celebration vibe!)
+                if (!isUpdateAvailable) {
+                    SineWaveLine(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp),
+                        animate = true,
+                        color = MaterialTheme.colorScheme.primary,
+                        alpha = 0.95f,
+                        strokeWidth = 4.dp,
+                        amplitude = 4.dp,
+                        waves = 7.6f,
+                        phase = 0f
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3. Action Button
+            Button(
+                onClick = {
+                    onConfirmClick()
+                    onDismiss()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = AbsoluteSmoothCornerShape(20.dp, 60)
+            ) {
+                Text(
+                    text = if (isUpdateAvailable) "Update Now" else "Awesome!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
     }
 }
