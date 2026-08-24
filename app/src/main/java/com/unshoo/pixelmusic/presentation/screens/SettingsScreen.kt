@@ -585,16 +585,20 @@ fun SettingsScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(56.dp),
-                                shadowElevation = 8.dp
+                                color = MaterialTheme.colorScheme.surface, // Neutral background
+                                modifier = Modifier.size(64.dp),
+                                shadowElevation = 6.dp
                             ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_youtube),
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(14.dp).fillMaxSize(),
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_youtube),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp) // Beautifully sized logo
+                                    )
+                                }
                             }
                         }
 
