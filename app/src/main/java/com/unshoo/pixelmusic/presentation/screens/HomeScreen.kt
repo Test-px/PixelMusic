@@ -148,6 +148,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material3.Button
+import kotlinx.coroutines.flow.first
 import androidx.compose.animation.core.animateFloat
 
 
@@ -373,10 +374,15 @@ fun HomeScreen(
     var sheetVersionName by remember { mutableStateOf("") }
     var sheetChangelog by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(lastPromptTime, lastSeenVersion) {
-        if (lastSeenVersion == "LOADING") return@LaunchedEffect // Wait for prefs to load
-        
+    val userPrefs = playerViewModel.userPreferencesRepository
+
+    LaunchedEffect(Unit) {
         val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
+        
+        // Read the preferences exactly once when the home screen opens
+        val lastPrompt = kotlinx.coroutines.flow.first(userPrefs.lastUpdatePromptTimeFlow)
+        val lastVersion = kotlinx.coroutines.flow.first(userPrefs.lastSeenChangelogVersionFlow)
+        
         val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
         
         val now = System.currentTimeMillis()
@@ -384,8 +390,7 @@ fun HomeScreen(
 
         when (updateState) {
             is com.unshoo.pixelmusic.utils.UpdateState.Available -> {
-                // Rule 1: Show "Update Available" once a day
-                if (now - lastPromptTime > oneDayMs) {
+                if (now - lastPrompt > oneDayMs) {
                     isUpdateAvailableState = true
                     sheetVersionName = updateState.versionName
                     sheetChangelog = updateState.changelog
@@ -394,15 +399,12 @@ fun HomeScreen(
                 }
             }
             is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
-                // Rule 2: Show "What's New" exactly once after a successful update
-                if (lastSeenVersion.isNotEmpty() && lastSeenVersion != currentAppVersion) {
+                // Triggers if the version changed OR if it's the very first time running this code
+                if (lastVersion != currentAppVersion) {
                     isUpdateAvailableState = false
                     sheetVersionName = currentAppVersion
                     sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
                     showUpdateSheet = true
-                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
-                } else if (lastSeenVersion.isEmpty()) {
-                    // First launch ever, establish the baseline so we don't spam them
                     userPrefs.setLastSeenChangelogVersion(currentAppVersion)
                 }
             }
@@ -1219,7 +1221,7 @@ fun UpdateNotificationSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.6f) // Takes up a generous half of the screen
+                .fillMaxHeight(0.65f) // Slightly taller to fit the awesome art
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -1267,51 +1269,61 @@ fun UpdateNotificationSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 2. Animated Visual Area
+            // 2. Exact Welcome Page Visuals (No floating, just the beautiful liquid wave)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp),
-                contentAlignment = Alignment.Center
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(20.dp))
             ) {
-                val infiniteTransition = rememberInfiniteTransition(label = "floating_image")
-                val floatOffset by infiniteTransition.animateFloat(
-                    initialValue = -12f,
-                    targetValue = 12f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "float_offset"
-                )
+                // If you have a different visual for "After Update", change the R.drawable here!
+                val imageRes = if (isUpdateAvailable) R.drawable.welcome_art else R.drawable.welcome_art
 
-                // The floating welcome art
                 MaterialYouVectorDrawable(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 24.dp) // Leave room for the wave
-                        .graphicsLayer { translationY = floatOffset },
-                    drawableResId = R.drawable.welcome_art
+                    modifier = Modifier.fillMaxSize(),
+                    drawableResId = imageRes
                 )
-
-                // Only show the animated Sine Wave if the update is completed (celebration vibe!)
-                if (!isUpdateAvailable) {
-                    SineWaveLine(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .height(32.dp)
-                            .padding(horizontal = 8.dp)
-                            .padding(bottom = 4.dp),
-                        animate = true,
-                        color = MaterialTheme.colorScheme.primary,
-                        alpha = 0.95f,
-                        strokeWidth = 4.dp,
-                        amplitude = 4.dp,
-                        waves = 7.6f,
-                        phase = 0f
-                    )
-                }
+                
+                // The "Liquid Floor" effect exactly matching the SetupScreen
+                SineWaveLine(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(32.dp)
+                        .padding(horizontal = 8.dp)
+                        .padding(bottom = 4.dp),
+                    animate = true,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow, // Matches sheet background perfectly
+                    alpha = 0.95f,
+                    strokeWidth = 16.dp,
+                    amplitude = 4.dp,
+                    waves = 7.6f,
+                    phase = 0f
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(22.dp)
+                        .background(color = MaterialTheme.colorScheme.surfaceContainerLow) // Matches sheet background perfectly
+                        .padding(horizontal = 8.dp)
+                        .padding(bottom = 4.dp)
+                )
+                SineWaveLine(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(32.dp)
+                        .padding(horizontal = 8.dp)
+                        .padding(bottom = 4.dp),
+                    animate = true,
+                    color = MaterialTheme.colorScheme.primary,
+                    alpha = 0.95f,
+                    strokeWidth = 4.dp,
+                    amplitude = 4.dp,
+                    waves = 7.6f,
+                    phase = 0f
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1336,3 +1348,4 @@ fun UpdateNotificationSheet(
         }
     }
 }
+
