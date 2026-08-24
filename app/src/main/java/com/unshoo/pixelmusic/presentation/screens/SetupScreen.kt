@@ -1048,6 +1048,106 @@ fun ThemeSelectionPage(
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun PaletteSelectionPage(
+    uiState: SetupUiState,
+    onPaletteSelected: (String) -> Unit
+) {
+    val paletteOptions = listOf(
+        ThemeOptionItem(
+            mode = "DYNAMIC",
+            title = "Dynamic (System)",
+            description = "Extracts accent colors directly from your wallpaper.",
+            icon = Icons.Outlined.Palette,
+            recommended = true
+        ),
+        ThemeOptionItem(
+            mode = "SAGE",
+            title = "Sage Green (Mint)",
+            description = "A calming, natural mint green.",
+            icon = Icons.Outlined.Palette,
+            recommended = false
+        ),
+        ThemeOptionItem(
+            mode = "PURPLE",
+            title = "Classic Purple",
+            description = "A deep, elegant violet.",
+            icon = Icons.Outlined.Palette,
+            recommended = false
+        ),
+        ThemeOptionItem(
+            mode = "BLUE",
+            title = "Slate Blue",
+            description = "A cool, muted blue.",
+            icon = Icons.Outlined.Palette,
+            recommended = false
+        ),
+        ThemeOptionItem(
+            mode = "ORANGE",
+            title = "Sunset Orange",
+            description = "A warm, vibrant orange.",
+            icon = Icons.Outlined.Palette,
+            recommended = false
+        )
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "App Color Palette",
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontFamily = GoogleSansRounded,
+                    fontSize = 32.sp
+                ),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Pick the accent colors that feel right for you.",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            contentPadding = PaddingValues(vertical = 12.dp)
+        ) {
+            items(paletteOptions) { option ->
+                ThemeModeOptionCard(
+                    option = option,
+                    selected = uiState.colorPalette == option.mode,
+                    onClick = { onPaletteSelected(option.mode) }
+                )
+            }
+
+            item {
+                Text(
+                    text = "You can change this later in Settings > Appearance > App Color Palette.",
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeModeOptionCard(
@@ -2445,87 +2545,6 @@ fun NavBarPreview(isDefault: Boolean) {
                     }
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun ThemeSelectionPage(
-    uiState: SetupUiState,
-    onModeSelected: (String) -> Unit
-) {
-    val themeOptions = listOf(
-        ThemeOptionItem(
-            mode = AppThemeMode.DARK,
-            title = stringResource(R.string.setup_theme_dark_title),
-            description = stringResource(R.string.setup_theme_dark_description),
-            icon = Icons.Rounded.DarkMode,
-            recommended = false // Safely explicit instead of leaving it dangling
-        ),
-        ThemeOptionItem(
-            mode = AppThemeMode.LIGHT,
-            title = stringResource(R.string.setup_theme_light_title),
-            description = stringResource(R.string.setup_theme_light_description),
-            icon = Icons.Outlined.LightMode,
-            recommended = false
-        ),
-        ThemeOptionItem(
-            mode = AppThemeMode.FOLLOW_SYSTEM,
-            title = stringResource(R.string.setup_theme_follow_title),
-            description = stringResource(R.string.setup_theme_follow_description),
-            icon = Icons.Rounded.PhoneAndroid,
-            recommended = true
-        )
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.setup_theme_title),
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
-                    fontSize = 32.sp
-                ),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.setup_theme_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            themeOptions.forEach { option ->
-                ThemeModeOptionCard(
-                    option = option,
-                    selected = uiState.appThemeMode == option.mode,
-                    onClick = { onModeSelected(option.mode) }
-                )
-            }
-
-            Text(
-                text = stringResource(R.string.setup_theme_footer),
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            )
         }
     }
 }
