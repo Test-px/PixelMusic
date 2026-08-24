@@ -368,6 +368,10 @@ fun HomeScreen(
 
     // Drawer state for sidebar
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
+    // Declare userPrefs FIRST so it can be used below
+    val userPrefs = playerViewModel.userPreferencesRepository
+    
     val lastPromptTime by userPrefs.lastUpdatePromptTimeFlow.collectAsStateWithLifecycle(initialValue = 0L)
     val lastSeenVersion by userPrefs.lastSeenChangelogVersionFlow.collectAsStateWithLifecycle(initialValue = "LOADING")
     
@@ -376,13 +380,9 @@ fun HomeScreen(
     var sheetVersionName by remember { mutableStateOf("") }
     var sheetChangelog by remember { mutableStateOf<String?>(null) }
 
-    // Make sure this is declared exactly here!
-    val userPrefs = playerViewModel.userPreferencesRepository
-
     LaunchedEffect(Unit) {
         val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
         
-        // Now it can find userPrefs!
         val lastPrompt = userPrefs.lastUpdatePromptTimeFlow.first()
         val lastVersion = userPrefs.lastSeenChangelogVersionFlow.first()
         
