@@ -1,3 +1,4 @@
 - Optimised for better performance with less network. 
 - Save data on metered network. 
 - Automatic crush reporting system.
+- Improved update screen.
