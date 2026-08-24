@@ -75,7 +75,8 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
         } catch (e: ActivityNotFoundException) {
             // 4. Fallback to Gmail/Email if Telegram is not installed
             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:$DEV_EMAIL")
+                data = Uri.parse("mailto:") // Blank mailto forces only email apps to open
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(DEV_EMAIL)) // Pass the email here instead
                 putExtra(Intent.EXTRA_SUBJECT, "PixelMusic Automated Crash Report")
                 putExtra(Intent.EXTRA_TEXT, crashReport)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
