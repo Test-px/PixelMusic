@@ -151,7 +151,8 @@ constructor(
         val LAST_SEEN_CHANGELOG_VERSION = stringPreferencesKey("last_seen_changelog_version")
         val LATEST_GITHUB_VERSION_CACHE = stringPreferencesKey("latest_github_version_cache")
         val LAST_GITHUB_CHECK_TIME = longPreferencesKey("last_github_check_time")
-        
+        val LATEST_GITHUB_CHANGELOG_CACHE = stringPreferencesKey("latest_github_changelog_cache")
+                
         
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
@@ -2339,5 +2340,12 @@ constructor(
 
     suspend fun setLastGithubCheckTime(timeMs: Long) {
         dataStore.edit { it[PreferencesKeys.LAST_GITHUB_CHECK_TIME] = timeMs }
+    }
+
+    val latestGithubChangelogCacheFlow: Flow<String> =
+        dataStore.data.map { it[PreferencesKeys.LATEST_GITHUB_CHANGELOG_CACHE] ?: "" }
+
+    suspend fun setLatestGithubChangelogCache(changelog: String) {
+        dataStore.edit { it[PreferencesKeys.LATEST_GITHUB_CHANGELOG_CACHE] = changelog }
     }
 }
