@@ -150,6 +150,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material3.Button
 import kotlinx.coroutines.flow.first
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.flow.first
+
 
 
 
@@ -379,9 +382,8 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
         
-        // Read the preferences exactly once when the home screen opens
-        val lastPrompt = kotlinx.coroutines.flow.first(userPrefs.lastUpdatePromptTimeFlow)
-        val lastVersion = kotlinx.coroutines.flow.first(userPrefs.lastSeenChangelogVersionFlow)
+        val lastPrompt = userPrefs.lastUpdatePromptTimeFlow.first()
+        val lastVersion = userPrefs.lastSeenChangelogVersionFlow.first()
         
         val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
         
@@ -399,12 +401,13 @@ fun HomeScreen(
                 }
             }
             is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
-                // Triggers if the version changed OR if it's the very first time running this code
-                if (lastVersion != currentAppVersion) {
+                if (lastVersion.isNotEmpty() && lastVersion != currentAppVersion) {
                     isUpdateAvailableState = false
                     sheetVersionName = currentAppVersion
                     sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
                     showUpdateSheet = true
+                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+                } else if (lastVersion.isEmpty()) {
                     userPrefs.setLastSeenChangelogVersion(currentAppVersion)
                 }
             }
