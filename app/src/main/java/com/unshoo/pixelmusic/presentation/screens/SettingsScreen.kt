@@ -101,6 +101,10 @@ import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.foundation.layout.wrapContentHeight
 import com.unshoo.pixelmusic.presentation.screens.AdvancedTokenLoginDialog
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextAlign
+
 
 
 
