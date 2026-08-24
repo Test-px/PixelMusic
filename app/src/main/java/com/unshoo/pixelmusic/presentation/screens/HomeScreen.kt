@@ -384,74 +384,63 @@ fun HomeScreen(
         val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
         
         val lastPrompt = userPrefs.lastUpdatePromptTimeFlow.first()
-        val lastVersion = userPrefs.lastSeenChangelogVersionFlow.first()
-        
-        val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
+        val lastVersionSeen = userPrefs.lastSeenChangelogVersionFlow.first()
+        val lastCheckTime = userPrefs.lastGithubCheckTimeFlow.first()
+        val cachedLatestVersion = userPrefs.latestGithubVersionCacheFlow.first()
         
         val now = System.currentTimeMillis()
         val oneDayMs = 24 * 60 * 60 * 1000L
 
-        when (updateState) {
-            is com.unshoo.pixelmusic.utils.UpdateState.Available -> {
-                if (now - lastPrompt > oneDayMs) {
-                    isUpdateAvailableState = true
-                    sheetVersionName = updateState.versionName
-                    sheetChangelog = updateState.changelog
-                    showUpdateSheet = true
-                    userPrefs.setLastUpdatePromptTime(now)
-                }
+        var latestAvailableVersion = cachedLatestVersion
+
+        // If the app JUST updated, the cache is definitely stale! Clear it instantly.
+        if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
+            latestAvailableVersion = currentAppVersion
+            userPrefs.setLatestGithubVersionCache(currentAppVersion)
+        }
+
+        // 1. Only ping GitHub API if we haven't checked today!
+        if (now - lastCheckTime > oneDayMs) {
+            val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
+            if (updateState is com.unshoo.pixelmusic.utils.UpdateState.Available) {
+                latestAvailableVersion = updateState.versionName
+                sheetChangelog = updateState.changelog
+                userPrefs.setLatestGithubVersionCache(latestAvailableVersion)
+            } else {
+                latestAvailableVersion = currentAppVersion // Mark as up to date locally
+                userPrefs.setLatestGithubVersionCache(currentAppVersion)
             }
-            is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
-                if (lastVersion.isNotEmpty() && lastVersion != currentAppVersion) {
-                    isUpdateAvailableState = false
-                    sheetVersionName = currentAppVersion
-                    sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
-                    showUpdateSheet = true
-                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
-                } else if (lastVersion.isEmpty()) {
-                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
-                }
+            userPrefs.setLastGithubCheckTime(now)
+        }
+
+        // 2. Logic for popping the sheet (Extracting exact numbers to avoid cache conflicts)
+        val cleanLatest = latestAvailableVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+        val cleanCurrent = currentAppVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+
+        // Only trigger the update prompt if the available version is strictly GREATER than the current version
+        if (cleanLatest > cleanCurrent) {
+            // Update is available! Did user hit "Don't remind me" today?
+            if (now - lastPrompt > oneDayMs) {
+                isUpdateAvailableState = true
+                sheetVersionName = latestAvailableVersion
+                showUpdateSheet = true
             }
-            else -> {}
+        } else {
+            // App is Up to Date. Show the "What's New" celebration if the version just changed.
+            if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
+                isUpdateAvailableState = false
+                sheetVersionName = currentAppVersion
+                sheetChangelog = "Welcome to the latest version of PixelMusic! 🎉"
+                showUpdateSheet = true
+                userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+            } else if (lastVersionSeen.isEmpty()) {
+                // Baseline for fresh installs so it doesn't spam the celebration
+                userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+            }
         }
     }
     
-    val shouldShowCleanInstallDisclaimer =
-        settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
-            !cleanInstallDisclaimerDismissedThisSession
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                HomeGradientTopBar(
-                    onNavigationIconClick = {
-                        navController.navigateSafely(Screen.Settings.route)
-                    },
-                    onMoreOptionsClick = {
-                        showChangelogBottomSheet = true
-                    },
-                    onBetaClick = {
-                        showBetaInfoBottomSheet = true
-                    },
-                    onTelegramClick = {
-                         showStreamingProviderSheet = true
-                    },
-                    onMenuClick = {
-                        // onOpenSidebar() // Disabled
-                    },
-                    isScrolled = isScrolledPastThreshold.value
-                )
-            }
-        ) { innerPadding ->
-            val pullRefreshState = rememberPullToRefreshState()
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = {
-                    isRefreshing = true
-                    homePlaceholderRefreshGeneration++
-                    quickPicksViewModel.refresh()
+    quickPicksViewModel.refresh()
                     playerViewModel.forceUpdateDailyMix()
                     scope.launch {
                         delay(2000)
@@ -731,8 +720,13 @@ fun HomeScreen(
             onDismiss = { showUpdateSheet = false },
             onConfirmClick = {
                 if (isUpdateAvailableState) {
-                    // Take the user to the about screen where the update is handled
                     navController.navigateSafely("about")
+                }
+            },
+            onSnoozeClick = {
+                // Save the timestamp so they aren't bothered for the rest of the day!
+                scope.launch {
+                    userPrefs.setLastUpdatePromptTime(System.currentTimeMillis())
                 }
             }
         )
@@ -1213,7 +1207,8 @@ fun UpdateNotificationSheet(
     versionName: String,
     changelog: String?,
     onDismiss: () -> Unit,
-    onConfirmClick: () -> Unit
+    onConfirmClick: () -> Unit,
+    onSnoozeClick: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -1332,24 +1327,43 @@ fun UpdateNotificationSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. Action Button
-            Button(
-                onClick = {
-                    onConfirmClick()
-                    onDismiss()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = AbsoluteSmoothCornerShape(20.dp, 60)
-            ) {
-                Text(
-                    text = if (isUpdateAvailable) "Update Now" else "Awesome!",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            // 3. Action Buttons
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = {
+                        onConfirmClick()
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = AbsoluteSmoothCornerShape(20.dp, 60)
+                ) {
+                    Text(
+                        text = if (isUpdateAvailable) "Update Now" else "Awesome!",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+                
+                // Show the snooze button only if it's an update prompt!
+                if (isUpdateAvailable) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(
+                        onClick = {
+                            onSnoozeClick()
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text = "Don't remind me today",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }
 }
-
