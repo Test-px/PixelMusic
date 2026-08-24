@@ -104,6 +104,7 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch {
             if (!userPreferencesRepository.initialSetupDoneFlow.first()) {
                 themePreferencesRepository.initializeAppThemeMode(AppThemeMode.FOLLOW_SYSTEM)
+                themePreferencesRepository.setColorPalettePreference("DYNAMIC")
             }
         }
 
