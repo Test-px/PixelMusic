@@ -385,72 +385,49 @@ fun HomeScreen(
         
         val lastPrompt = userPrefs.lastUpdatePromptTimeFlow.first()
         val lastVersionSeen = userPrefs.lastSeenChangelogVersionFlow.first()
-        val lastCheckTime = userPrefs.lastGithubCheckTimeFlow.first()
-        val cachedLatestVersion = userPrefs.latestGithubVersionCacheFlow.first()
-        // Fetch our newly cached changelog!
-        val cachedLatestChangelog = userPrefs.latestGithubChangelogCacheFlow.first()
         
         val now = System.currentTimeMillis()
         val oneDayMs = 24 * 60 * 60 * 1000L
 
-        var latestAvailableVersion = cachedLatestVersion
-        var latestAvailableChangelog = cachedLatestChangelog
+        // Directly query GitHub on every launch
+        val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
 
-        // If the app JUST updated, the cache is definitely stale! Clear it instantly.
-        if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
-            latestAvailableVersion = currentAppVersion
-            userPrefs.setLatestGithubVersionCache(currentAppVersion)
-        }
+        when (updateState) {
+            is com.unshoo.pixelmusic.utils.UpdateState.Available -> {
+                val cleanLatest = updateState.versionName.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+                val cleanCurrent = currentAppVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
 
-        // 1. Only ping GitHub API if we haven't checked today!
-        if (now - lastCheckTime > oneDayMs) {
-            val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
-            if (updateState is com.unshoo.pixelmusic.utils.UpdateState.Available) {
-                latestAvailableVersion = updateState.versionName
-                latestAvailableChangelog = updateState.changelog ?: ""
-                userPrefs.setLatestGithubVersionCache(latestAvailableVersion)
-                userPrefs.setLatestGithubChangelogCache(latestAvailableChangelog)
-            } else {
-                latestAvailableVersion = currentAppVersion // Mark as up to date locally
-                userPrefs.setLatestGithubVersionCache(currentAppVersion)
+                // Only show if the GitHub release is strictly higher than installed
+                if (cleanLatest > cleanCurrent) {
+                    // Check if the user snoozed it for the day
+                    if (now - lastPrompt > oneDayMs) {
+                        isUpdateAvailableState = true
+                        sheetVersionName = updateState.versionName
+                        sheetChangelog = updateState.changelog
+                        
+                        // 2.5s delay before popping up smoothly
+                        delay(2500)
+                        
+                        showUpdateSheet = true
+                    }
+                }
             }
-            userPrefs.setLastGithubCheckTime(now)
-        }
-
-        // 2. Logic for popping the sheet (Extracting exact numbers to avoid cache conflicts)
-        val cleanLatest = latestAvailableVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
-        val cleanCurrent = currentAppVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
-
-        // Only trigger the update prompt if the available version is strictly GREATER than the current version
-        if (cleanLatest > cleanCurrent) {
-            // Update is available! Did user hit "Don't remind me" today?
-            if (now - lastPrompt > oneDayMs) {
-                isUpdateAvailableState = true
-                sheetVersionName = latestAvailableVersion
-                // Use the cached changelog so it's never empty!
-                sheetChangelog = latestAvailableChangelog.takeIf { it.isNotEmpty() } 
-                
-                // ---> NEW: Graceful 2.5 second delay so it doesn't jump scare the user <---
-                delay(2500)
-                
-                showUpdateSheet = true
+            is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
+                // "What's New" celebration after a fresh update
+                if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
+                    isUpdateAvailableState = false
+                    sheetVersionName = currentAppVersion
+                    sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
+                    
+                    delay(2500)
+                    
+                    showUpdateSheet = true
+                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+                } else if (lastVersionSeen.isEmpty()) {
+                    userPrefs.setLastSeenChangelogVersion(currentAppVersion)
+                }
             }
-        } else {
-            // App is Up to Date. Show the "What's New" celebration if the version just changed.
-            if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
-                isUpdateAvailableState = false
-                sheetVersionName = currentAppVersion
-                sheetChangelog = "Welcome to the latest version of PixelMusic! 🎉"
-                
-                // ---> NEW: Graceful 2.5 second delay so it doesn't jump scare the user <---
-                delay(2500)
-                
-                showUpdateSheet = true
-                userPrefs.setLastSeenChangelogVersion(currentAppVersion)
-            } else if (lastVersionSeen.isEmpty()) {
-                // Baseline for fresh installs so it doesn't spam the celebration
-                userPrefs.setLastSeenChangelogVersion(currentAppVersion)
-            }
+            else -> {}
         }
     }
     
