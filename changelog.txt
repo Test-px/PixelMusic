@@ -2,3 +2,4 @@
 - Save data on metered network. 
 - Automatic crush reporting system.
 - Improved update screen.
+- Polished login methods. 
