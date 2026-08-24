@@ -43,7 +43,8 @@ data class SetupUiState(
     val navBarStyle: String = "default",
     val navBarCornerRadius: Int = 28,
     val alarmsPermissionGranted: Boolean = false,
-    val appThemeMode: String = AppThemeMode.DARK,
+    val appThemeMode: String = AppThemeMode.FOLLOW_SYSTEM,
+    val colorPalette: String = "DYNAMIC",
     val isInspectingBackup: Boolean = false,
     val isRestoringBackup: Boolean = false,
     val restorePlan: RestorePlan? = null,
@@ -102,7 +103,7 @@ class SetupViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             if (!userPreferencesRepository.initialSetupDoneFlow.first()) {
-                themePreferencesRepository.initializeAppThemeMode(AppThemeMode.DARK)
+                themePreferencesRepository.initializeAppThemeMode(AppThemeMode.FOLLOW_SYSTEM)
             }
         }
 
@@ -255,6 +256,13 @@ class SetupViewModel @Inject constructor(
     fun setAppThemeMode(mode: String) {
         viewModelScope.launch {
             themePreferencesRepository.setAppThemeMode(mode)
+        }
+    }
+
+    fun setColorPalette(palette: String) {
+        _uiState.update { it.copy(colorPalette = palette) }
+        viewModelScope.launch {
+            themePreferencesRepository.setColorPalette(palette)
         }
     }
 
