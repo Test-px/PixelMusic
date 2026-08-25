@@ -124,6 +124,8 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import kotlin.math.roundToInt
 import com.unshoo.pixelmusic.utils.InAppUpdater
 import com.unshoo.pixelmusic.utils.UpdateState
+import com.unshoo.pixelmusic.presentation.components.UpdateNotificationSheet
+
 
 // AboutTopBar removed, replaced by CollapsibleCommonTopBar
 
@@ -319,22 +321,12 @@ private fun AboutHeroCard(
     }
 
     if (showChangelogDialog) {
-        AlertDialog(
-            onDismissRequest = { showChangelogDialog = false },
-            icon = { Icon(Icons.Rounded.AutoAwesome, contentDescription = null) },
-            title = { Text("Changes in latest version") },
-            text = {
-                Text(
-                    text = latestChangelog ?: "No release notes available for this version.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.verticalScroll(rememberScrollState())
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showChangelogDialog = false }) {
-                    Text("Got it")
-                }
-            }
+        UpdateNotificationSheet(
+            isUpdateAvailable = false,
+            versionName = versionName,
+            changelog = latestChangelog,
+            onDismiss = { showChangelogDialog = false },
+            onConfirmClick = { showChangelogDialog = false }
         )
     }
 
