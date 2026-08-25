@@ -388,6 +388,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+        
         handleIntent(intent)
     }
 
