@@ -33,6 +33,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.io.File
+import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
+
+
 
 data class SetupUiState(
     val mediaPermissionGranted: Boolean = false,
@@ -48,7 +51,9 @@ data class SetupUiState(
     val isInspectingBackup: Boolean = false,
     val isRestoringBackup: Boolean = false,
     val restorePlan: RestorePlan? = null,
-    val backupTransferProgress: BackupTransferProgressUpdate? = null
+    val backupTransferProgress: BackupTransferProgressUpdate? = null,
+    val ytUsername: String = "",
+    val ytAvatarUrl: String = ""
 ) {
     val allPermissionsGranted: Boolean
         get() {
@@ -70,6 +75,7 @@ class SetupViewModel @Inject constructor(
     private val syncManager: SyncManager,
     private val backupManager: BackupManager,
     private val musicRepository: MusicRepository,
+    private val datastoreRepository: DatastoreRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -134,6 +140,17 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch {
             fileExplorerStateHolder.isLoading.collect { loading ->
                 _uiState.update { it.copy(isLoadingDirectories = loading) }
+            }
+        }
+
+        viewModelScope.launch {
+            datastoreRepository.ytUsername.collect { value ->
+                _uiState.update { it.copy(ytUsername = value) }
+            }
+        }
+        viewModelScope.launch {
+            datastoreRepository.ytAvatarUrl.collect { value ->
+                _uiState.update { it.copy(ytAvatarUrl = value) }
             }
         }
     }
