@@ -340,9 +340,27 @@ class MainActivity : ComponentActivity() {
                             label = "SetupTransition"
                         ) { shouldShowSetup ->
                             if (shouldShowSetup) {
-                                SetupScreen(onSetupComplete = {
-                                    // Repository-backed setup completion updates the gate automatically.
-                                })
+                                // Provide a temporary NavController specifically for the setup flow
+                                val setupNavController = androidx.navigation.compose.rememberNavController()
+                                androidx.navigation.compose.NavHost(
+                                    navController = setupNavController,
+                                    startDestination = "setup_main"
+                                ) {
+                                    androidx.navigation.compose.composable("setup_main") {
+                                        SetupScreen(
+                                            navController = setupNavController,
+                                            onSetupComplete = {
+                                                // Repository-backed setup completion updates the gate automatically.
+                                            }
+                                        )
+                                    }
+                                    androidx.navigation.compose.composable(Screen.YoutubeAuth.route) {
+                                        com.unshoo.pixelmusic.presentation.screens.YoutubeAuthScreen(
+                                            navController = setupNavController,
+                                            settingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                                        )
+                                    }
+                                }
                             } else {
                                 MainAppContent(playerViewModel, mainViewModel)
                             }
