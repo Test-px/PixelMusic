@@ -427,9 +427,8 @@ class SetupViewModel @Inject constructor(
             datastoreRepository.saveCookies(com.unshoo.pixelmusic.data.model.youtube.Cookies(cookieString.trim()))
             datastoreRepository.saveDataSyncId(dataSyncId.trim())
             
-            if (_uiState.value.ytUsername.isEmpty()) {
-                _uiState.update { it.copy(ytUsername = "InnerTube User") }
-            }
+            // Actually save the profile to the datastore so it persists across the entire app!
+            datastoreRepository.saveYtProfile("InnerTube User", "", "")
         }
     }
 }
