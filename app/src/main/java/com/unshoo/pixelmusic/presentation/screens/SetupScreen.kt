@@ -165,6 +165,7 @@ import androidx.compose.ui.text.style.TextOverflow
 @OptIn(ExperimentalPermissionsApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SetupScreen(
+    navController: NavController,
     setupViewModel: SetupViewModel = hiltViewModel(),
     onSetupComplete: () -> Unit
 ) {
@@ -536,6 +537,7 @@ sealed class SetupPage {
     object Welcome : SetupPage()
     object MediaPermission : SetupPage()
     object BackupRestore : SetupPage()
+    object Login : SetupPage()
     object DirectorySelection : SetupPage()
     object ThemeSelection : SetupPage()
     object PaletteSelection : SetupPage()
@@ -557,6 +559,7 @@ private fun buildSetupPages(sdkInt: Int): List<SetupPage> {
     }
 
     pages += SetupPage.BackupRestore
+    pages += SetupPage.Login
     pages += SetupPage.DirectorySelection
     pages += SetupPage.ThemeSelection
     pages += SetupPage.PaletteSelection
