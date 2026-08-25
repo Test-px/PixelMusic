@@ -72,6 +72,7 @@ sealed interface SetupEvent {
 class SetupViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val themePreferencesRepository: ThemePreferencesRepository,
+    private val datastoreRepository: com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository,
     private val syncManager: SyncManager,
     private val backupManager: BackupManager,
     private val musicRepository: MusicRepository,
@@ -419,6 +420,17 @@ class SetupViewModel @Inject constructor(
         userPreferencesRepository.setInitialSetupDone(true)
         if (syncAfter) {
             syncManager.fullSync()
+        }
+    }
+
+    fun saveInnerTubeTokens(cookieString: String, dataSyncId: String) {
+        viewModelScope.launch {
+            datastoreRepository.saveCookies(com.unshoo.pixelmusic.data.model.youtube.Cookies(cookieString.trim()))
+            datastoreRepository.saveDataSyncId(dataSyncId.trim())
+            
+            if (_uiState.value.ytUsername.isEmpty()) {
+                _uiState.update { it.copy(ytUsername = "InnerTube User") }
+            }
         }
     }
 }
