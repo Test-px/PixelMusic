@@ -3522,4 +3522,20 @@ class MusicService : MediaLibraryService() {
         }
         return future
     }
+
+    /**
+     * Forces OEM Equalizers (DeepField, Dolby Atmos, Dirac) to stay attached
+     * to our active audio session across track changes and crossfades.
+     */
+    private fun notifySystemEqualizer(audioSessionId: Int) {
+        if (audioSessionId == 0 || audioSessionId == androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) return
+        
+        Timber.tag(TAG).d("Broadcasting audio session $audioSessionId to system equalizers")
+        val intent = Intent(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
+            putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
+            putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
+        }
+        sendBroadcast(intent)
+    }
 }
