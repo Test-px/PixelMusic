@@ -413,6 +413,54 @@ fun SetupScreen(
         }
     }
 
+    if (showAdvancedYtLoginDialog) {
+        var cookieInput by remember { mutableStateOf("") }
+        var dataSyncIdInput by remember { mutableStateOf("") }
+
+        Dialog(onDismissRequest = { showAdvancedYtLoginDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("InnerTube Token Login", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Paste your YouTube Music cookies and DataSyncId here.", style = MaterialTheme.typography.bodyMedium)
+                    
+                    androidx.compose.material3.OutlinedTextField(
+                        value = cookieInput,
+                        onValueChange = { cookieInput = it },
+                        label = { Text("Cookie") },
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    androidx.compose.material3.OutlinedTextField(
+                        value = dataSyncIdInput,
+                        onValueChange = { dataSyncIdInput = it },
+                        label = { Text("DataSyncId (Optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showAdvancedYtLoginDialog = false }) { Text("Cancel") }
+                        TextButton(
+                            onClick = {
+                                setupViewModel.saveInnerTubeTokens(cookieInput, dataSyncIdInput)
+                                showAdvancedYtLoginDialog = false
+                            },
+                            enabled = cookieInput.isNotBlank()
+                        ) { Text("Connect") }
+                    }
+                }
+            }
+        }
+    }
+
     val restorePlan = uiState.restorePlan
     if (restorePlan != null && selectedBackupUri != null) {
         BackupModuleSelectionDialog(
@@ -2687,6 +2735,78 @@ fun LoginPage(
                 }
             TextButton(onClick = onSkip) {
                 Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+fun LoginPage(
+    uiState: SetupUiState,
+    onLoginClick: () -> Unit,
+    onAdvancedLoginClick: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val isLoggedIn = uiState.ytUsername.isNotEmpty()
+
+    if (isLoggedIn) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxSize().padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Connected!",
+                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Your YouTube Music account is securely linked.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(100.dp)) {
+                        if (uiState.ytAvatarUrl.isNotEmpty()) {
+                            coil.compose.AsyncImage(
+                                model = uiState.ytAvatarUrl,
+                                contentDescription = "Profile Picture",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(Icons.Outlined.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(24.dp).fillMaxSize())
+                        }
+                    }
+                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = AbsoluteSmoothCornerShape(16.dp, 60)) {
+                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Text(uiState.ytUsername, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(64.dp))
+        }
+    } else {
+        PermissionPageLayout(
+            title = "YouTube Music",
+            description = "Log in to stream your favorite tracks, sync playlists, and get personalized recommendations directly from YouTube.",
+            buttonText = "Log in with YouTube",
+            buttonEnabled = true,
+            icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24),
+            onGrantClicked = onLoginClick
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onAdvancedLoginClick) { Text("Advanced Login (InnerTube Tokens)") }
+                TextButton(onClick = onSkip) { Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
     }
