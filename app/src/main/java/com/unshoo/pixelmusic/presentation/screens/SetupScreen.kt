@@ -184,6 +184,7 @@ fun SetupScreen(
     val isExplorerReady by setupViewModel.isExplorerReady.collectAsStateWithLifecycle()
     val isCurrentDirectoryResolved by setupViewModel.isCurrentDirectoryResolved.collectAsStateWithLifecycle()
     var selectedBackupUri by remember { mutableStateOf<Uri?>(null) }
+    var showAdvancedYtLoginDialog by remember { mutableStateOf(false) }
     
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
     val backupPickerLauncher = rememberLauncherForActivityResult(
@@ -349,12 +350,9 @@ fun SetupScreen(
                     )
                     SetupPage.Login -> LoginPage(
                         uiState = uiState,
-                        onLoginClick = {
-                            navController.navigateSafely(Screen.YoutubeAuth.route)
-                        },
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
+                        onLoginClick = { navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route) },
+                        onAdvancedLoginClick = { showAdvancedYtLoginDialog = true },
+                        onSkip = { navigateToPage(pagerState.currentPage + 1) }
                     )
                     SetupPage.DirectorySelection -> DirectorySelectionPage(
                         uiState = uiState,
