@@ -462,6 +462,12 @@ class MusicService : MediaLibraryService() {
         }
 
         serviceScope.launch {
+            engine.activeAudioSessionId.distinctUntilChanged().collect { sessionId ->
+                notifySystemEqualizer(sessionId)
+            }
+        }
+
+        serviceScope.launch {
             userPreferencesRepository.resumeOnHeadsetReconnectFlow.collect { enabled ->
                 resumeOnHeadsetReconnectEnabled = enabled
                 if (!enabled) {
@@ -1289,6 +1295,9 @@ class MusicService : MediaLibraryService() {
             val player = mediaSession?.player ?: engine.masterPlayer
             syncLocalListeningStatsFromPlayer(player, forceNewSession = true)
             grantArtworkPermissionsForCurrentSong(mediaItem)
+
+            val currentSessionId = engine.activeAudioSessionId.value
+            notifySystemEqualizer(currentSessionId)
             
             val durationMs = if (player.duration != androidx.media3.common.C.TIME_UNSET && player.duration > 0) {
                 player.duration
