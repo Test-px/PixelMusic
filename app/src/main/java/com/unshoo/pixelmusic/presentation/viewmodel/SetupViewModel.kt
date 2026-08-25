@@ -76,7 +76,6 @@ class SetupViewModel @Inject constructor(
     private val syncManager: SyncManager,
     private val backupManager: BackupManager,
     private val musicRepository: MusicRepository,
-    private val datastoreRepository: DatastoreRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
