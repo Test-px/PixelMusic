@@ -3,6 +3,7 @@ package com.unshoo.pixelmusic.presentation.screens
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -44,11 +45,19 @@ fun AnimatedSplashScreen(onSplashFinished: () -> Unit) {
             scale.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessLow))
         }
 
-        // 2. Logo Rotation Twist (0 -> 35 degrees -> 0)
+        // 2. Continuous 60fps Keyframe Rotation (Fixes the stutter!)
         launch {
             delay(100) // Wait just a split second so it pops up before twisting
-            rotation.animateTo(35f, tween(250, easing = FastOutSlowInEasing))
-            rotation.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessLow))
+            rotation.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 700
+                    0f at 0 // Start
+                    30f at 250 with FastOutSlowInEasing // Swing right smoothly
+                    -10f at 450 with FastOutSlowInEasing // Slight overshoot left
+                    0f at 700 // Settle at normal position
+                }
+            )
         }
 
         // 3. Background Circles expanding and flying outward to the edges
@@ -70,7 +79,6 @@ fun AnimatedSplashScreen(onSplashFinished: () -> Unit) {
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        
         // Top-Right Flying Circle
         Box(
             modifier = Modifier
