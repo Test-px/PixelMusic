@@ -158,6 +158,9 @@ import androidx.compose.ui.layout.positionInRoot
 import kotlinx.coroutines.flow.firstOrNull
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+
 
 
 
@@ -340,13 +343,12 @@ class MainActivity : ComponentActivity() {
                             label = "SetupTransition"
                         ) { shouldShowSetup ->
                             if (shouldShowSetup) {
-                                // Provide a temporary NavController specifically for the setup flow
-                                val setupNavController = androidx.navigation.compose.rememberNavController()
-                                androidx.navigation.compose.NavHost(
+                                val setupNavController = rememberNavController()
+                                NavHost(
                                     navController = setupNavController,
                                     startDestination = "setup_main"
                                 ) {
-                                    androidx.navigation.compose.composable("setup_main") {
+                                    composable("setup_main") {
                                         SetupScreen(
                                             navController = setupNavController,
                                             onSetupComplete = {
@@ -354,8 +356,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         )
                                     }
-                                    androidx.navigation.compose.composable(Screen.YoutubeAuth.route) {
-                                        // Using your exact AuthScreen path and passing popBackStack to onBack
+                                    composable(Screen.YoutubeAuth.route) {
                                         com.unshoo.pixelmusic.presentation.screens.youtube.AuthScreen(
                                             onBack = { setupNavController.popBackStack() }
                                         )
