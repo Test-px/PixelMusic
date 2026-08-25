@@ -462,7 +462,7 @@ class MusicService : MediaLibraryService() {
         }
 
         serviceScope.launch {
-            engine.activeAudioSessionId.distinctUntilChanged().collect { sessionId ->
+            engine.activeAudioSessionId.collect { sessionId ->
                 notifySystemEqualizer(sessionId)
             }
         }
