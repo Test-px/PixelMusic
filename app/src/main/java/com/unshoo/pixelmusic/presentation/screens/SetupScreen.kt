@@ -163,6 +163,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.outlined.Person
+import androidx.navigation.NavController
+import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.rounded.CheckCircle
+
 
 
 
@@ -2778,7 +2783,7 @@ fun LoginPage(
                             coil.compose.AsyncImage(
                                 model = uiState.ytAvatarUrl,
                                 contentDescription = "Profile Picture",
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
@@ -2811,4 +2816,3 @@ fun LoginPage(
         }
     }
 }
-
