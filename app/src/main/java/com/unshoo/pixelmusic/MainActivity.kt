@@ -313,15 +313,38 @@ class MainActivity : ComponentActivity() {
                 
                 val contentAlpha by animateFloatAsState(
                     targetValue = if (contentVisible) 1f else 0f,
-                    animationSpec = tween(800, easing = LinearOutSlowInEasing),
+                    animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing),
                     label = "AppContentAlpha"
+                )
+                
+                val contentScale by animateFloatAsState(
+                    targetValue = if (contentVisible) 1f else 0.85f, // Starts smaller and zooms in
+                    animationSpec = spring(
+                        dampingRatio = 0.65f, // Gives it that subtle OriginOS bounce
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "AppContentScale"
+                )
+                
+                val contentOffset by animateDpAsState(
+                    targetValue = if (contentVisible) 0.dp else 40.dp, // Starts slightly lower and slides up
+                    animationSpec = spring(
+                        dampingRatio = 0.65f,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "AppContentOffset"
                 )
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Surface(
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }, 
-                    color = MaterialTheme.colorScheme.background
-                ) {
+                        modifier = Modifier.fillMaxSize().graphicsLayer { 
+                            alpha = contentAlpha
+                            scaleX = contentScale
+                            scaleY = contentScale
+                            translationY = contentOffset.toPx()
+                        }, 
+                        color = MaterialTheme.colorScheme.background
+                    ) {
                     if (showSetupScreen == null) {
                         SetupGateLoadingScreen()
                     } else {
