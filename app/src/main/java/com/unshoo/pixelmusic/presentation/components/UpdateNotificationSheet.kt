@@ -1,15 +1,15 @@
 package com.unshoo.pixelmusic.presentation.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,7 +26,8 @@ fun UpdateNotificationSheet(
     versionName: String,
     changelog: String?,
     onDismiss: () -> Unit,
-    onConfirmClick: () -> Unit
+    onConfirmClick: () -> Unit,
+    onSnoozeClick: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -38,12 +39,11 @@ fun UpdateNotificationSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.6f) // Takes up a generous half of the screen
+                .fillMaxHeight(0.65f)
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Text Content Area (Scrollable for large release notes)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -52,7 +52,7 @@ fun UpdateNotificationSheet(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isUpdateAvailable) "Update Available! 🚀" else "You're up to date! 🎉",
+                    text = if (isUpdateAvailable) "Update Available! 🚀" else "Changes in latest version ✨",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -84,37 +84,42 @@ fun UpdateNotificationSheet(
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
-            }
 
-            // 2. Animated Visual Area
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val infiniteTransition = rememberInfiniteTransition(label = "floating_image")
-                val floatOffset by infiniteTransition.animateFloat(
-                    initialValue = -12f,
-                    targetValue = 12f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "float_offset"
-                )
-
-                // The floating welcome art
-                MaterialYouVectorDrawable(
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 24.dp) // Leave room for the wave
-                        .graphicsLayer { translationY = floatOffset },
-                    drawableResId = R.drawable.welcome_art
-                )
-
-                // Only show the animated Sine Wave if the update is completed (celebration vibe!)
-                if (!isUpdateAvailable) {
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                ) {
+                    MaterialYouVectorDrawable(
+                        modifier = Modifier.fillMaxSize(),
+                        drawableResId = R.drawable.welcome_art
+                    )
+                    
+                    SineWaveLine(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp),
+                        animate = true,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        alpha = 0.95f,
+                        strokeWidth = 16.dp,
+                        amplitude = 4.dp,
+                        waves = 7.6f,
+                        phase = 0f
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .height(22.dp)
+                            .background(color = MaterialTheme.colorScheme.surfaceContainerLow)
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 4.dp)
+                    )
                     SineWaveLine(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -131,26 +136,44 @@ fun UpdateNotificationSheet(
                         phase = 0f
                     )
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 3. Action Button
-            Button(
-                onClick = {
-                    onConfirmClick()
-                    onDismiss()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = AbsoluteSmoothCornerShape(20.dp, 60)
-            ) {
-                Text(
-                    text = if (isUpdateAvailable) "Update Now" else "Awesome!",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = {
+                        onConfirmClick()
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = AbsoluteSmoothCornerShape(20.dp, 60)
+                ) {
+                    Text(
+                        text = if (isUpdateAvailable) "Update Now" else "Got it",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+                
+                if (isUpdateAvailable && onSnoozeClick != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(
+                        onClick = {
+                            onSnoozeClick()
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text = "Don't remind me today",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }
