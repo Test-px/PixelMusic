@@ -356,8 +356,7 @@ fun SetupScreen(
                     SetupPage.Login -> LoginPage(
                         uiState = uiState,
                         onLoginClick = { navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route) },
-                        onAdvancedLoginClick = { showAdvancedYtLoginDialog = true },
-                        onSkip = { navigateToPage(pagerState.currentPage + 1) }
+                        onAdvancedLoginClick = { showAdvancedYtLoginDialog = true }
                     )
                     SetupPage.DirectorySelection -> DirectorySelectionPage(
                         uiState = uiState,
@@ -2620,8 +2619,7 @@ fun NavBarPreview(isDefault: Boolean) {
 fun LoginPage(
     uiState: SetupUiState,
     onLoginClick: () -> Unit,
-    onAdvancedLoginClick: () -> Unit,
-    onSkip: () -> Unit
+    onAdvancedLoginClick: () -> Unit
 ) {
     val isLoggedIn = uiState.ytUsername.isNotEmpty()
 
@@ -2675,16 +2673,21 @@ fun LoginPage(
         PermissionPageLayout(
             title = "YouTube Music",
             description = "Log in to stream your favorite tracks, sync playlists, and get personalized recommendations directly from YouTube.",
-            buttonText = "Log in with YouTube",
+            buttonText = "Advanced Login (Tokens)",
             buttonEnabled = true,
             icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24),
-            onGrantClicked = onLoginClick
+            onGrantClicked = onAdvancedLoginClick
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onAdvancedLoginClick) { Text("Advanced Login (InnerTube Tokens)") }
-                TextButton(onClick = onSkip) { Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            // This button sits exactly on top of the Advanced Login button, matching its style!
+            Button(
+                onClick = onLoginClick,
+                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "Log in with YouTube",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
 }
-
