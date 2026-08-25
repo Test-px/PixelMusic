@@ -317,15 +317,6 @@ class MainActivity : ComponentActivity() {
                     label = "AppContentAlpha"
                 )
                 
-                val contentScale by animateFloatAsState(
-                    targetValue = if (contentVisible) 1f else 0.85f, // Starts smaller and zooms in
-                    animationSpec = spring(
-                        dampingRatio = 0.65f, // Gives it that subtle OriginOS bounce
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    label = "AppContentScale"
-                )
-                
                 val contentOffset by animateDpAsState(
                     targetValue = if (contentVisible) 0.dp else 40.dp, // Starts slightly lower and slides up
                     animationSpec = spring(
@@ -335,17 +326,13 @@ class MainActivity : ComponentActivity() {
                     label = "AppContentOffset"
                 )
 
+                // The Box allows us to layer the Splash Screen ON TOP of the app
                 Box(modifier = Modifier.fillMaxSize()) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().graphicsLayer { 
-                            alpha = contentAlpha
-                            scaleX = contentScale
-                            scaleY = contentScale
-                            translationY = contentOffset.toPx()
-                        }, 
+                        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }, 
                         color = MaterialTheme.colorScheme.background
                     ) {
-                    if (showSetupScreen == null) {
+                        if (showSetupScreen == null) {
                         SetupGateLoadingScreen()
                     } else {
                         AnimatedContent(
