@@ -308,20 +308,17 @@ class MainActivity : ComponentActivity() {
                 useSystemFont = (appFontMode == AppFontMode.SYSTEM),
                 isAmoledBlack = isAmoledBlackEnabled
             ) {
+                var showSplashScreen by remember { mutableStateOf(true) }
                 var contentVisible by remember { mutableStateOf(false) }
+                
                 val contentAlpha by animateFloatAsState(
                     targetValue = if (contentVisible) 1f else 0f,
-                    animationSpec = tween(600, easing = LinearOutSlowInEasing),
+                    animationSpec = tween(800, easing = LinearOutSlowInEasing),
                     label = "AppContentAlpha"
                 )
 
-                LaunchedEffect(Unit) {
-                    // Delay slightly to ensure first frame layout is done behind Splash
-                    delay(100)
-                    contentVisible = true
-                }
-
-                Surface(
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Surface(
                     modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }, 
                     color = MaterialTheme.colorScheme.background
                 ) {
@@ -379,6 +376,15 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                } // End of Surface
+
+                if (showSplashScreen) {
+                    com.unshoo.pixelmusic.presentation.screens.AnimatedSplashScreen(
+                        onSplashFinished = {
+                            showSplashScreen = false
+                            contentVisible = true
+                        }
+                    )
                 }
             }
         }
