@@ -355,9 +355,9 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                     androidx.navigation.compose.composable(Screen.YoutubeAuth.route) {
-                                        com.unshoo.pixelmusic.presentation.screens.YoutubeAuthScreen(
-                                            navController = setupNavController,
-                                            settingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                                        // Using your exact AuthScreen path and passing popBackStack to onBack
+                                        com.unshoo.pixelmusic.presentation.screens.youtube.AuthScreen(
+                                            onBack = { setupNavController.popBackStack() }
                                         )
                                     }
                                 }
