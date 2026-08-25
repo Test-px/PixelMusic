@@ -167,6 +167,11 @@ import androidx.navigation.NavController
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.rounded.CheckCircle
+import com.unshoo.pixelmusic.presentation.screens.AdvancedTokenLoginDialog
+import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
+import androidx.compose.material.icons.rounded.VpnKey
+import androidx.compose.foundation.BorderStroke
+
 
 
 
@@ -418,51 +423,18 @@ fun SetupScreen(
     }
 
     if (showAdvancedYtLoginDialog) {
-        var cookieInput by remember { mutableStateOf("") }
-        var dataSyncIdInput by remember { mutableStateOf("") }
+        val authViewModel: AuthViewModel = hiltViewModel()
+        val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
 
-        Dialog(onDismissRequest = { showAdvancedYtLoginDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text("InnerTube Token Login", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Paste your YouTube Music cookies and DataSyncId here.", style = MaterialTheme.typography.bodyMedium)
-                    
-                    androidx.compose.material3.OutlinedTextField(
-                        value = cookieInput,
-                        onValueChange = { cookieInput = it },
-                        label = { Text("Cookie") },
-                        maxLines = 4,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    androidx.compose.material3.OutlinedTextField(
-                        value = dataSyncIdInput,
-                        onValueChange = { dataSyncIdInput = it },
-                        label = { Text("DataSyncId (Optional)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showAdvancedYtLoginDialog = false }) { Text("Cancel") }
-                        TextButton(
-                            onClick = {
-                                setupViewModel.saveInnerTubeTokens(cookieInput, dataSyncIdInput)
-                                showAdvancedYtLoginDialog = false
-                            },
-                            enabled = cookieInput.isNotBlank()
-                        ) { Text("Connect") }
-                    }
-                }
+        AdvancedTokenLoginDialog(
+            currentCookie = fullToken,
+            onDismiss = { showAdvancedYtLoginDialog = false },
+            onSaveToken = { token ->
+                showAdvancedYtLoginDialog = false
+                authViewModel.saveManualCookie(token)
+                Toast.makeText(context, "Cookie saved! Linking account...", Toast.LENGTH_SHORT).show()
             }
-        }
+        )
     }
 
     val restorePlan = uiState.restorePlan
@@ -2670,23 +2642,96 @@ fun LoginPage(
             Spacer(modifier = Modifier.height(64.dp))
         }
     } else {
-        PermissionPageLayout(
-            title = "YouTube Music",
-            description = "Log in to stream your favorite tracks, sync playlists, and get personalized recommendations directly from YouTube.",
-            buttonText = "Advanced Login (Tokens)",
-            buttonEnabled = true,
-            icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24),
-            onGrantClicked = onAdvancedLoginClick
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxSize().padding(24.dp)
         ) {
-            // This button sits exactly on top of the Advanced Login button, matching its style!
-            Button(
-                onClick = onLoginClick,
-                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Log in with YouTube",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "YouTube Music",
+                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
+                    textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Choose how you'd like to connect your library to get personalized recommendations.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PermissionIconCollage(
+                    modifier = Modifier.height(220.dp),
+                    icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24)
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Card 1: Web Login
+                Surface(
+                    onClick = onLoginClick,
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().height(80.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            Text(
+                                text = "G",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("Manual Login", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Standard web sign-in", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // Card 2: Token Login
+                Surface(
+                    onClick = onAdvancedLoginClick,
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().height(80.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer)
+                        ) {
+                            Icon(Icons.Rounded.VpnKey, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(22.dp))
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("Advanced Login", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Paste InnerTube token", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
