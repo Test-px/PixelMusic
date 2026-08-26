@@ -40,9 +40,6 @@ import com.unshoo.pixelmusic.data.shazam.MusicRecognizer
 import com.unshoo.pixelmusic.data.shazam.RecognitionResult
 import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
-import androidx.compose.ui.draw.drawBehind
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -446,84 +443,72 @@ fun MusicRecognitionDialog(
 @Composable
 fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "powerSurge")
-
-    // ── We now animate the Progress (0f to 1f) instead of Scale ──
-    val wave1Progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (isListening) 1f else 0f,
+    
+    val waveScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isListening) 5.5f else 1f, // PUMPED UP THE EXPANSION!
         animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearOutSlowInEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "wave1Progress"
+        label = "waveScale"
     )
-
-    val wave2Progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (isListening) 1f else 0f,
+    
+    val waveAlpha by infiniteTransition.animateFloat(
+        initialValue = if (isListening) 1f else 0f, // STARTS AT 100% OPACITY!
+        targetValue = 0f, 
         animationSpec = infiniteRepeatable(
-            animation = tween(2200, delayMillis = 700, easing = LinearOutSlowInEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "wave2Progress"
+        label = "waveAlpha"
     )
 
     val buttonPulse by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 1.12f else 1f,
+        targetValue = if (isListening) 1.15f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = FastOutSlowInEasing),
+            animation = tween(600, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "buttonPulse"
     )
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(96.dp)
-            .drawBehind { // ── Pure GPU Canvas Drawing (No Boxes!) ──
-                if (!isListening) return@drawBehind
-
-                // Base radius of the button
-                val startRadius = size.minDimension / 2f
-                // 16x multiplier easily covers edge-to-edge of any modern screen
-                val maxRadius = startRadius * 16f 
-
-                // Draw Outer Staggered Wave
-                if (wave2Progress > 0f) {
-                    val currentRadius = startRadius + (maxRadius - startRadius) * wave2Progress
-                    val currentAlpha = 0.85f * (1f - wave2Progress)
-                    drawCircle(
-                        color = primaryColor,
-                        radius = currentRadius,
-                        alpha = currentAlpha
-                    )
-                }
-
-                // Draw Leading Edge Wave
-                if (wave1Progress > 0f) {
-                    val currentRadius = startRadius + (maxRadius - startRadius) * wave1Progress
-                    val currentAlpha = 0.85f * (1f - wave1Progress)
-                    drawCircle(
-                        color = primaryColor,
-                        radius = currentRadius,
-                        alpha = currentAlpha
-                    )
-                }
-            }
+        modifier = Modifier.size(250.dp) // INCREASED CONTAINER BOUNDS!
     ) {
-        // Center Action Button
+        if (isListening) {
+            // Simplified gradient so the Primary color shines boldly
+            val surgeGradient = Brush.radialGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    Color.Transparent
+                )
+            )
+            
+            Box(
+                modifier = Modifier
+                    .size(80.dp) 
+                    .graphicsLayer {
+                        scaleX = waveScale
+                        scaleY = waveScale
+                        alpha = waveAlpha
+                    }
+                    .clip(CircleShape)
+                    .background(surgeGradient)
+            )
+        }
+
         Surface(
             modifier = Modifier
-                .fillMaxSize()
+                .size(96.dp)
                 .graphicsLayer {
                     scaleX = buttonPulse
                     scaleY = buttonPulse
                 },
-            shape = AbsoluteSmoothCornerShape(32.dp, 60),
+            shape = AbsoluteSmoothCornerShape(32.dp, 60), 
             color = if (isListening) MaterialTheme.colorScheme.primary 
                     else MaterialTheme.colorScheme.secondaryContainer,
             shadowElevation = if (isListening) 12.dp else 4.dp,
