@@ -12,6 +12,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes as Media3AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
@@ -52,25 +53,16 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
-
-
 
 data class ActiveDecoderInfo(
     val name: String,
     val isHardware: Boolean
 )
 
-/**
- * Manages two ExoPlayer instances (A and B) to enable seamless transitions.
- *
- * Player A is the designated "master" player. During a crossfade the MediaSession can
- * expose Player B early for UI continuity, while Player A remains alive to fade out.
- * Player B is the auxiliary player used to pre-buffer and fade in the next track.
- * After a transition, Player A adopts the state of Player B, ensuring continuity.
- */
 @OptIn(UnstableApi::class)
 @Singleton
 class DualPlayerEngine @Inject constructor(
@@ -119,32 +111,19 @@ class DualPlayerEngine @Inject constructor(
         onPlayerAboutToBeReleasedListener = listener
     }
     
-    // Active Audio Session ID Flow
     private val _activeAudioSessionId = MutableStateFlow(0)
     val activeAudioSessionId: StateFlow<Int> = _activeAudioSessionId.asStateFlow()
 
     private val _activeDecoderInfo = MutableStateFlow<ActiveDecoderInfo?>(null)
     val activeDecoderInfo: StateFlow<ActiveDecoderInfo?> = _activeDecoderInfo.asStateFlow()
 
-    // Audio Focus Management
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
     private var isFocusLossPause = false
     private var lastPlayWhenReadyAtMs: Long = 0L
     private var lastPlayingAtMs: Long = 0L
-    // Used to distinguish a STATE_BUFFERING caused by a user seek from a real HAL offload
-    // reset (where audio underflows mid-playback). Without this, seeking shortly after
-    // playback starts re-enters BUFFERING within the HAL-reset window and triggers a full
-    // player rebuild, which leaves the MediaSession briefly pointing at the released player
-    // and silently drops any subsequent seeks.
     private var lastSeekAtMs: Long = 0L
 
-    /**
-     * Set by MusicService once ReplayGain for the incoming track is known.
-     * The crossfade loop reads this at the end instead of hard-coding 1f,
-     * so the incoming track reaches its correct RG volume without a jump.
-     * Reset to null after each transition.
-     */
     var incomingTrackReplayGainVolume: Float? = null
 
     private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
@@ -173,44 +152,13 @@ class DualPlayerEngine @Inject constructor(
         }
     }
 
-    // Listener to attach to the active master player (playerA)
     private val masterPlayerListener = object : Player.Listener, AnalyticsListener {
-        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover.")
-            
-            // 1. Pause the player immediately so it does NOT skip the song!
-            playerA.playWhenReady = false
-            if (transitionRunning) playerB.playWhenReady = false
-            
-            // 2. Clear the broken cache entry so pressing Play tries a fresh network request
-            val currentMediaId = playerA.currentMediaItem?.mediaId
-            if (currentMediaId != null) {
-                val uriString = "youtube://$currentMediaId"
-                resolvedUriCache.remove(uriString)
-                activePlaybackResolvedUris.remove(uriString)
-                
-                // Clear the failing Deferred jobs to prevent the "Job was cancelled" race condition
-                val deferred = activeResolutions[uriString]
-                if (deferred?.isCancelled == true || deferred?.isCompleted == true) {
-                    activeResolutions.remove(uriString)
-                }
-            }
-            
-            // 3. Prepare resets the player out of the fatal STATE_IDLE 
-            // so the UI controls work again and the user can safely hit Play.
-            playerA.prepare() 
-        }
-        
-        override fun onPlayWhenReadyChanged(playWhenReady: yChanged(playWhenReady: Boolean, reason: Int) {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 lastPlayWhenReadyAtMs = SystemClock.elapsedRealtime()
                 requestAudioFocus()
             } else {
                 cancelAudioOffloadFallback()
-                // Keep focus across user pauses so a quick resume doesn't have to re-acquire it.
-                // Focus is abandoned explicitly on AUDIOFOCUS_LOSS and on release(); anything in
-                // between (user pause/play) keeps the request alive to avoid contention races
-                // that occasionally caused press-play to auto-pause after a short wait.
             }
         }
 
@@ -240,31 +188,19 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            // Only evict the OUTGOING item's resolved URI from the active-playback lock.
-            // Clearing ALL entries here caused BUG 1: ExoPlayer's data-source re-entered
-            // resolveDataSpec() ~1 second into a new YouTube track, got a fresh (different)
-            // URL, and restarted playback from position 0.
-            // We intentionally keep the INCOMING item's lock alive so subsequent data
-            // reads for the same URI always return the same cached URL.
-            // The lock for any truly stale entries will expire naturally when those
-            // video-IDs are no longer the active item.
             val incomingUriStr = mediaItem?.localConfiguration?.uri?.toString()
             activePlaybackResolvedUris.keys
                 .filter { it != incomingUriStr }
                 .forEach { activePlaybackResolvedUris.remove(it) }
             cancelAudioOffloadFallback()
             
-            // If the transition was not automatic (e.g. user skip or playlist change),
-            // immediately cancel any background crossfade logic to ensure responsiveness.
             if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                 cancelNext()
             }
 
-            val uri = mediaItem?.localConfiguration?.uri
-            // --- Pre-Resolve Next/Prev Tracks with Debounce to prevent flooding ---
             preResolutionJob?.cancel()
             preResolutionJob = scope.launch {
-                delay(600) // Wait for user to stop skipping/navigating
+                delay(600)
                 try {
                     val currentIndex = playerA.currentMediaItemIndex
                     if (currentIndex != C.INDEX_UNSET) {
@@ -283,10 +219,9 @@ class DualPlayerEngine @Inject constructor(
 
                         for (uriToResolve in itemsToPreResolve) {
                             val scheme = uriToResolve.scheme
-                        if (scheme == "youtube") {
-                           resolveCloudUri(uriToResolve)
-                        }
-
+                            if (scheme == "youtube") {
+                                resolveCloudUri(uriToResolve)
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -296,12 +231,6 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-            // BUG 2 FIX: Do NOT skip snapshot refresh when a transition is running.
-            // AutoQueueManager calls player.addMediaItems() during a crossfade, which
-            // fires PLAYLIST_CHANGED here. The old guard caused queueSnapshot to stay
-            // stale, so getNextTransitionTarget() returned the wrong track.
-            // We still refresh the snapshot but do NOT cancel any running transition —
-            // that is TransitionController's responsibility.
             if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED || queueSnapshot.isEmpty()) {
                 refreshQueueSnapshotFromMaster(windowStartIndex = 0, usesWindowedQueue = false)
             }
@@ -328,6 +257,24 @@ class DualPlayerEngine @Inject constructor(
                 }
                 Player.STATE_READY, Player.STATE_IDLE, Player.STATE_ENDED -> cancelAudioOffloadFallback()
             }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover without skipping.")
+            playerA.playWhenReady = false
+            if (transitionRunning) playerB.playWhenReady = false
+
+            val currentMediaId = playerA.currentMediaItem?.mediaId
+            if (currentMediaId != null) {
+                val uriString = "youtube://$currentMediaId"
+                resolvedUriCache.remove(uriString)
+                activePlaybackResolvedUris.remove(uriString)
+                val deferred = activeResolutions[uriString]
+                if (deferred?.isCancelled == true || deferred?.isCompleted == true) {
+                    activeResolutions.remove(uriString)
+                }
+            }
+            playerA.prepare()
         }
 
         override fun onPositionDiscontinuity(
@@ -363,26 +310,10 @@ class DualPlayerEngine @Inject constructor(
         onTransitionFinishedListeners.add(listener)
     }
 
-    /**
-     * Notifies the engine that an external caller (UI seek, etc.) is about to issue a
-     * seek through the MediaController. Used to mark the upcoming STATE_BUFFERING as
-     * seek-driven so the HAL-reset heuristic does not trigger a player rebuild that
-     * would race with the in-flight seek command.
-     *
-     * Setting this here (synchronously, before the seek dispatches) is more reliable
-     * than waiting for onPositionDiscontinuity, which is delivered on the next event
-     * batch and can race with onPlaybackStateChanged on some Media3 versions.
-     */
     fun notifyExternalSeekInitiated() {
         lastSeekAtMs = SystemClock.elapsedRealtime()
     }
 
-    /**
-     * Forces an immediate refresh of the internal queue snapshot from the current
-     * master player timeline. Call this after programmatically adding/removing items
-     * to the player queue from outside the engine (e.g. AutoQueueManager) to ensure
-     * [getNextTransitionTarget] returns the correct next track immediately.
-     */
     fun forceRefreshQueueSnapshot() {
         refreshQueueSnapshotFromMaster(windowStartIndex = 0, usesWindowedQueue = false)
     }
@@ -458,9 +389,6 @@ class DualPlayerEngine @Inject constructor(
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener(focusChangeListener)
-            // Let the system queue our request behind a transient holder instead of failing.
-            // Pairs with the AUDIOFOCUS_GAIN handler below: on DELAYED we pause and mark the
-            // pause as focus-driven so the eventual GAIN callback resumes playback.
             .setAcceptsDelayedFocusGain(true)
             .build()
 
@@ -654,7 +582,6 @@ class DualPlayerEngine @Inject constructor(
                 allowedVideoJoiningTimeMs: Long,
                 out: ArrayList<Renderer>
             ) {
-                // Audio-only player: skip video renderers to save memory and "renderers" count.
             }
 
             override fun buildTextRenderers(
@@ -664,7 +591,6 @@ class DualPlayerEngine @Inject constructor(
                 extensionRendererMode: Int,
                 out: ArrayList<Renderer>
             ) {
-                // Audio-only player: skip text renderers.
             }
 
             override fun buildCameraMotionRenderers(
@@ -672,7 +598,6 @@ class DualPlayerEngine @Inject constructor(
                 extensionRendererMode: Int,
                 out: ArrayList<Renderer>
             ) {
-                // Audio-only player: skip camera motion renderers.
             }
         }.setEnableAudioFloatOutput(hiFiModeEnabled)
          .setMediaCodecSelector(mediaCodecSelector)
@@ -688,12 +613,11 @@ class DualPlayerEngine @Inject constructor(
             override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
                 val uri = dataSpec.uri
                 val scheme = uri.scheme
-                // Only resolve custom schemes that cannot be loaded natively by ExoPlayer
                 if (scheme == "youtube") {
                     val originalUri = uri.toString()
                     val localPath = localFilePathCache[originalUri]
-                    if (localPath != null && java.io.File(localPath).exists()) {
-                        return dataSpec.buildUpon().setUri(Uri.fromFile(java.io.File(localPath))).build()
+                    if (localPath != null && File(localPath).exists()) {
+                        return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
                     }
 
                     val resolved = resolvedUriCache.get(originalUri)
@@ -706,17 +630,12 @@ class DualPlayerEngine @Inject constructor(
                         if (fallbackResolved != uri) {
                             return dataSpec.buildUpon().setUri(fallbackResolved).build()
                         } else {
-                            // !!! FATAL CRASH PREVENTION !!!
-                            // Throwing an IOException prevents ExoPlayer from crashing with a MalformedURLException.
-                            // This triggers onPlayerError() safely instead of killing the entire playback service.
-                            throw java.io.IOException("Stream resolution failed for $originalUri")
+                            throw IOException("Stream resolution failed for $originalUri")
                         }
                     } catch (e: Exception) {
                         Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
-                        throw java.io.IOException("Stream resolution interrupted", e)
+                        throw IOException("Stream resolution interrupted", e)
                     }
-                    
-                    Timber.tag("DualPlayerEngine").d("resolveDataSpec: Cache MISS for %s - attempting to use original URI", scheme)
                 }
                 return dataSpec
             }
@@ -733,14 +652,13 @@ class DualPlayerEngine @Inject constructor(
             .setMp4ExtractorFlags(Mp4Extractor.FLAG_WORKAROUND_IGNORE_EDIT_LISTS)
 
         val loadControl = DefaultLoadControl.Builder()
-            // ── Spotify-like playback optimization ───────────────────────────
             .setBufferDurationsMs(
-                /* minBufferMs                      = */ 30_000, // Robust buffer (30s) preventing stalls on slow network
-                /* maxBufferMs                      = */ 60_000, // Buffer up to 60s
-                /* bufferForPlaybackMs              = */ 500,    // Start play after 0.5s for instant startup
-                /* bufferForPlaybackAfterRebufferMs = */ 2_000   // After stall, buffer 2.0s before resuming
+                30_000,
+                60_000,
+                500,
+                2_000
             )
-            .setBackBuffer(30_000, /* retainBackBufferFromKeyframe = */ true) // Cache 30s backwards for instant replay seeking
+            .setBackBuffer(30_000, true)
             .build()
 
         return ExoPlayer.Builder(context, renderersFactory)
@@ -803,7 +721,6 @@ class DualPlayerEngine @Inject constructor(
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
         val uriString = uri.toString()
         
-        // Return active playback locked URI to prevent ExoPlayer from stuttering or re-loading due to mid-stream URL changes
         activePlaybackResolvedUris[uriString]?.let { return@withContext it }
         
         resolvedUriCache.get(uriString)?.let { cachedUri ->
@@ -814,8 +731,8 @@ class DualPlayerEngine @Inject constructor(
         val deferred = activeResolutions.getOrPut(uriString) {
             scope.async(Dispatchers.IO) {
                 val resolved: Uri? = when (uri.scheme) {
-                         "youtube" -> resolveYoutubeUriAsync(uriString)
-                else -> null
+                    "youtube" -> resolveYoutubeUriAsync(uriString)
+                    else -> null
                 }
                 
                 if (resolved != null) {
@@ -843,15 +760,13 @@ class DualPlayerEngine @Inject constructor(
             val youtubeId = uriString.substringAfter("youtube://")
             val youtubeSong = com.unshoo.pixelmusic.data.model.youtube.Song(youtubeId = youtubeId)
 
-            // Resolve the player URL using the connection-aware getSongPlayerUrl helper.
             val path = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper
                 .getSongPlayerUrl(context, youtubeSong, allowLocal = true)
 
-            // If we got a local file path, register it and return it directly.
             if (!path.startsWith("http")) {
                 com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper
                     .registerLocalFilePath(youtubeId, path)
-                return@withContext Uri.fromFile(java.io.File(path))
+                return@withContext Uri.fromFile(File(path))
             }
 
             Uri.parse(path)
@@ -922,7 +837,6 @@ class DualPlayerEngine @Inject constructor(
                 preparedPlayerUsesWindowedQueue = count > MAX_AUXILIARY_TIMELINE_ITEMS
                 playerB.setMediaItems(windowItems, targetIndex - start, startPositionMs)
             } else {
-                // Fallback for single item if not found in current timeline
                 resetPreparedWindowState()
                 playerB.setMediaItem(resolvedItem)
                 playerB.seekTo(startPositionMs)
@@ -1165,24 +1079,6 @@ class DualPlayerEngine @Inject constructor(
                         if (playbackState != Player.STATE_BUFFERING) {
                             player.removeListener(this)
                             if (cont.isActive) cont.resume(playbackState == Player.STATE_READY)
-                        }
-                    }
-                }
-                player.addListener(listener)
-                cont.invokeOnCancellation { player.removeListener(listener) }
-            }
-        } ?: false
-    }
-
-    private suspend fun awaitPlayerPlaying(player: ExoPlayer, timeoutMs: Long): Boolean {
-        if (player.isPlaying) return true
-        return kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
-            suspendCancellableCoroutine { cont ->
-                val listener = object : Player.Listener {
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        if (isPlaying) {
-                            player.removeListener(this)
-                            if (cont.isActive) cont.resume(true)
                         }
                     }
                 }
