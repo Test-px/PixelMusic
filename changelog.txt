@@ -1,8 +1,19 @@
-Features for enhanced performance:
+Release Notes
+
+Beta-1
+
+* Features for enhanced performance:
 * Optimized for better performance with reduced network usage.
 * Saves data on metered networks.
-* Includes an automated crush reporting system.
+* Includes an automated crash reporting system.
 * Offers an improved update screen.
+
+Beta-2
+
 * Includes enhanced login methods.
-* Includes a splash screen. 
+* Includes a splash screen.
 * Fixed Equalizer being disconnected.
+
+Beta-3
+
+* Fixed shuffle button position on button navigation mode.
