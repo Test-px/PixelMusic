@@ -23,8 +23,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import com.unshoo.pixelmusic.R
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeShuffleFab(
@@ -34,43 +34,53 @@ fun HomeShuffleFab(
     modifier: Modifier = Modifier
 ) {
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val isGestureBarVisible = systemNavBarInset > 10.dp 
     
-    // =========================================================================================
-    // BUTTON HEIGHT CONFIGURATION
-    // =========================================================================================
-    
-    // Increase or decrease these values to manage the height of the button when the Mini-Player is OPEN
-    val activeHeight = if (isGestureBarVisible) {
-        74.dp // <-- Player OPEN & Gesture Bar SHOWN
-    } else {
-        55.dp // <-- Player OPEN & Gesture Bar HIDDEN
+    // Determine Navigation Bar State based on height
+    val navState = when {
+        systemNavBarInset > 35.dp -> 2 // 3-Button Navigation (usually ~48dp)
+        systemNavBarInset > 5.dp -> 1  // Gesture Navigation (usually ~16dp)
+        else -> 0                      // Hidden / Fullscreen (0dp)
     }
 
-    // Increase or decrease these values to manage the height of the button when the Mini-Player is CLOSED
-    val inactiveHeight = if (isGestureBarVisible) {
-        24.dp // <-- Player CLOSED & Gesture Bar SHOWN
-    } else {
-        0.dp  // <-- Player CLOSED & Gesture Bar HIDDEN
+    // =========================================================================================
+    // BUTTON HEIGHT CONFIGURATION (3 Separate Positions)
+    // =========================================================================================
+    
+    // Manage the height of the button when the Mini-Player is OPEN
+    val activeHeight = when (navState) {
+        2 -> 106.dp   // <-- Player OPEN & 3-Button Nav
+        1 -> 74.dp    // <-- Player OPEN & Gesture Nav
+        else -> 55.dp // <-- Player OPEN & Nav Hidden
+    }
+
+    // Manage the height of the button when the Mini-Player is CLOSED
+    val inactiveHeight = when (navState) {
+        2 -> 64.dp    // <-- Player CLOSED & 3-Button Nav
+        1 -> 24.dp    // <-- Player CLOSED & Gesture Nav
+        else -> 0.dp  // <-- Player CLOSED & Nav Hidden
     }
     
     // =========================================================================================
 
-    var currentTargetOffset by remember(isGestureBarVisible) { 
-        mutableStateOf(if (isPlayerActive) activeHeight else inactiveHeight) 
-    }
+    // Only track the player's active state for the delay. 
+    // Keying ONLY on `isPlayerActive` ensures the 4-second delay won't restart 
+    // if the system navigation bar hides or shows dynamically.
+    var isPlayerActiveDelayed by remember { mutableStateOf(isPlayerActive) }
 
-    LaunchedEffect(isPlayerActive, isGestureBarVisible) {
+    LaunchedEffect(isPlayerActive) {
         if (isPlayerActive) {
-            currentTargetOffset = activeHeight
+            isPlayerActiveDelayed = true
         } else {
             delay(4000) 
-            currentTargetOffset = inactiveHeight
+            isPlayerActiveDelayed = false
         }
     }
 
+    // Apply the correct height based on the delayed player state
+    val targetOffset = if (isPlayerActiveDelayed) activeHeight else inactiveHeight
+
     val animatedBottomOffset by animateDpAsState(
-        targetValue = currentTargetOffset,
+        targetValue = targetOffset,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
