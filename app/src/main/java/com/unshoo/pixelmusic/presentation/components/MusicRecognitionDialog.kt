@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -109,22 +111,24 @@ fun MusicRecognitionDialog(
         }
     }
 
-    val textColor = if (isTransparentOverlay) Color.White else MaterialTheme.colorScheme.onSurface
-    val subTextColor = if (isTransparentOverlay) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
+    if (isTransparentOverlay) {
+        // =========================================================================================
+        // ── OVERLAY MODE: Pure Google style floating design (No Solid Card) ──
+        // =========================================================================================
+        val textColor = Color.White
+        val subTextColor = Color.White.copy(alpha = 0.75f)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(if (isTransparentOverlay) Color.Black.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isTransparentOverlay) {
-            // ── OVERLAY MODE: Pure Google style floating design (No Solid Card) ──
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
+        ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 IconButton(
                     onClick = onDismiss,
@@ -265,13 +269,23 @@ fun MusicRecognitionDialog(
                     }
                 }
             }
-        } else {
-            // ── IN-APP MODE: Standard full dialog card ──
+        }
+    } else {
+        // =========================================================================================
+        // ── IN-APP MODE: Standard full dialog card floating over the UI ──
+        // =========================================================================================
+        val textColor = MaterialTheme.colorScheme.onSurface
+        val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(screenHeight * 0.85f)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 24.dp), // Restored the vertical padding
                 shape = AbsoluteSmoothCornerShape(32.dp, 80),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 6.dp
@@ -307,7 +321,7 @@ fun MusicRecognitionDialog(
                             style = MaterialTheme.typography.headlineMedium,
                             fontFamily = GoogleSansRounded,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = textColor
                         )
 
                         Spacer(modifier = Modifier.height(48.dp))
@@ -359,7 +373,7 @@ fun MusicRecognitionDialog(
                                             style = MaterialTheme.typography.headlineSmall,
                                             fontFamily = GoogleSansRounded,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
+                                            color = textColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
@@ -368,7 +382,7 @@ fun MusicRecognitionDialog(
                                         Text(
                                             text = song.artist,
                                             style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = subTextColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -407,7 +421,7 @@ fun MusicRecognitionDialog(
                                         Text(
                                             text = currentStatus.message,
                                             style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = subTextColor,
                                             textAlign = TextAlign.Center,
                                         )
                                     }
@@ -430,7 +444,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     
     val waveScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 4f else 1f,
+        targetValue = if (isListening) 4f else 1f, 
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -440,7 +454,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     
     val waveAlpha by infiniteTransition.animateFloat(
         initialValue = if (isListening) 0.6f else 0f,
-        targetValue = 0f,
+        targetValue = 0f, 
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -460,7 +474,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(200.dp)
+        modifier = Modifier.size(200.dp) 
     ) {
         if (isListening) {
             val surgeGradient = Brush.radialGradient(
@@ -473,7 +487,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
             
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(80.dp) 
                     .graphicsLayer {
                         scaleX = waveScale
                         scaleY = waveScale
@@ -491,7 +505,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
                     scaleX = buttonPulse
                     scaleY = buttonPulse
                 },
-            shape = AbsoluteSmoothCornerShape(32.dp, 60),
+            shape = AbsoluteSmoothCornerShape(32.dp, 60), 
             color = if (isListening) MaterialTheme.colorScheme.primary 
                     else MaterialTheme.colorScheme.secondaryContainer,
             shadowElevation = if (isListening) 12.dp else 4.dp,
