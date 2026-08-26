@@ -1,5 +1,7 @@
-👍Optimised for better performance 🚀 with less network 📶.
-🔋Save data on metered networks ⚡.
-Automatic crush reporting system 📊.
-Improved update screen 🔄.
-Polished login methods ⚙️✨.
+Features for enhanced performance:
+* Optimized for better performance with reduced network usage.
+* Saves data on metered networks.
+* Includes an automated crush reporting system.
+* Offers an improved update screen.
+* Includes enhanced login methods.
+* Includes a splash screen. 
