@@ -443,32 +443,53 @@ fun MusicRecognitionDialog(
 @Composable
 fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "powerSurge")
-    
-    val waveScale by infiniteTransition.animateFloat(
+
+    // ── Wave 1 (Primary shockwave reaching full edge-to-edge) ──
+    val wave1Scale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 5.5f else 1f, // PUMPED UP THE EXPANSION!
+        targetValue = if (isListening) 16f else 1f, // Scales up to ~1280dp (covers entire screen)
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2200, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "waveScale"
+        label = "wave1Scale"
     )
-    
-    val waveAlpha by infiniteTransition.animateFloat(
-        initialValue = if (isListening) 1f else 0f, // STARTS AT 100% OPACITY!
-        targetValue = 0f, 
+    val wave1Alpha by infiniteTransition.animateFloat(
+        initialValue = if (isListening) 0.85f else 0f,
+        targetValue = 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2200, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "waveAlpha"
+        label = "wave1Alpha"
     )
 
+    // ── Wave 2 (Staggered trailing wave for fluid continuity) ──
+    val wave2Scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isListening) 16f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, delayMillis = 700, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wave2Scale"
+    )
+    val wave2Alpha by infiniteTransition.animateFloat(
+        initialValue = if (isListening) 0.85f else 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, delayMillis = 700, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wave2Alpha"
+    )
+
+    // ── Button subtle heartbeat pulse ──
     val buttonPulse by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 1.15f else 1f,
+        targetValue = if (isListening) 1.12f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
+            animation = tween(700, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "buttonPulse"
@@ -476,31 +497,46 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(250.dp) // INCREASED CONTAINER BOUNDS!
+        modifier = Modifier.wrapContentSize()
     ) {
         if (isListening) {
-            // Simplified gradient so the Primary color shines boldly
+            val primaryColor = MaterialTheme.colorScheme.primary
             val surgeGradient = Brush.radialGradient(
                 colors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    primaryColor.copy(alpha = 0.6f),
+                    primaryColor.copy(alpha = 0.25f),
                     Color.Transparent
                 )
             )
-            
+
+            // Outer trailing ripple
             Box(
                 modifier = Modifier
-                    .size(80.dp) 
+                    .size(80.dp)
                     .graphicsLayer {
-                        scaleX = waveScale
-                        scaleY = waveScale
-                        alpha = waveAlpha
+                        scaleX = wave2Scale
+                        scaleY = wave2Scale
+                        alpha = wave2Alpha
+                    }
+                    .clip(CircleShape)
+                    .background(surgeGradient)
+            )
+
+            // Leading edge-to-edge ripple
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .graphicsLayer {
+                        scaleX = wave1Scale
+                        scaleY = wave1Scale
+                        alpha = wave1Alpha
                     }
                     .clip(CircleShape)
                     .background(surgeGradient)
             )
         }
 
+        // Center Action Button
         Surface(
             modifier = Modifier
                 .size(96.dp)
@@ -508,7 +544,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
                     scaleX = buttonPulse
                     scaleY = buttonPulse
                 },
-            shape = AbsoluteSmoothCornerShape(32.dp, 60), 
+            shape = AbsoluteSmoothCornerShape(32.dp, 60),
             color = if (isListening) MaterialTheme.colorScheme.primary 
                     else MaterialTheme.colorScheme.secondaryContainer,
             shadowElevation = if (isListening) 12.dp else 4.dp,
