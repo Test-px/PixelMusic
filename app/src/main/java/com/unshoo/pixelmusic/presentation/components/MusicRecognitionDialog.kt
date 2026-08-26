@@ -1,7 +1,3 @@
-/*
- * PixelMusic - Music Recognition UI
- */
-
 package com.unshoo.pixelmusic.presentation.components
 
 import android.Manifest
@@ -14,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -35,8 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -76,7 +69,6 @@ fun MusicRecognitionDialog(
         }
     }
 
-    // REMOVED the Compose Dialog! The transparent Activity acts as the dialog now.
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -269,7 +261,8 @@ fun MusicRecognitionDialog(
                 }
             } // End Box
         } // End Surface
-    } // End Box (Replaces Dialog)
+    } // End Box
+}
 
 @Composable
 fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
