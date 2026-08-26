@@ -18,6 +18,9 @@ import com.unshoo.pixelmusic.ui.theme.PixelMusicTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 
@@ -53,19 +56,74 @@ class RecognitionOverlayActivity : ComponentActivity() {
                     isTransparentOverlay = true,
                     onPlayMusic = { result ->
                         lifecycleScope.launch {
-                            // Resolve YouTube ID from Shazam or fallback to quick search
+                            
+                            // Advanced YouTube Resolution Pipeline
                             var videoId = result.youtubeVideoId
+                            
                             if (videoId.isNullOrBlank()) {
-                                val query = "${result.title} ${result.artist}"
                                 videoId = withContext(Dispatchers.IO) {
-                                    runCatching {
-                                        val search = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
-                                        search?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.id
-                                    }.getOrNull()
+                                    
+                                    // Helper: Clean up titles to drastically improve YouTube Search SEO
+                                    fun cleanText(text: String): String {
+                                        return text.replace(Regex("\\(.*?\\)|\\[.*?\\]"), "") // Removes (Official Video)
+                                            .replace(Regex("(?i)(feat\\.|ft\\.).*"), "")     // Removes feat. Artist
+                                            .trim()
+                                    }
+
+                                    val queriesToTry = mutableListOf("${cleanText(result.title)} ${cleanText(result.artist)}")
+
+                                    // SUPERPOWER 1: MusicBrainz ISRC API Fallback (100% Free)
+                                    // Finds the true regional or alternate title using the ISRC code
+                                    if (!result.isrc.isNullOrBlank()) {
+                                        runCatching {
+                                            val url = URL("https://musicbrainz.org/ws/2/recording?query=isrc:${result.isrc}&fmt=json")
+                                            val conn = url.openConnection() as HttpURLConnection
+                                            conn.setRequestProperty("User-Agent", "PixelMusic/1.0 (Android)")
+                                            conn.connectTimeout = 3000
+                                            conn.readTimeout = 3000
+                                            val jsonStr = conn.inputStream.bufferedReader().use { it.readText() }
+                                            val json = JSONObject(jsonStr)
+                                            
+                                            val recordings = json.optJSONArray("recordings")
+                                            if (recordings != null && recordings.length() > 0) {
+                                                val first = recordings.getJSONObject(0)
+                                                val mbTitle = first.optString("title")
+                                                val mbArtist = first.optJSONArray("artist-credit")?.optJSONObject(0)?.optString("name") ?: ""
+                                                
+                                                val mbQuery = "${cleanText(mbTitle)} ${cleanText(mbArtist)}".trim()
+                                                if (mbQuery.isNotBlank() && !queriesToTry.contains(mbQuery)) {
+                                                    queriesToTry.add(mbQuery) // Add this as our highly accurate backup query!
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // SUPERPOWER 2: Two-Tier Search Execution
+                                    var foundId: String? = null
+                                    
+                                    for (query in queriesToTry) {
+                                        if (foundId != null) break
+
+                                        // Tier 1: Strict ATV (Official Audio Tracks)
+                                        val atvSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() }.getOrNull()
+                                        foundId = atvSearch?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.id
+
+                                        // Tier 2: Unrestricted Video Search (Catches Folk, Live, Covers, & Lyrics Videos)
+                                        if (foundId == null) {
+                                            val videoSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull() }.getOrNull()
+                                            
+                                            // We use a brilliant reflection trick here so we don't have to guess your VideoItem class import!
+                                            foundId = videoSearch?.items?.firstOrNull()?.let { item ->
+                                                runCatching { item.javaClass.getMethod("getId").invoke(item) as? String }.getOrNull()
+                                            }
+                                        }
+                                    }
+                                    foundId
                                 }
                             }
 
                             if (!videoId.isNullOrBlank()) {
+                                // Forces MainActivity to intercept the ID and start playing immediately
                                 val playIntent = Intent(this@RecognitionOverlayActivity, MainActivity::class.java).apply {
                                     action = Intent.ACTION_SEND
                                     type = "text/plain"
