@@ -17,3 +17,4 @@ Beta-2
 Beta-3
 
 * Fixed shuffle button position on button navigation mode.
+* Now you can use music recognition via tile service from your Home screen or anywhere.
