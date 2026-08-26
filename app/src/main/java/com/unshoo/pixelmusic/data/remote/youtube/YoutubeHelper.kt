@@ -825,17 +825,18 @@ object YoutubeHelper {
     }
 
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        IOS,
-        MOBILE,
-        ANDROID_MUSIC,
-        ANDROID_VR_NO_AUTH,
-        ANDROID_VR_1_61_48,
-        ANDROID_VR_1_43_32,
-        TVHTML5,
-        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
-        WEB,
-        WEB_CREATOR,
-        WEB_REMIX
+        YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // Extremely unrestricted (No Auth Required)
+        YouTubeClient.ANDROID_TESTSUITE,              // Highly reliable fallback
+        YouTubeClient.TVHTML5,
+        YouTubeClient.IOS,
+        YouTubeClient.MOBILE,
+        YouTubeClient.ANDROID_MUSIC,
+        YouTubeClient.ANDROID_VR_NO_AUTH,
+        YouTubeClient.ANDROID_VR_1_61_48,
+        YouTubeClient.ANDROID_VR_1_43_32,
+        YouTubeClient.WEB,
+        YouTubeClient.WEB_CREATOR,
+        YouTubeClient.WEB_REMIX
     )
 
     private fun isCipheredFormat(format: PlayerResponse.StreamingData.Format): Boolean {
