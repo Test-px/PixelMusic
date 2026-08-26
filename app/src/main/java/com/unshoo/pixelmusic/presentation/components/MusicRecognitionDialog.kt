@@ -40,6 +40,9 @@ import com.unshoo.pixelmusic.data.shazam.MusicRecognizer
 import com.unshoo.pixelmusic.data.shazam.RecognitionResult
 import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
+import androidx.compose.ui.draw.drawBehind
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
