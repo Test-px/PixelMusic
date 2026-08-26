@@ -175,7 +175,33 @@ class DualPlayerEngine @Inject constructor(
 
     // Listener to attach to the active master player (playerA)
     private val masterPlayerListener = object : Player.Listener, AnalyticsListener {
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover.")
+            
+            // 1. Pause the player immediately so it does NOT skip the song!
+            playerA.playWhenReady = false
+            if (transitionRunning) playerB.playWhenReady = false
+            
+            // 2. Clear the broken cache entry so pressing Play tries a fresh network request
+            val currentMediaId = playerA.currentMediaItem?.mediaId
+            if (currentMediaId != null) {
+                val uriString = "youtube://$currentMediaId"
+                resolvedUriCache.remove(uriString)
+                activePlaybackResolvedUris.remove(uriString)
+                
+                // Clear the failing Deferred jobs to prevent the "Job was cancelled" race condition
+                val deferred = activeResolutions[uriString]
+                if (deferred?.isCancelled == true || deferred?.isCompleted == true) {
+                    activeResolutions.remove(uriString)
+                }
+            }
+            
+            // 3. Prepare resets the player out of the fatal STATE_IDLE 
+            // so the UI controls work again and the user can safely hit Play.
+            playerA.prepare() 
+        }
+        
+        override fun onPlayWhenReadyChanged(playWhenReady: yChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 lastPlayWhenReadyAtMs = SystemClock.elapsedRealtime()
                 requestAudioFocus()
@@ -679,9 +705,15 @@ class DualPlayerEngine @Inject constructor(
                         val fallbackResolved = runBlocking { resolveCloudUri(uri) }
                         if (fallbackResolved != uri) {
                             return dataSpec.buildUpon().setUri(fallbackResolved).build()
+                        } else {
+                            // !!! FATAL CRASH PREVENTION !!!
+                            // Throwing an IOException prevents ExoPlayer from crashing with a MalformedURLException.
+                            // This triggers onPlayerError() safely instead of killing the entire playback service.
+                            throw java.io.IOException("Stream resolution failed for $originalUri")
                         }
                     } catch (e: Exception) {
                         Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
+                        throw java.io.IOException("Stream resolution interrupted", e)
                     }
                     
                     Timber.tag("DualPlayerEngine").d("resolveDataSpec: Cache MISS for %s - attempting to use original URI", scheme)
