@@ -15,14 +15,12 @@ import com.unshoo.pixelmusic.ui.theme.PixelMusicTheme
 
 class RecognitionOverlayActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 1. Force the status bar and navigation bar to be fully transparent!
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         super.onCreate(savedInstanceState)
 
-        // Ensure we have permission to draw over other apps (SYSTEM_ALERT_WINDOW)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
@@ -34,10 +32,10 @@ class RecognitionOverlayActivity : ComponentActivity() {
             PixelMusicTheme {
                 MusicRecognitionDialog(
                     onDismiss = { finish() },
+                    isTransparentOverlay = true, // <-- Activates the Google-style transparent look!
                     onPlayMusic = { result ->
                         val videoId = result.youtubeVideoId
                         if (videoId != null) {
-                            // 2. EXPLICITLY target MainActivity so it is forced to open!
                             val playIntent = Intent(this@RecognitionOverlayActivity, MainActivity::class.java).apply {
                                 action = Intent.ACTION_SEND
                                 type = "text/plain"
