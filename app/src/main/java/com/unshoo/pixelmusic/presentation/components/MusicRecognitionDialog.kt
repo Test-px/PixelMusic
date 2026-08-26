@@ -43,6 +43,7 @@ import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 @Composable
 fun MusicRecognitionDialog(
     onDismiss: () -> Unit,
+    isTransparentOverlay: Boolean = false, // <-- The magic toggle!
     onPlayMusic: (RecognitionResult) -> Unit
 ) {
     var status by remember { mutableStateOf<RecognitionStatus>(RecognitionStatus.Ready) }
@@ -69,74 +70,76 @@ fun MusicRecognitionDialog(
         }
     }
 
+    // Adaptive Colors based on mode
+    val textColor = if (isTransparentOverlay) Color.White else MaterialTheme.colorScheme.onSurface
+    val subTextColor = if (isTransparentOverlay) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f)) // Smoothly dims the apps behind it
+            .background(Color.Black.copy(alpha = if (isTransparentOverlay) 0.85f else 0.65f)) 
             .clickable(
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null,
-                onClick = onDismiss // Dismiss the overlay if they tap the dim background
+                onClick = onDismiss 
             ),
         contentAlignment = Alignment.Center
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                // A massive container that spans most of the screen
-                .height(screenHeight * 0.85f)
-                .padding(horizontal = 16.dp)
-                .windowInsetsPadding(WindowInsets.systemBars) // Protects content from the transparent nav bars
+                .run {
+                    if (isTransparentOverlay) fillMaxHeight() 
+                    else height(screenHeight * 0.85f).padding(horizontal = 16.dp)
+                }
+                .windowInsetsPadding(WindowInsets.systemBars) 
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
-                    onClick = {} // Prevents clicking INSIDE the card from dismissing the app
+                    onClick = {} 
                 ),
-            shape = AbsoluteSmoothCornerShape(32.dp, 80),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp
+            shape = if (isTransparentOverlay) androidx.compose.ui.graphics.RectangleShape else AbsoluteSmoothCornerShape(32.dp, 80),
+            color = if (isTransparentOverlay) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = if (isTransparentOverlay) 0.dp else 6.dp
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                
                 // ── Close Button ──
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
+                        .align(if (isTransparentOverlay) Alignment.TopStart else Alignment.TopEnd)
                         .padding(16.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = textColor
                     )
                 }
 
-                // ── TOP AREA (The Trigger & The Scanner) ──
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .padding(top = 64.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // ── TOP/CENTER AREA (The Trigger & The Scanner) ──
+                // Fades out entirely to make room for the result!
+                AnimatedVisibility(
+                    visible = status !is RecognitionStatus.Success,
+                    enter = fadeIn(tween(400)),
+                    exit = fadeOut(tween(300)),
+                    modifier = Modifier.align(if (isTransparentOverlay) Alignment.Center else Alignment.TopCenter)
                 ) {
-                    Text(
-                        text = when (status) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (isTransparentOverlay) 0.dp else 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val statusText = when (status) {
                             is RecognitionStatus.Listening -> "Listening..."
                             is RecognitionStatus.Success -> "Match found!"
                             is RecognitionStatus.Error -> "No match"
                             else -> "Tap to recognize 𝄞"
-                        },
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontFamily = GoogleSansRounded,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(48.dp))
-
-                    ScannerButton(
-                        isListening = status is RecognitionStatus.Listening,
-                        onClick = {
+                        }
+                        
+                        val onScannerClick = {
                             if (status is RecognitionStatus.Ready || status is RecognitionStatus.Error) {
                                 val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                                 if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
@@ -154,15 +157,44 @@ fun MusicRecognitionDialog(
                                 }
                             }
                         }
-                    )
+
+                        if (isTransparentOverlay) {
+                            // Google style: Scanner centered, text below
+                            ScannerButton(
+                                isListening = status is RecognitionStatus.Listening,
+                                onClick = onScannerClick
+                            )
+                            Spacer(modifier = Modifier.height(32.dp))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontFamily = GoogleSansRounded,
+                                color = textColor
+                            )
+                        } else {
+                            // Original App style: Text top, scanner below
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontFamily = GoogleSansRounded,
+                                fontWeight = FontWeight.Bold,
+                                color = textColor
+                            )
+                            Spacer(modifier = Modifier.height(48.dp))
+                            ScannerButton(
+                                isListening = status is RecognitionStatus.Listening,
+                                onClick = onScannerClick
+                            )
+                        }
+                    }
                 }
 
                 // ── BOTTOM AREA (The Results fade in here) ──
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
+                        .align(if (isTransparentOverlay) Alignment.Center else Alignment.BottomCenter)
+                        .padding(bottom = if (isTransparentOverlay) 0.dp else 32.dp, start = 24.dp, end = 24.dp)
                 ) {
                     AnimatedContent(
                         targetState = status,
@@ -199,7 +231,7 @@ fun MusicRecognitionDialog(
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontFamily = GoogleSansRounded,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = textColor,
                                         textAlign = TextAlign.Center,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
@@ -208,7 +240,7 @@ fun MusicRecognitionDialog(
                                     Text(
                                         text = song.artist,
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = subTextColor,
                                         textAlign = TextAlign.Center,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -247,13 +279,12 @@ fun MusicRecognitionDialog(
                                     Text(
                                         text = currentStatus.message,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = subTextColor,
                                         textAlign = TextAlign.Center,
                                     )
                                 }
                             }
                             else -> {
-                                // Idle state at the bottom is empty, waiting for a result
                                 Box(modifier = Modifier.height(200.dp))
                             }
                         }
@@ -271,7 +302,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     // The "Power Surge" Wave
     val waveScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 4f else 1f, // Expands massively outwards
+        targetValue = if (isListening) 4f else 1f, 
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -281,7 +312,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     
     val waveAlpha by infiniteTransition.animateFloat(
         initialValue = if (isListening) 0.6f else 0f,
-        targetValue = 0f, // Fades out completely as it expands
+        targetValue = 0f, 
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -302,7 +333,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(200.dp) // Large area for the wave to travel
+        modifier = Modifier.size(200.dp) 
     ) {
         // The Surge Wave
         if (isListening) {
@@ -316,7 +347,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
             
             Box(
                 modifier = Modifier
-                    .size(80.dp) // Base size of the wave origin
+                    .size(80.dp) 
                     .graphicsLayer {
                         scaleX = waveScale
                         scaleY = waveScale
@@ -335,7 +366,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
                     scaleX = buttonPulse
                     scaleY = buttonPulse
                 },
-            shape = AbsoluteSmoothCornerShape(32.dp, 60), // Cool squircle trigger
+            shape = AbsoluteSmoothCornerShape(32.dp, 60), 
             color = if (isListening) MaterialTheme.colorScheme.primary 
                     else MaterialTheme.colorScheme.secondaryContainer,
             shadowElevation = if (isListening) 12.dp else 4.dp,
