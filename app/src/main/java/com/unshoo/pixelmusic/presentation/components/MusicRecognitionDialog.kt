@@ -76,17 +76,30 @@ fun MusicRecognitionDialog(
         }
     }
 
-    // Using usePlatformDefaultWidth = false allows us to create a massive, immersive dialog
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    // REMOVED the Compose Dialog! The transparent Activity acts as the dialog now.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f)) // Smoothly dims the apps behind it
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss // Dismiss the overlay if they tap the dim background
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 // A massive container that spans most of the screen
                 .height(screenHeight * 0.85f)
-                .padding(horizontal = 16.dp, vertical = 24.dp),
+                .padding(horizontal = 16.dp)
+                .windowInsetsPadding(WindowInsets.systemBars) // Protects content from the transparent nav bars
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = {} // Prevents clicking INSIDE the card from dismissing the app
+                ),
             shape = AbsoluteSmoothCornerShape(32.dp, 80),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp
@@ -256,8 +269,7 @@ fun MusicRecognitionDialog(
                 }
             } // End Box
         } // End Surface
-    } // End Dialog
-}
+    } // End Box (Replaces Dialog)
 
 @Composable
 fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
