@@ -444,47 +444,27 @@ fun MusicRecognitionDialog(
 fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "powerSurge")
 
-    // ── Wave 1 (Primary shockwave reaching full edge-to-edge) ──
-    val wave1Scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isListening) 16f else 1f, // Scales up to ~1280dp (covers entire screen)
+    // ── We now animate the Progress (0f to 1f) instead of Scale ──
+    val wave1Progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (isListening) 1f else 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(2200, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "wave1Scale"
-    )
-    val wave1Alpha by infiniteTransition.animateFloat(
-        initialValue = if (isListening) 0.85f else 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wave1Alpha"
+        label = "wave1Progress"
     )
 
-    // ── Wave 2 (Staggered trailing wave for fluid continuity) ──
-    val wave2Scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isListening) 16f else 1f,
+    val wave2Progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (isListening) 1f else 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(2200, delayMillis = 700, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "wave2Scale"
-    )
-    val wave2Alpha by infiniteTransition.animateFloat(
-        initialValue = if (isListening) 0.85f else 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, delayMillis = 700, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wave2Alpha"
+        label = "wave2Progress"
     )
 
-    // ── Button subtle heartbeat pulse ──
     val buttonPulse by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (isListening) 1.12f else 1f,
@@ -495,57 +475,47 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
         label = "buttonPulse"
     )
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.wrapContentSize()
+        modifier = Modifier
+            .size(96.dp)
+            .drawBehind { // ── Pure GPU Canvas Drawing (No Boxes!) ──
+                if (!isListening) return@drawBehind
+
+                // Base radius of the button
+                val startRadius = size.minDimension / 2f
+                // 16x multiplier easily covers edge-to-edge of any modern screen
+                val maxRadius = startRadius * 16f 
+
+                // Draw Outer Staggered Wave
+                if (wave2Progress > 0f) {
+                    val currentRadius = startRadius + (maxRadius - startRadius) * wave2Progress
+                    val currentAlpha = 0.85f * (1f - wave2Progress)
+                    drawCircle(
+                        color = primaryColor,
+                        radius = currentRadius,
+                        alpha = currentAlpha
+                    )
+                }
+
+                // Draw Leading Edge Wave
+                if (wave1Progress > 0f) {
+                    val currentRadius = startRadius + (maxRadius - startRadius) * wave1Progress
+                    val currentAlpha = 0.85f * (1f - wave1Progress)
+                    drawCircle(
+                        color = primaryColor,
+                        radius = currentRadius,
+                        alpha = currentAlpha
+                    )
+                }
+            }
     ) {
-        if (isListening) {
-            val primaryColor = MaterialTheme.colorScheme.primary
-            val surgeGradient = Brush.radialGradient(
-                colors = listOf(
-                    primaryColor.copy(alpha = 0.6f),
-                    primaryColor.copy(alpha = 0.25f),
-                    Color.Transparent
-                )
-            )
-
-            // Outer trailing ripple
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .graphicsLayer {
-                        scaleX = wave2Scale
-                        scaleY = wave2Scale
-                        alpha = wave2Alpha
-                        // Force the shape and clipping at the GPU level!
-                        shape = CircleShape
-                        clip = true
-                    }
-                    // Explicitly tell the background to only fill a circle
-                    .background(brush = surgeGradient, shape = CircleShape)
-            )
-
-            // Leading edge-to-edge ripple
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .graphicsLayer {
-                        scaleX = wave1Scale
-                        scaleY = wave1Scale
-                        alpha = wave1Alpha
-                        // Force the shape and clipping at the GPU level!
-                        shape = CircleShape
-                        clip = true
-                    }
-                    // Explicitly tell the background to only fill a circle
-                    .background(brush = surgeGradient, shape = CircleShape)
-            )
-        }
-
         // Center Action Button
         Surface(
             modifier = Modifier
-                .size(96.dp)
+                .fillMaxSize()
                 .graphicsLayer {
                     scaleX = buttonPulse
                     scaleY = buttonPulse
