@@ -5,3 +5,4 @@ Features for enhanced performance:
 * Offers an improved update screen.
 * Includes enhanced login methods.
 * Includes a splash screen. 
+* Fixed Equalizer being disconnected.
