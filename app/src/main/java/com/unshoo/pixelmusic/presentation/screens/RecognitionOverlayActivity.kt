@@ -8,13 +8,20 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.unshoo.pixelmusic.MainActivity
+import com.unshoo.pixelmusic.data.preferences.AppThemeMode
+import com.unshoo.pixelmusic.data.preferences.ThemePreference
+import com.unshoo.pixelmusic.data.preferences.ThemePreferencesRepository
 import com.unshoo.pixelmusic.presentation.components.MusicRecognitionDialog
 import com.unshoo.pixelmusic.ui.theme.PixelMusicTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,25 +30,28 @@ import java.net.HttpURLConnection
 import java.net.URL
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class RecognitionOverlayActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var themePreferencesRepository: ThemePreferencesRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Extend into camera cutout to eliminate the top black bar
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
 
-        // 2. Full-screen immersive mode (hides status & nav bars for clean look)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = WindowCompat.getInsetsController(window, window.decorView)
         insetsController.hide(WindowInsetsCompat.Type.systemBars())
         insetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        // 3. Overlay permission check
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
@@ -50,30 +60,42 @@ class RecognitionOverlayActivity : ComponentActivity() {
         }
 
         setContent {
-            PixelMusicTheme {
+            // Read the exact same theme settings as the main app!
+            val systemDarkTheme = isSystemInDarkTheme()
+            val appThemeMode by themePreferencesRepository.appThemeModeFlow.collectAsStateWithLifecycle(initialValue = AppThemeMode.FOLLOW_SYSTEM)
+            val useDarkTheme = when (appThemeMode) {
+                AppThemeMode.DARK -> true
+                AppThemeMode.LIGHT -> false
+                else -> systemDarkTheme
+            }
+            val colorPalette by themePreferencesRepository.colorPalettePreferenceFlow.collectAsStateWithLifecycle(initialValue = "SAGE")
+            val playerThemePreference by themePreferencesRepository.playerThemePreferenceFlow.collectAsStateWithLifecycle(initialValue = ThemePreference.ALBUM_ART)
+            val isAmoledBlackEnabled by themePreferencesRepository.amoledBlackModeFlow.collectAsStateWithLifecycle(initialValue = false)
+            val dynamicColorEnabled = colorPalette == "DYNAMIC" || playerThemePreference == ThemePreference.DYNAMIC
+
+            PixelMusicTheme(
+                darkTheme = useDarkTheme,
+                dynamicColor = dynamicColorEnabled,
+                colorPalette = colorPalette,
+                isAmoledBlack = isAmoledBlackEnabled
+            ) {
                 MusicRecognitionDialog(
                     onDismiss = { finish() },
                     isTransparentOverlay = true,
                     onPlayMusic = { result ->
                         lifecycleScope.launch {
-                            
-                            // Advanced YouTube Resolution Pipeline
                             var videoId = result.youtubeVideoId
                             
                             if (videoId.isNullOrBlank()) {
                                 videoId = withContext(Dispatchers.IO) {
-                                    
-                                    // Helper: Clean up titles to drastically improve YouTube Search SEO
                                     fun cleanText(text: String): String {
-                                        return text.replace(Regex("\\(.*?\\)|\\[.*?\\]"), "") // Removes (Official Video)
-                                            .replace(Regex("(?i)(feat\\.|ft\\.).*"), "")     // Removes feat. Artist
+                                        return text.replace(Regex("\\(.*?\\)|\\[.*?\\]"), "")
+                                            .replace(Regex("(?i)(feat\\.|ft\\.).*"), "")
                                             .trim()
                                     }
 
                                     val queriesToTry = mutableListOf("${cleanText(result.title)} ${cleanText(result.artist)}")
 
-                                    // SUPERPOWER 1: MusicBrainz ISRC API Fallback (100% Free)
-                                    // Finds the true regional or alternate title using the ISRC code
                                     if (!result.isrc.isNullOrBlank()) {
                                         runCatching {
                                             val url = URL("https://musicbrainz.org/ws/2/recording?query=isrc:${result.isrc}&fmt=json")
@@ -92,27 +114,20 @@ class RecognitionOverlayActivity : ComponentActivity() {
                                                 
                                                 val mbQuery = "${cleanText(mbTitle)} ${cleanText(mbArtist)}".trim()
                                                 if (mbQuery.isNotBlank() && !queriesToTry.contains(mbQuery)) {
-                                                    queriesToTry.add(mbQuery) // Add this as our highly accurate backup query!
+                                                    queriesToTry.add(mbQuery)
                                                 }
                                             }
                                         }
                                     }
 
-                                    // SUPERPOWER 2: Two-Tier Search Execution
                                     var foundId: String? = null
-                                    
                                     for (query in queriesToTry) {
                                         if (foundId != null) break
-
-                                        // Tier 1: Strict ATV (Official Audio Tracks)
                                         val atvSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() }.getOrNull()
                                         foundId = atvSearch?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.id
 
-                                        // Tier 2: Unrestricted Video Search (Catches Folk, Live, Covers, & Lyrics Videos)
                                         if (foundId == null) {
                                             val videoSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull() }.getOrNull()
-                                            
-                                            // We use a brilliant reflection trick here so we don't have to guess your VideoItem class import!
                                             foundId = videoSearch?.items?.firstOrNull()?.let { item ->
                                                 runCatching { item.javaClass.getMethod("getId").invoke(item) as? String }.getOrNull()
                                             }
@@ -123,7 +138,6 @@ class RecognitionOverlayActivity : ComponentActivity() {
                             }
 
                             if (!videoId.isNullOrBlank()) {
-                                // Forces MainActivity to intercept the ID and start playing immediately
                                 val playIntent = Intent(this@RecognitionOverlayActivity, MainActivity::class.java).apply {
                                     action = Intent.ACTION_SEND
                                     type = "text/plain"
