@@ -517,9 +517,12 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
                         scaleX = wave2Scale
                         scaleY = wave2Scale
                         alpha = wave2Alpha
+                        // Force the shape and clipping at the GPU level!
+                        shape = CircleShape
+                        clip = true
                     }
-                    .clip(CircleShape)
-                    .background(surgeGradient)
+                    // Explicitly tell the background to only fill a circle
+                    .background(brush = surgeGradient, shape = CircleShape)
             )
 
             // Leading edge-to-edge ripple
@@ -530,9 +533,12 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
                         scaleX = wave1Scale
                         scaleY = wave1Scale
                         alpha = wave1Alpha
+                        // Force the shape and clipping at the GPU level!
+                        shape = CircleShape
+                        clip = true
                     }
-                    .clip(CircleShape)
-                    .background(surgeGradient)
+                    // Explicitly tell the background to only fill a circle
+                    .background(brush = surgeGradient, shape = CircleShape)
             )
         }
 
