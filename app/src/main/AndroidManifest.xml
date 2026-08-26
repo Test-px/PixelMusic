@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission
         android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
@@ -346,6 +347,26 @@
             android:grantUriPermissions="true" />
 
         <!-- Quick Settings Tiles -->
+        <!-- The Transparent Overlay Activity -->
+        <activity
+            android:name=".presentation.screens.RecognitionOverlayActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
+
+        <!-- The Control Center Quick Settings Tile -->
+        <service
+            android:name=".data.service.tile.MusicRecognitionTileService"
+            android:exported="true"
+            android:label="Recognize Music"
+            android:icon="@drawable/rounded_graphic_eq_24"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        
         <service
             android:name=".data.service.tile.ShuffleAllTileService"
             android:exported="true"
