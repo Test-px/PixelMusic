@@ -72,7 +72,6 @@ fun MusicRecognitionDialog(
         }
     }
 
-    // Auto-trigger recognition when launched from Quick Settings
     LaunchedEffect(isTransparentOverlay) {
         if (isTransparentOverlay && status is RecognitionStatus.Ready) {
             val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
@@ -115,13 +114,16 @@ fun MusicRecognitionDialog(
         // =========================================================================================
         // ── OVERLAY MODE: Pure Google style floating design (No Solid Card) ──
         // =========================================================================================
-        val textColor = Color.White
-        val subTextColor = Color.White.copy(alpha = 0.75f)
+        
+        // Uses the dynamic theme background (Dark or Light) with 85% opacity for a beautiful glass effect
+        val overlayBackground = MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+        val textColor = MaterialTheme.colorScheme.onSurface
+        val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f))
+                .background(overlayBackground)
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
@@ -139,7 +141,7 @@ fun MusicRecognitionDialog(
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = "Close",
-                        tint = Color.White
+                        tint = textColor
                     )
                 }
 
@@ -183,7 +185,7 @@ fun MusicRecognitionDialog(
                                         style = MaterialTheme.typography.titleLarge,
                                         fontFamily = GoogleSansRounded,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = textColor,
                                         textAlign = TextAlign.Center,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
@@ -192,7 +194,7 @@ fun MusicRecognitionDialog(
                                     Text(
                                         text = song.artist,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = subTextColor,
                                         textAlign = TextAlign.Center,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -234,7 +236,7 @@ fun MusicRecognitionDialog(
                                 Text(
                                     text = currentStatus.message,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = textColor,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -261,7 +263,7 @@ fun MusicRecognitionDialog(
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontFamily = GoogleSansRounded,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = textColor,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -285,7 +287,7 @@ fun MusicRecognitionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(screenHeight * 0.85f)
-                    .padding(horizontal = 16.dp, vertical = 24.dp), // Restored the vertical padding
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
                 shape = AbsoluteSmoothCornerShape(32.dp, 80),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 6.dp
@@ -444,19 +446,19 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     
     val waveScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 4f else 1f, 
+        targetValue = if (isListening) 5.5f else 1f, // PUMPED UP THE EXPANSION!
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "waveScale"
     )
     
     val waveAlpha by infiniteTransition.animateFloat(
-        initialValue = if (isListening) 0.6f else 0f,
+        initialValue = if (isListening) 1f else 0f, // STARTS AT 100% OPACITY!
         targetValue = 0f, 
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "waveAlpha"
@@ -474,13 +476,14 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(200.dp) 
+        modifier = Modifier.size(250.dp) // INCREASED CONTAINER BOUNDS!
     ) {
         if (isListening) {
+            // Simplified gradient so the Primary color shines boldly
             val surgeGradient = Brush.radialGradient(
                 colors = listOf(
                     MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                     Color.Transparent
                 )
             )
