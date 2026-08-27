@@ -53,10 +53,17 @@ import unshoo.ianshulyadav.pixelmusic.innertube.PlaybackAuthState
 import unshoo.ianshulyadav.pixelmusic.innertube.models.response.PlayerResponse
 import com.unshoo.pixelmusic.data.preferences.PlayerStreamClient
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.withTimeoutOrNull
+
+
 
 object YoutubeHelper {
     val client = OkHttpClient.Builder()
         .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
+        .connectTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     val streamUrlLruCache = LruCache<String, String>(200)
@@ -662,7 +669,9 @@ object YoutubeHelper {
                 UmihiHelper.printd("Trying playback client: ${clientObj.clientName}")
                 var playerResponse = playerResponseCache[clientObj.clientName]
                 if (playerResponse == null) {
-                    var playerResResult = YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
+                    var playerResResult = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS) {
+                        YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
+                    } ?: continue
                     playerResponse = playerResResult.getOrNull()
                     if (playerResponse != null) {
                         var status = playerResponse.playabilityStatus.status
@@ -676,8 +685,10 @@ object YoutubeHelper {
                                 YouTube.visitorData = refreshedVisitorData
                                 authState = authState.copy(visitorData = refreshedVisitorData).normalized()
                                 didRefreshVisitorData = true
-                                playerResResult = YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
-                                playerResponse = playerResResult.getOrNull()
+                                playerResResult = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS) {
+                                    YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
+                                }
+                                playerResponse = playerResResult?.getOrNull()
                             }
                         }
                     }
@@ -722,7 +733,7 @@ object YoutubeHelper {
         repeat(retries) { attempt ->
             try {
                 attempts++
-                val streamUrl = withContext(Dispatchers.IO) {
+                val streamUrl = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS * 2) { withContext(Dispatchers.IO) {
                     val extractor = service.getStreamExtractor(song.youtubeUrl)
                     extractor.fetchPage()
                     val streams = extractor.audioStreams.filter { stream ->
@@ -759,7 +770,7 @@ object YoutubeHelper {
                         else -> null
                     }
                     Triple(selectedStream.content, mime, selectedStream.averageBitrate.toInt())
-                }
+                } } ?: throw Exception("Failsafe extraction timed out for ${song.youtubeId}")
                 return streamUrl
             } catch (e: Exception) {
                 UmihiHelper.printe("Failsafe NewPipe extraction failed: ${e.message}")
