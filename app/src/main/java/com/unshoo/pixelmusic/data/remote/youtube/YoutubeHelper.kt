@@ -1604,6 +1604,7 @@ fun extractAccountPlaylists(
 
         return artistsList.distinctBy { it.id }
     }
+}
 
 enum class SongInfoType(val index: Int) {
     TITLE(0),
