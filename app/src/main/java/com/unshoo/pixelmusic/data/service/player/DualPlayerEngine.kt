@@ -261,20 +261,23 @@ class DualPlayerEngine @Inject constructor(
 
         override fun onPlayerError(error: PlaybackException) {
             Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover without skipping.")
+            
+            // 1. Pause the player immediately so it does NOT skip the song
             playerA.playWhenReady = false
             if (transitionRunning) playerB.playWhenReady = false
 
+            // 2. Cleanly remove the broken cache entries to force a fresh fetch
             val currentMediaId = playerA.currentMediaItem?.mediaId
             if (currentMediaId != null) {
                 val uriString = "youtube://$currentMediaId"
                 resolvedUriCache.remove(uriString)
                 activePlaybackResolvedUris.remove(uriString)
-                val deferred = activeResolutions[uriString]
-                if (deferred?.isCancelled == true || deferred?.isCompleted == true) {
-                    activeResolutions.remove(uriString)
-                }
+                activeResolutions.remove(uriString) 
             }
-            playerA.prepare()
+            
+            // NOTE: We intentionally DO NOT call playerA.prepare() here!
+            // Automatically preparing during a network outage causes an infinite failure loop.
+            // Media3 will automatically re-prepare when the user hits "Play".
         }
 
         override fun onPositionDiscontinuity(
@@ -751,6 +754,7 @@ class DualPlayerEngine @Inject constructor(
             Timber.tag("DualPlayerEngine").e(e, "Error awaiting resolution for %s", uriString)
             uri
         } finally {
+            // Clean up the map so subsequent requests can try again safely
             activeResolutions.remove(uriString)
         }
     }
@@ -1092,7 +1096,7 @@ class DualPlayerEngine @Inject constructor(
         transitionJob?.cancel()
         preResolutionJob?.cancel()
         cancelAudioOffloadFallback()
-        scope.coroutineContext[Job]?.cancel()
+        // ROOT SCOPE CANCEL REMOVED: This ensures the Singleton can still fetch tracks safely!
         abandonAudioFocus()
         if (::playerA.isInitialized) {
             playerA.removeListener(masterPlayerListener)
