@@ -13,6 +13,10 @@ import java.util.Locale
 import timber.log.Timber
 
 internal fun createTempAudioFileFromUri(context: Context, uri: Uri): File? {
+    // THE FIX: Prevent ContentResolver from crashing on virtual/remote URIs
+    val scheme = uri.scheme?.lowercase(Locale.ROOT)
+    if (scheme == "youtube" || scheme == "http" || scheme == "https") return null
+
     return try {
         val fileExtension = resolveAudioFileExtension(context, uri)
         val inputStream = context.contentResolver.openInputStream(uri)
@@ -32,6 +36,10 @@ internal fun createTempAudioFileFromUri(context: Context, uri: Uri): File? {
 }
 
 internal fun resolveAudioFileExtension(context: Context, uri: Uri): String {
+    // THE FIX: Skip ContentResolver query for virtual/remote URIs
+    val scheme = uri.scheme?.lowercase(Locale.ROOT)
+    if (scheme == "youtube" || scheme == "http" || scheme == "https") return ".m4a"
+
     fun normalizeExtension(extension: String): String {
         val normalized = extension.trim().lowercase(Locale.ROOT)
         return if (normalized.startsWith('.')) normalized else ".${normalized}"
