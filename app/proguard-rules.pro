@@ -151,6 +151,10 @@
 -keep class com.unshoo.pixelmusic.presentation.viewmodel.ExploreCacheModel { *; }
 -keep class unshoo.ianshulyadav.pixelmusic.innertube.models.** { *; }
 -keep class unshoo.ianshulyadav.pixelmusic.innertube.pages.** { *; }
+# Keep InnerTube and YouTube API models safe from R8 minification
+-keep class unshoo.ianshulyadav.pixelmusic.innertube.utils.** { *; }
+-keep class com.unshoo.pixelmusic.data.model.youtube.** { *; }
+
 
 # Mozilla Rhino JS engine references missing javax.script API
 -dontwarn javax.script.**
