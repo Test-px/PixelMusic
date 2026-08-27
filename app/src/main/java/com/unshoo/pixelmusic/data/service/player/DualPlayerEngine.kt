@@ -20,6 +20,7 @@ import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -41,12 +42,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -261,23 +262,15 @@ class DualPlayerEngine @Inject constructor(
 
         override fun onPlayerError(error: PlaybackException) {
             Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover without skipping.")
-            
-            // 1. Pause the player immediately so it does NOT skip the song
             playerA.playWhenReady = false
             if (transitionRunning) playerB.playWhenReady = false
 
-            // 2. Cleanly remove the broken cache entries to force a fresh fetch
             val currentMediaId = playerA.currentMediaItem?.mediaId
             if (currentMediaId != null) {
                 val uriString = "youtube://$currentMediaId"
                 resolvedUriCache.remove(uriString)
                 activePlaybackResolvedUris.remove(uriString)
-                activeResolutions.remove(uriString) 
             }
-            
-            // NOTE: We intentionally DO NOT call playerA.prepare() here!
-            // Automatically preparing during a network outage causes an infinite failure loop.
-            // Media3 will automatically re-prepare when the user hits "Play".
         }
 
         override fun onPositionDiscontinuity(
@@ -336,7 +329,6 @@ class DualPlayerEngine @Inject constructor(
     internal val resolvedUriCache = LruCache<String, Uri>(100)
     private val activePlaybackResolvedUris = java.util.concurrent.ConcurrentHashMap<String, Uri>()
     private val localFilePathCache = java.util.concurrent.ConcurrentHashMap<String, String>()
-    private val activeResolutions = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Uri>>()
 
     fun registerLocalPath(youtubeUri: String, filePath: String) {
         if (filePath.isNotBlank()) {
@@ -623,15 +615,29 @@ class DualPlayerEngine @Inject constructor(
                         return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
                     }
 
+                    // Attaches matching User-Agent, Origin, and Referer headers based on client variant
+                    fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
+                        val urlStr = resolvedUri.toString()
+                        if (urlStr.startsWith("http")) {
+                            val profile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
+                            val headers = mutableMapOf<String, String>()
+                            headers["User-Agent"] = profile.userAgent
+                            profile.origin?.let { headers["Origin"] = it }
+                            profile.referer?.let { headers["Referer"] = it }
+                            this.setHttpRequestHeaders(headers)
+                        }
+                        return this
+                    }
+
                     val resolved = resolvedUriCache.get(originalUri)
                     if (resolved != null) {
-                        return dataSpec.buildUpon().setUri(resolved).build()
+                        return dataSpec.buildUpon().setUri(resolved).applyYtHeaders(resolved).build()
                     }
 
                     try {
                         val fallbackResolved = runBlocking { resolveCloudUri(uri) }
                         if (fallbackResolved != uri) {
-                            return dataSpec.buildUpon().setUri(fallbackResolved).build()
+                            return dataSpec.buildUpon().setUri(fallbackResolved).applyYtHeaders(fallbackResolved).build()
                         } else {
                             throw IOException("Stream resolution failed for $originalUri")
                         }
@@ -644,7 +650,12 @@ class DualPlayerEngine @Inject constructor(
             }
         }
         
-        val baseDataSourceFactory = DefaultDataSource.Factory(context)
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(8000)
+            
+        val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val cacheDataSourceFactory = CacheDataSource.Factory()
             .setCache(exoCache.cache)
             .setUpstreamDataSourceFactory(baseDataSourceFactory)
@@ -721,7 +732,7 @@ class DualPlayerEngine @Inject constructor(
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
-    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + NonCancellable) {
         val uriString = uri.toString()
         
         activePlaybackResolvedUris[uriString]?.let { return@withContext it }
@@ -1077,7 +1088,6 @@ class DualPlayerEngine @Inject constructor(
         transitionJob?.cancel()
         preResolutionJob?.cancel()
         cancelAudioOffloadFallback()
-        // ROOT SCOPE CANCEL REMOVED: This ensures the Singleton can still fetch tracks safely!
         abandonAudioFocus()
         if (::playerA.isInitialized) {
             playerA.removeListener(masterPlayerListener)
