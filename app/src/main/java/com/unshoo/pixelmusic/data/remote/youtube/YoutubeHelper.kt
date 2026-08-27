@@ -501,7 +501,7 @@ object YoutubeHelper {
      */
     private suspend fun getTargetBitrateCeiling(context: Context, forDownload: Boolean = false): Int {
         return try {
-            val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication(
+            val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication<YoutubeHelperEntryPoint>(
                 context.applicationContext,
                 YoutubeHelperEntryPoint::class.java
             )
@@ -825,9 +825,11 @@ object YoutubeHelper {
     }
 
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        YouTubeClient.IOS,                            // Instant direct .m4a / .opus playback
-        YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // Fast fallback for restricted tracks
-        YouTubeClient.ANDROID_TESTSUITE
+        YouTubeClient.ANDROID_MUSIC,
+        YouTubeClient.TVHTML5,
+        YouTubeClient.MOBILE,
+        YouTubeClient.WEB,
+        YouTubeClient.IOS
     )
 
     private fun isCipheredFormat(format: PlayerResponse.StreamingData.Format): Boolean {
@@ -910,21 +912,15 @@ object YoutubeHelper {
             STREAM_FALLBACK_CLIENTS.find { StreamClientUtils.buildClientKey(it) == key }
         }
 
-        val orderedFallbackClients =
-            if (authState.hasPlaybackLoginContext) {
-                STREAM_FALLBACK_CLIENTS.filter { it.loginSupported } + STREAM_FALLBACK_CLIENTS.filterNot { it.loginSupported }
-            } else {
-                STREAM_FALLBACK_CLIENTS.toList()
-            }
+        val orderedFallbackClients = STREAM_FALLBACK_CLIENTS.toList()
 
         return buildList {
             lastSuccessfulClient?.let { add(it) }
             add(preferredYouTubeClient)
             addAll(orderedFallbackClients)
-            if (preferredYouTubeClient != WEB_REMIX) add(WEB_REMIX)
-            if (preferredStreamClient == PlayerStreamClient.WEB_REMIX) {
-                addAll(STREAM_FALLBACK_CLIENTS)
-            }
+            add(YouTubeClient.TVHTML5)
+            add(YouTubeClient.MOBILE)
+            add(YouTubeClient.WEB_REMIX)
         }.distinct()
     }
 
@@ -1084,9 +1080,24 @@ object YoutubeHelper {
     ): Triple<String, String?, Int?> {
         val videoId = song.youtubeId
 
-        val entryPoint = EntryPointAccessors.fromApplication(context.applicationContext, YoutubeHelperEntryPoint::class.java)
+        val entryPoint = EntryPointAccessors.fromApplication<YoutubeHelperEntryPoint>(
+            context.applicationContext, 
+            YoutubeHelperEntryPoint::class.java
+        )
         val preferredClient = entryPoint.userPreferencesRepository().playerStreamClientFlow.first()
         var authState = YouTube.currentPlaybackAuthState()
+
+        if (YouTube.visitorData.isNullOrBlank()) {
+            try {
+                val visitor = YouTube.visitorData().getOrNull()
+                if (!visitor.isNullOrBlank()) {
+                    YouTube.visitorData = visitor
+                    authState = authState.copy(visitorData = visitor).normalized()
+                }
+            } catch (e: Exception) {
+                UmihiHelper.printe("Failed to initialize visitor data: ${e.message}")
+            }
+        }
 
         val clients = buildStreamClientOrder(preferredClient, authState).filterNot { client ->
             isStreamClientTemporarilyBlocked(videoId, client.clientName, authState.fingerprint)
@@ -1389,7 +1400,7 @@ object YoutubeHelper {
         return null
     }
 
-fun extractAccountPlaylists(
+    fun extractAccountPlaylists(
         jsonString: String,
         settings: UmihiSettings
     ): List<PlaylistItem> {
