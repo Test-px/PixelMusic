@@ -732,6 +732,8 @@ class DualPlayerEngine @Inject constructor(
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
+    private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Uri>>()
+
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + NonCancellable) {
         val uriString = uri.toString()
         
@@ -741,13 +743,23 @@ class DualPlayerEngine @Inject constructor(
             return@withContext cachedUri
         }
 
-        val resolved = resolveYoutubeUriAsync(uriString)
-        if (resolved != null) {
-            resolvedUriCache.put(uriString, resolved)
-            activePlaybackResolvedUris[uriString] = resolved
-            resolved
-        } else {
-            uri
+        val deferred = inFlightResolutions.getOrPut(uriString) {
+            kotlinx.coroutines.async(Dispatchers.IO) {
+                val resolved = resolveYoutubeUriAsync(uriString)
+                if (resolved != null) {
+                    resolvedUriCache.put(uriString, resolved)
+                    activePlaybackResolvedUris[uriString] = resolved
+                    resolved
+                } else {
+                    uri
+                }
+            }
+        }
+
+        try {
+            deferred.await()
+        } finally {
+            inFlightResolutions.remove(uriString)
         }
     }
 
