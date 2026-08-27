@@ -249,15 +249,10 @@ fun SetupScreen(
                 }
                 is SetupEvent.RestoreCompleted -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
-                    val targetPageIndex = when {
-                        batteryOptimizationPageIndex >= 0 && !isIgnoringBatteryOptimizationsNow(context) ->
-                            batteryOptimizationPageIndex
-                        finishPageIndex >= 0 -> finishPageIndex
-                        else -> null
-                    }
-
-                    if (targetPageIndex != null) {
-                        pagerState.animateScrollToPage(targetPageIndex)
+                    
+                    // Proceed strictly to the next page instead of jumping to the end
+                    if (pagerState.currentPage < pages.lastIndex) {
+                        navigateToPage(pagerState.currentPage + 1)
                     } else {
                         onSetupComplete()
                     }
