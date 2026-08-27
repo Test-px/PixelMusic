@@ -1389,29 +1389,59 @@ object YoutubeHelper {
         return null
     }
 
-    fun extractAccountPlaylists(
+fun extractAccountPlaylists(
         jsonString: String,
         settings: UmihiSettings
     ): List<PlaylistItem> {
         val root = Json.parseToJsonElement(jsonString)
         val items = mutableListOf<JsonObject>()
+        
         findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
         findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
 
         val playlistsList = mutableListOf<PlaylistItem>()
         for (item in items) {
-            val title = item["title"]
+            // First, try the primary title path (used for most list items)
+            var title = item["title"]
                 ?.jsonObject?.get("runs")
                 ?.jsonArray?.getOrNull(0)
                 ?.jsonObject?.get("text")
-                ?.jsonPrimitive?.contentOrNull ?: continue
+                ?.jsonPrimitive?.contentOrNull
 
-            val browseId = item["navigationEndpoint"]
+            // If that fails, try the alternative title path (often used in flex columns)
+            if (title == null) {
+                title = item["flexColumns"]
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")
+                    ?.jsonObject?.get("text")
+                    ?.jsonObject?.get("runs")
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("text")
+                    ?.jsonPrimitive?.contentOrNull
+            }
+            
+            // If we still don't have a title, skip this item
+            if (title == null) continue
+
+            // First try the standard navigation endpoint
+            var browseId = item["navigationEndpoint"]
                 ?.jsonObject?.get("browseEndpoint")
                 ?.jsonObject?.get("browseId")
-                ?.jsonPrimitive?.contentOrNull ?: continue
+                ?.jsonPrimitive?.contentOrNull
 
-            if (browseId == "SE") continue
+            // If that fails, look for the play button overlay endpoint
+            if (browseId == null) {
+                 browseId = item["overlay"]
+                    ?.jsonObject?.get("musicItemThumbnailOverlayRenderer")
+                    ?.jsonObject?.get("content")
+                    ?.jsonObject?.get("musicPlayButtonRenderer")
+                    ?.jsonObject?.get("playNavigationEndpoint")
+                    ?.jsonObject?.get("watchEndpoint")
+                    ?.jsonObject?.get("playlistId")
+                    ?.jsonPrimitive?.contentOrNull
+            }
+
+            if (browseId == null || browseId == "SE") continue
 
             val thumbnailUrl = item["thumbnailRenderer"]?.let { getBestThumbnailUrl(it) }
                 ?: item["thumbnail"]?.let { getBestThumbnailUrl(it) }
@@ -1438,16 +1468,30 @@ object YoutubeHelper {
     ): List<AlbumItem> {
         val root = Json.parseToJsonElement(jsonString)
         val items = mutableListOf<JsonObject>()
+        
         findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
         findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
 
         val albumsList = mutableListOf<AlbumItem>()
         for (item in items) {
-            val title = item["title"]
+             var title = item["title"]
                 ?.jsonObject?.get("runs")
                 ?.jsonArray?.getOrNull(0)
                 ?.jsonObject?.get("text")
-                ?.jsonPrimitive?.contentOrNull ?: continue
+                ?.jsonPrimitive?.contentOrNull
+
+            if (title == null) {
+                title = item["flexColumns"]
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")
+                    ?.jsonObject?.get("text")
+                    ?.jsonObject?.get("runs")
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("text")
+                    ?.jsonPrimitive?.contentOrNull
+            }
+            
+            if (title == null) continue
 
             val browseId = item["navigationEndpoint"]
                 ?.jsonObject?.get("browseEndpoint")
@@ -1457,15 +1501,38 @@ object YoutubeHelper {
             val thumbnailUrl = item["thumbnailRenderer"]?.let { getBestThumbnailUrl(it) }
                 ?: item["thumbnail"]?.let { getBestThumbnailUrl(it) }
 
+            // Extract artist gracefully, looking in subtitle runs or flex columns
+            var artist: String? = null
+            
+            // Try subtitle runs first
             val subtitleRuns = item["subtitle"]?.jsonObject?.get("runs")?.jsonArray
-            val artist = if (subtitleRuns != null) {
+            if (subtitleRuns != null) {
                 val filterWords = setOf("album", "ep", "single", "playlist", "artist", "•", "·", " ")
-                subtitleRuns.mapNotNull { 
+                artist = subtitleRuns.mapNotNull { 
                     it.jsonObject["text"]?.jsonPrimitive?.contentOrNull
                 }.firstOrNull { runText ->
                     runText.trim().lowercase() !in filterWords && runText.trim().isNotEmpty()
                 }
-            } else null
+            }
+            
+            // If not in subtitle, try flex column 1 (usually the artist/subtitle column)
+            if (artist == null) {
+                 val flexRuns = item["flexColumns"]
+                    ?.jsonArray?.getOrNull(1)
+                    ?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")
+                    ?.jsonObject?.get("text")
+                    ?.jsonObject?.get("runs")
+                    ?.jsonArray
+                    
+                 if (flexRuns != null) {
+                     val filterWords = setOf("album", "ep", "single", "playlist", "artist", "•", "·", " ")
+                     artist = flexRuns.mapNotNull { 
+                        it.jsonObject["text"]?.jsonPrimitive?.contentOrNull
+                     }.firstOrNull { runText ->
+                        runText.trim().lowercase() !in filterWords && runText.trim().isNotEmpty()
+                     }
+                 }
+            }
 
             albumsList.add(AlbumItem(id = browseId, title = title, artist = artist, thumbnailUrl = thumbnailUrl))
         }
@@ -1489,16 +1556,30 @@ object YoutubeHelper {
     ): List<ArtistItem> {
         val root = Json.parseToJsonElement(jsonString)
         val items = mutableListOf<JsonObject>()
+        
         findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
         findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
 
         val artistsList = mutableListOf<ArtistItem>()
         for (item in items) {
-            val title = item["title"]
+             var title = item["title"]
                 ?.jsonObject?.get("runs")
                 ?.jsonArray?.getOrNull(0)
                 ?.jsonObject?.get("text")
-                ?.jsonPrimitive?.contentOrNull ?: continue
+                ?.jsonPrimitive?.contentOrNull
+
+            if (title == null) {
+                title = item["flexColumns"]
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("musicResponsiveListItemFlexColumnRenderer")
+                    ?.jsonObject?.get("text")
+                    ?.jsonObject?.get("runs")
+                    ?.jsonArray?.getOrNull(0)
+                    ?.jsonObject?.get("text")
+                    ?.jsonPrimitive?.contentOrNull
+            }
+            
+            if (title == null) continue
 
             val browseId = item["navigationEndpoint"]
                 ?.jsonObject?.get("browseEndpoint")
@@ -1523,7 +1604,6 @@ object YoutubeHelper {
 
         return artistsList.distinctBy { it.id }
     }
-}
 
 enum class SongInfoType(val index: Int) {
     TITLE(0),
