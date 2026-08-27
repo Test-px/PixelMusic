@@ -687,8 +687,8 @@ object YoutubeHelper {
                                 didRefreshVisitorData = true
                                 playerResResult = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS) {
                                     YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
-                                }
-                                playerResponse = playerResResult?.getOrNull()
+                                } ?: continue
+                                playerResponse = playerResResult.getOrNull()
                             }
                         }
                     }
