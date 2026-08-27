@@ -59,11 +59,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 object YoutubeHelper {
     val client = OkHttpClient.Builder()
-        .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
-        .connectTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
-        .writeTimeout(6, java.util.concurrent.TimeUnit.SECONDS)
-        .callTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+        .connectionPool(okhttp3.ConnectionPool(15, 5, java.util.concurrent.TimeUnit.MINUTES))
+        .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     val streamUrlLruCache = LruCache<String, String>(200)
@@ -510,13 +510,11 @@ object YoutubeHelper {
         return ""
     }
 
-    // THE FIX: This is the updated array that avoids the bad IOS / VR clients
+    // THE FIX: Streamlined array using only the fastest, most reliable clients without heavy PO Token requirements.
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        YouTubeClient.ANDROID_MUSIC,
-        YouTubeClient.TVHTML5,
-        YouTubeClient.MOBILE,
-        YouTubeClient.WEB,
-        YouTubeClient.IOS
+        YouTubeClient.WEB_REMIX,
+        YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        YouTubeClient.MOBILE
     )
 
     private fun isCipheredFormat(format: PlayerResponse.StreamingData.Format): Boolean {
@@ -569,15 +567,10 @@ object YoutubeHelper {
             STREAM_FALLBACK_CLIENTS.find { StreamClientUtils.buildClientKey(it) == key }
         }
 
-        val orderedFallbackClients = STREAM_FALLBACK_CLIENTS.toList()
-
         return buildList {
             lastSuccessfulClient?.let { add(it) }
             add(preferredYouTubeClient)
-            addAll(orderedFallbackClients)
-            add(YouTubeClient.TVHTML5)
-            add(YouTubeClient.MOBILE)
-            add(YouTubeClient.WEB_REMIX)
+            addAll(STREAM_FALLBACK_CLIENTS)
         }.distinct()
     }
 
