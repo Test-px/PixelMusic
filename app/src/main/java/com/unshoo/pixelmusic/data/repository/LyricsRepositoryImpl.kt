@@ -855,6 +855,10 @@ class LyricsRepositoryImpl @Inject constructor(
     private fun generateCacheKey(songId: String): String = songId
 
     private fun createTempFileFromUri(uri: Uri): File? {
+        // THE FIX: Skip virtual/remote URIs to prevent ContentResolver crashes
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "youtube" || scheme == "http" || scheme == "https") return null
+
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
