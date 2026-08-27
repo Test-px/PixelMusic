@@ -390,6 +390,12 @@ fun SetupScreen(
                         uiState = uiState,
                         onPermissionStateUpdated = { setupViewModel.checkPermissions(context) }
                     )
+                    SetupPage.OverlayPermission -> OverlayPermissionPage(
+                        uiState = uiState,
+                        onSkip = {
+                            navigateToPage(pagerState.currentPage + 1)
+                        }
+                    )
                     SetupPage.AlarmsPermission -> AlarmsPermissionPage(
                         uiState = uiState,
                         onSkip = {
@@ -577,6 +583,7 @@ sealed class SetupPage {
     object ThemeSelection : SetupPage()
     object PaletteSelection : SetupPage()
     object NotificationsPermission : SetupPage()
+    object OverlayPermission : SetupPage()
     object AlarmsPermission : SetupPage()
     object LibraryLayout : SetupPage()
     object BatteryOptimization : SetupPage()
@@ -591,6 +598,10 @@ private fun buildSetupPages(sdkInt: Int): List<SetupPage> {
 
     if (sdkInt >= Build.VERSION_CODES.TIRAMISU) {
         pages += SetupPage.NotificationsPermission
+    }
+
+    if (sdkInt >= Build.VERSION_CODES.M) {
+        pages += SetupPage.OverlayPermission
     }
 
     pages += SetupPage.BackupRestore
@@ -2698,6 +2709,62 @@ fun LoginPage(
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun OverlayPermissionPage(
+    uiState: SetupUiState,
+    onSkip: () -> Unit
+) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    var isGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isGranted = Settings.canDrawOverlays(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val overlayIcons = persistentListOf(
+        R.drawable.rounded_music_note_24,
+        R.drawable.rounded_search_24,
+        R.drawable.rounded_album_24,
+        R.drawable.rounded_play_arrow_24,
+        R.drawable.rounded_check_circle_24
+    )
+
+    PermissionPageLayout(
+        title = "Display Over Other Apps", // You can extract this to stringResource later
+        granted = isGranted,
+        description = "This allows PixelMusic to display the music recognition scanner directly over your other apps and home screen.",
+        buttonText = if (isGranted) stringResource(R.string.setup_permission_granted) else "Grant Permission",
+        buttonEnabled = !isGranted,
+        icons = overlayIcons,
+        onGrantClicked = {
+            if (!isGranted) {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(intent)
+            }
+        }
+    ) {
+        if (!isGranted) {
+            TextButton(onClick = onSkip) {
+                Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
