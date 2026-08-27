@@ -721,41 +721,22 @@ class DualPlayerEngine @Inject constructor(
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
-    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO) {
+    suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
         val uriString = uri.toString()
         
         activePlaybackResolvedUris[uriString]?.let { return@withContext it }
-        
         resolvedUriCache.get(uriString)?.let { cachedUri ->
             activePlaybackResolvedUris[uriString] = cachedUri
             return@withContext cachedUri
         }
 
-        val deferred = activeResolutions.getOrPut(uriString) {
-            scope.async(Dispatchers.IO) {
-                val resolved: Uri? = when (uri.scheme) {
-                    "youtube" -> resolveYoutubeUriAsync(uriString)
-                    else -> null
-                }
-                
-                if (resolved != null) {
-                    resolvedUriCache.put(uriString, resolved)
-                    activePlaybackResolvedUris[uriString] = resolved
-                    resolved
-                } else {
-                    uri
-                }
-            }
-        }
-
-        try {
-            deferred.await()
-        } catch (e: Exception) {
-            Timber.tag("DualPlayerEngine").e(e, "Error awaiting resolution for %s", uriString)
+        val resolved = resolveYoutubeUriAsync(uriString)
+        if (resolved != null) {
+            resolvedUriCache.put(uriString, resolved)
+            activePlaybackResolvedUris[uriString] = resolved
+            resolved
+        } else {
             uri
-        } finally {
-            // Clean up the map so subsequent requests can try again safely
-            activeResolutions.remove(uriString)
         }
     }
 
