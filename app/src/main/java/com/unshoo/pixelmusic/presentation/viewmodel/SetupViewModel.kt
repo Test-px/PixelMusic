@@ -53,7 +53,8 @@ data class SetupUiState(
     val restorePlan: RestorePlan? = null,
     val backupTransferProgress: BackupTransferProgressUpdate? = null,
     val ytUsername: String = "",
-    val ytAvatarUrl: String = ""
+    val ytAvatarUrl: String = "",
+    val overlayPermissionGranted: Boolean = false
 ) {
     val allPermissionsGranted: Boolean
         get() {
@@ -174,6 +175,12 @@ class SetupViewModel @Inject constructor(
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         } else {
             true // Not required before Android 13 (Tiramisu)
+        }
+
+        val overlayPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            android.provider.Settings.canDrawOverlays(context)
+        } else {
+            true
         }
 
         val alarmsPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
