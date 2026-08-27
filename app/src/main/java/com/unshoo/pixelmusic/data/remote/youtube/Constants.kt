@@ -95,10 +95,10 @@ object Constants {
     object YoutubeApi {
         const val URL_REGEX =
             """https?://(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/\S+"""
-        const val RETRY_COUNT = 3
+        const val RETRY_COUNT = 1
         const val PODCAST_PLAYLIST_ID = "VLSE"
-        const val RETRY_DELAY = 1000L
-        const val PLAYER_REQUEST_TIMEOUT_MS = 6000L
+        const val RETRY_DELAY = 500L
+        const val PLAYER_REQUEST_TIMEOUT_MS = 2500L
         const val YOUTUBE_URL_PREFIX = "https://www.youtube.com/watch?v="
         const val ORIGIN = "https://music.youtube.com"
         const val API_KEY = "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
