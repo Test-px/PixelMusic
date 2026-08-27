@@ -58,6 +58,10 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Deferred
+
+
 
 data class ActiveDecoderInfo(
     val name: String,
@@ -732,7 +736,7 @@ class DualPlayerEngine @Inject constructor(
         rebuildPlayersPreservingMasterState("Hi-Fi mode set to $enabled")
     }
 
-    private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Uri>>()
+private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String, Deferred<Uri>>()
 
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + NonCancellable) {
         val uriString = uri.toString()
