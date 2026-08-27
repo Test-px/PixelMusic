@@ -744,7 +744,7 @@ class DualPlayerEngine @Inject constructor(
         }
 
         val deferred = inFlightResolutions.getOrPut(uriString) {
-            kotlinx.coroutines.async(Dispatchers.IO) {
+            scope.async(Dispatchers.IO) { // Fixed: using the class's 'scope' variable
                 val resolved = resolveYoutubeUriAsync(uriString)
                 if (resolved != null) {
                     resolvedUriCache.put(uriString, resolved)
