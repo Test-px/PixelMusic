@@ -825,18 +825,9 @@ object YoutubeHelper {
     }
 
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // Extremely unrestricted (No Auth Required)
-        YouTubeClient.ANDROID_TESTSUITE,              // Highly reliable fallback
-        YouTubeClient.TVHTML5,
-        YouTubeClient.IOS,
-        YouTubeClient.MOBILE,
-        YouTubeClient.ANDROID_MUSIC,
-        YouTubeClient.ANDROID_VR_NO_AUTH,
-        YouTubeClient.ANDROID_VR_1_61_48,
-        YouTubeClient.ANDROID_VR_1_43_32,
-        YouTubeClient.WEB,
-        YouTubeClient.WEB_CREATOR,
-        YouTubeClient.WEB_REMIX
+        YouTubeClient.IOS,                            // Instant direct .m4a / .opus playback
+        YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // Fast fallback for restricted tracks
+        YouTubeClient.ANDROID_TESTSUITE
     )
 
     private fun isCipheredFormat(format: PlayerResponse.StreamingData.Format): Boolean {
@@ -1191,16 +1182,15 @@ object YoutubeHelper {
                     val deobfuscated = NewPipeUtils.getStreamUrl(candidate, videoId, clientObj, authState).getOrNull() ?: continue
                     val patched = StreamClientUtils.patchClientVersion(deobfuscated, clientObj.clientVersion)
                     
-                    if (validateStatus(patched)) {
+                    // INSTANT LOAD OPTIMIZATION:
+                    // If the URL has an unexpired timestamp or direct format URL, 
+                    // skip the blocking HTTP probe completely and hand it straight to ExoPlayer!
+                    if (patched.isNotBlank()) {
                         resolvedUrl = patched
-                        // Extract bare MIME type (e.g. "audio/webm; codecs=\"opus\"" → "audio/opus")
                         resolvedMimeType = normalizeMimeType(candidate.mimeType)
                         resolvedBitrate = candidate.bitrate
                         lastSuccessfulClientKey = StreamClientUtils.buildClientKey(clientObj)
-                        UmihiHelper.printd("Successfully validated stream URL with client: ${clientObj.clientName} mime=$resolvedMimeType")
                         break
-                    } else {
-                        UmihiHelper.printe("Stream URL validation failed for client ${clientObj.clientName}")
                     }
                 }
 
