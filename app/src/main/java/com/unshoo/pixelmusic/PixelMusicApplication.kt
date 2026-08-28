@@ -212,6 +212,17 @@ class PixelMusicApplication : Application(), ImageLoaderFactory, Configuration.P
 
     override fun newImageLoader(): ImageLoader {
         return imageLoader.get().newBuilder()
+            .memoryCache {
+                coil.memory.MemoryCache.Builder(this)
+                    .maxSizePercent(0.15) 
+                    .build()
+            }
+            .diskCache {
+                coil.disk.DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02) 
+                    .build()
+            }
             .components {
                 add(localArtworkCoilFetcherFactory.get())
             }
