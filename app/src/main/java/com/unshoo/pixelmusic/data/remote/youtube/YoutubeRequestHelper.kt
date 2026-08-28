@@ -113,7 +113,11 @@ object YoutubeRequestHelper {
         val headers = if (settings != null) {
             YoutubeAuthHelper.getHeaders(settings.cookies)
         } else {
-            mapOf()
+            mapOf(
+                "User-Agent" to Constants.YoutubeApi.USER_AGENT,
+                "Accept-Language" to "en-US,en;q=0.9",
+                "Sec-Fetch-Mode" to "navigate"
+            )
         }
 
         val (_, _, result) = url.httpPost().jsonBody(body.toString())
