@@ -66,9 +66,7 @@ object SongDownloader {
             val audioRequest = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.applyRequestProfile(
                 Request.Builder().get().url(streamUrl),
                 requestProfile
-            )
-            .header("Range", "bytes=0-")
-            .build()
+            ).build()
 
             val audioResponse = downloadClient.newCall(audioRequest).execute()
             if (!audioResponse.isSuccessful && audioResponse.code != 206) {
