@@ -27,7 +27,7 @@ object SongDownloader {
         context: Context,
         song: Song,
         lyricsText: String? = null
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): Boolean = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
         var tempAudioFile: File? = null
         var tempRemuxedFile: File? = null
         var tempImageFile: File? = null
