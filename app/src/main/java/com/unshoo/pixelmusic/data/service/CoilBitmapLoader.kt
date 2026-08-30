@@ -11,18 +11,30 @@ import coil.imageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Precision
-import coil.size.Size
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.unshoo.pixelmusic.data.preferences.AlbumArtQuality
+import com.unshoo.pixelmusic.data.preferences.UserPreferencesRepository
+import com.unshoo.pixelmusic.presentation.viewmodel.ConnectivityStateHolder
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface CoilBitmapLoaderEntryPoint {
+    fun connectivityStateHolder(): ConnectivityStateHolder
+    fun userPreferencesRepository(): UserPreferencesRepository
+}
 
 @OptIn(UnstableApi::class)
 class CoilBitmapLoader(private val context: Context, private val scope: CoroutineScope) : BitmapLoader {
 
     companion object {
-        // Large enough for lock screen / media surfaces, but bounded so we never hand
-        // unbounded original artwork to MediaSession/SystemUI IPC.
         private const val MAX_NOTIFICATION_ARTWORK_SIZE_PX = 1024
     }
 
@@ -39,17 +51,43 @@ class CoilBitmapLoader(private val context: Context, private val scope: Coroutin
 
         scope.launch {
             try {
+                val appContext = context.applicationContext
+                val entryPoint = EntryPointAccessors.fromApplication(
+                    appContext,
+                    CoilBitmapLoaderEntryPoint::class.java
+                )
+                val userPrefs = entryPoint.userPreferencesRepository()
+                val connectivity = entryPoint.connectivityStateHolder()
+
+                val isMetered = connectivity.isMeteredNetwork.value
+                val qualityWifi = userPrefs.albumArtQualityFlow.first()
+                val qualityMobile = userPrefs.albumArtQualityMobileFlow.first()
+                val performanceMode = userPrefs.performanceModeEnabledFlow.first()
+
+                val effectiveQuality = when {
+                    performanceMode -> AlbumArtQuality.LOW
+                    isMetered -> qualityMobile
+                    else -> qualityWifi
+                }
+
+                val requestedSizePx = if (effectiveQuality.maxSize > 0) {
+                    minOf(effectiveQuality.maxSize, MAX_NOTIFICATION_ARTWORK_SIZE_PX)
+                } else {
+                    MAX_NOTIFICATION_ARTWORK_SIZE_PX
+                }
+
+                val finalData: Any = if (data is Uri || data is String) {
+                    val rawUrl = data.toString()
+                    optimizeArtworkUrl(rawUrl, effectiveQuality)
+                } else {
+                    data
+                }
+
                 val request = ImageRequest.Builder(context)
-                    .data(data)
-                    // Preserve enough resolution for media surfaces while preventing huge
-                    // album art from destabilizing notification/SystemUI rendering.
-                    .size(MAX_NOTIFICATION_ARTWORK_SIZE_PX, MAX_NOTIFICATION_ARTWORK_SIZE_PX)
+                    .data(finalData)
+                    .size(requestedSizePx, requestedSizePx)
                     .precision(Precision.INEXACT)
-                    .allowHardware(false) // Bitmap must not be hardware for MediaSession
-                    // Disable memory cache so Coil does not hold a second reference to this
-                    // bitmap. Without this, Coil may recycle the cached copy while Media3
-                    // still uses it for MediaSession IPC ("Can't copy a recycled bitmap").
-                    // Disk cache is kept so repeated loads are still fast.
+                    .allowHardware(false)
                     .memoryCachePolicy(CachePolicy.DISABLED)
                     .build()
                 
@@ -57,8 +95,6 @@ class CoilBitmapLoader(private val context: Context, private val scope: Coroutin
                 val drawable = result.drawable
                 
                 if (drawable != null) {
-                    // toBitmap() now returns a bitmap owned exclusively by us (not in any
-                    // Coil cache), so Media3 can use and recycle it freely.
                     val bitmap = drawable.toBitmap()
                     future.set(bitmap)
                 } else {
@@ -71,7 +107,42 @@ class CoilBitmapLoader(private val context: Context, private val scope: Coroutin
         return future
     }
 
+    private fun optimizeArtworkUrl(url: String, quality: AlbumArtQuality): String {
+        var transformed = url
+        val targetPx = if (quality.maxSize > 0) quality.maxSize else 1000
+
+        if (transformed.contains("googleusercontent.com") || transformed.contains("ggpht.com")) {
+            val sizeParamRegex = Regex("=[ws]\\d+.*")
+            val slashSizeRegex = Regex("/[ws]\\d+.*")
+            transformed = when {
+                sizeParamRegex.containsMatchIn(transformed) -> transformed.replace(sizeParamRegex, "=w$targetPx-h$targetPx-l90-rj")
+                slashSizeRegex.containsMatchIn(transformed) -> transformed.replace(slashSizeRegex, "/w$targetPx-h$targetPx-l90-rj")
+                transformed.contains("=") -> transformed.substringBeforeLast("=") + "=w$targetPx-h$targetPx-l90-rj"
+                else -> "$transformed=w$targetPx-h$targetPx-l90-rj"
+            }
+        }
+
+        if (transformed.contains("i.ytimg.com")) {
+            val ytRes = when (quality) {
+                AlbumArtQuality.LOW -> "mqdefault"
+                AlbumArtQuality.MEDIUM -> "sddefault"
+                AlbumArtQuality.HIGH -> "hqdefault"
+                AlbumArtQuality.ORIGINAL -> "maxresdefault"
+            }
+            transformed = transformed.replace("maxresdefault.jpg", "$ytRes.jpg")
+                .replace("sddefault.jpg", "$ytRes.jpg")
+                .replace("hqdefault.jpg", "$ytRes.jpg")
+                .replace("mqdefault.jpg", "$ytRes.jpg")
+                .replace("maxresdefault.webp", "$ytRes.webp")
+                .replace("sddefault.webp", "$ytRes.webp")
+                .replace("hqdefault.webp", "$ytRes.webp")
+                .replace("mqdefault.webp", "$ytRes.webp")
+        }
+
+        return transformed
+    }
+
     override fun supportsMimeType(mimeType: String): Boolean {
-        return true // Coil supports most image types
+        return true
     }
 }
