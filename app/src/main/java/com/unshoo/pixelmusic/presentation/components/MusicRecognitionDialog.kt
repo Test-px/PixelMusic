@@ -42,6 +42,7 @@ import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import android.os.Build
 import com.unshoo.pixelmusic.ui.effects.recognitionRippleEffect
+import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,10 +115,13 @@ fun MusicRecognitionDialog(
     }
 
     val isListening = status is RecognitionStatus.Listening
+    val isSuccess = status is RecognitionStatus.Success
 
     // Safe application for Android 13+ only
     val rippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Modifier.recognitionRippleEffect(isTriggered = isListening)
+        Modifier
+            .recognitionRippleEffect(isTriggered = isListening)
+            .successSweepEffect(isTriggered = isSuccess)
     } else {
         Modifier
     }
