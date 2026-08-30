@@ -33,16 +33,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unshoo.pixelmusic.R
@@ -53,7 +60,7 @@ import com.unshoo.pixelmusic.ui.theme.LocalPixelMusicDarkTheme
 
 private val HomeRecentlyPlayedPillHeight = 58.dp
 private val HomeRecentlyPlayedPillSpacing = 8.dp
-private const val HomeRecentlyPlayedPillsLimit = 10
+private const val HomeRecentlyPlayedPillsLimit = 64 // Raised from 10 to allow 7-day volume
 private const val HomeRecentlyPlayedPillsPerColumn = 3
 internal const val RecentlyPlayedSectionMinSongsToShow = 4
 private val HomeRecentlyPlayedPillArtSize = 38.dp
@@ -144,7 +151,6 @@ fun RecentlyPlayedSection(
             }
         }
 
-        // Exactly three stacked rows (staggered look with variable-width pills).
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -251,6 +257,13 @@ private fun RecentlyPlayedPill(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    var visibilityFactor by remember { mutableFloatStateOf(1f) }
+
     val isDark = LocalPixelMusicDarkTheme.current
     val albumColorSchemeState by remember(item.song.albumArtUriString, themeStateHolder) {
         themeStateHolder.getAlbumColorSchemeFlow(item.song.albumArtUriString.orEmpty())
@@ -268,8 +281,13 @@ private fun RecentlyPlayedPill(
     val targetTitleColor = albumColorScheme?.onPrimaryContainer ?: fallbackTitle
     val targetArtistColor = albumColorScheme?.onPrimaryContainer?.copy(alpha = 0.80f) ?: fallbackArtist
 
+    // Compute dynamic layout properties based on scroll position
+    val targetCorner = if (isCurrentSong) 14.dp else (HomeRecentlyPlayedPillHeight / 2)
+    val pillCornerRadius = lerp(targetCorner, 60.dp, 1f - visibilityFactor)
+    val contentScaleFactor = 0.90f + (0.10f * visibilityFactor)
+
     val animatedCorner by animateDpAsState(
-        targetValue = if (isCurrentSong) 14.dp else (HomeRecentlyPlayedPillHeight / 2),
+        targetValue = pillCornerRadius,
         animationSpec = tween(durationMillis = 280),
         label = "pillCorner"
     )
@@ -297,6 +315,36 @@ private fun RecentlyPlayedPill(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier
             .height(HomeRecentlyPlayedPillHeight)
+            .onGloballyPositioned { coordinates ->
+                val bounds = coordinates.boundsInWindow()
+
+                // Calculate horizontal factor
+                val cardCenterX = bounds.center.x
+                val hFactor = if (cardCenterX < 0f) {
+                    (1f + (cardCenterX / (bounds.width / 2f))).coerceIn(0f, 1f)
+                } else if (cardCenterX > screenWidthPx) {
+                    (1f - ((cardCenterX - screenWidthPx) / (bounds.width / 2f))).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+
+                // Calculate vertical factor
+                val cardCenterY = bounds.center.y
+                val vFactor = if (cardCenterY < 0f) {
+                    (1f + (cardCenterY / (bounds.height / 2f))).coerceIn(0f, 1f)
+                } else if (cardCenterY > screenHeightPx) {
+                    (1f - ((cardCenterY - screenHeightPx) / (bounds.height / 2f))).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+
+                visibilityFactor = (hFactor * vFactor).coerceIn(0f, 1f)
+            }
+            .graphicsLayer {
+                scaleX = contentScaleFactor
+                scaleY = contentScaleFactor
+                alpha = 0.5f + (0.5f * visibilityFactor)
+            }
             .clip(shape)
             .clickable(onClick = onClick)
     ) {
@@ -313,6 +361,7 @@ private fun RecentlyPlayedPill(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 shape = CircleShape,
+                isThumbnail = true,
                 targetSize = SmartImageCompactListTargetSize,
                 modifier = Modifier.size(HomeRecentlyPlayedPillArtSize)
             )
