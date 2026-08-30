@@ -10,36 +10,21 @@ uniform float uSpeed;
 half4 main(float2 fragCoord) {
     float2 pos = fragCoord;
     float distance = length(pos - uOrigin);
+    float delay = distance / uSpeed;
+    float time = max(0.0, uTime - delay);
     
-    // Scale down the distance so the rings are wide and gentle
-    float scaledDistance = distance * 0.005; 
+    // Primary ripple wave + secondary trailing sub-ripple
+    float wave1 = uAmplitude * sin(uFrequency * time) * exp(-uDecay * time);
     
-    // Sync the wave speed perfectly with your 1500ms ScannerButton pulse!
-    // 1.5 seconds per cycle = (2.0 * 3.14159) / 1.5 = 4.188
-    float waveSpeed = uTime * 4.188; 
+    float subTime = max(0.0, time - 0.22);
+    float wave2 = (uAmplitude * 0.55) * sin(uFrequency * 1.15 * subTime) * exp(-(uDecay * 0.8) * subTime);
     
-    // Continuous, calm sine wave rings expanding outward
-    float wave = sin((scaledDistance * 8.0) - waveSpeed);
-    
-    // Fade the ripple out smoothly as it reaches the edges of the screen
-    float maxDist = max(uResolution.x, uResolution.y) * 0.7;
-    float edgeFade = 1.0 - smoothstep(0.2 * maxDist, maxDist, distance);
-    
-    // Protect the center (the button itself) so the mic icon doesn't warp violently
-    float centerProtect = smoothstep(120.0, 250.0, distance);
-    
-    float dampening = edgeFade * centerProtect;
-    
-    // Calculate the direction of the warp
+    float totalWave = wave1 + wave2;
     float2 n = normalize(pos - uOrigin);
+    float2 newPos = pos + totalWave * n;
     
-    // Drastically reduce the distortion strength for a calm, glass-like wobble
-    float distortionStrength = uAmplitude * 0.12; 
-    
-    float2 newPos = pos + (wave * n * distortionStrength * dampening);
-    
-    // Add a very soft, calm liquid highlight on the crest of the waves
-    float highlight = max(0.0, wave) * 0.03 * dampening;
+    // Add specular highlight for liquid shine
+    float highlight = 0.16 * (totalWave / max(1.0, uAmplitude));
     
     return inputShader.eval(newPos) + half4(highlight, highlight, highlight, 0.0);
 }
