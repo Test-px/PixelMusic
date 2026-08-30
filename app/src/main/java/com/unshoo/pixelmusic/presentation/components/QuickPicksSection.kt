@@ -220,7 +220,7 @@ private fun QuickPickCard(
                 val cardCenterX = bounds.center.x
                 val cardCenterY = bounds.center.y
 
-                val hMargin = screenWidthPx * 0.15f
+                val hMargin = screenWidthPx * 0.20f
                 val hFactor = when {
                     cardCenterX < hMargin -> (cardCenterX / hMargin).coerceIn(0f, 1f)
                     cardCenterX > (screenWidthPx - hMargin) -> ((screenWidthPx - cardCenterX) / hMargin).coerceIn(0f, 1f)
