@@ -261,28 +261,7 @@ fun HomeScreen(
             maxItems = 64
         )
     }
-    // Keep the visible Home snapshot stable and only refresh it once the screen is off-screen.
-    var recentlyPlayedSongs by rememberSaveable { mutableStateOf(latestRecentlyPlayedSongs) }
-    val latestRecentlyPlayedSongsState = rememberUpdatedState(latestRecentlyPlayedSongs)
-
-    LaunchedEffect(latestRecentlyPlayedSongs, lifecycleOwner) {
-        val isHomeVisible = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-        if (recentlyPlayedSongs.isEmpty() || !isHomeVisible) {
-            recentlyPlayedSongs = latestRecentlyPlayedSongs
-        }
-    }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                recentlyPlayedSongs = latestRecentlyPlayedSongsState.value
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
+val recentlyPlayedSongs = latestRecentlyPlayedSongs
 
     val recentlyPlayedQueue = remember(recentlyPlayedSongs) {
         recentlyPlayedSongs.map { it.song }.toImmutableList()
