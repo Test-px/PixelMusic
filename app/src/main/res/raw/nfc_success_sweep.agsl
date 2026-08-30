@@ -1,6 +1,6 @@
 uniform shader inputShader;
 uniform float2 uResolution;
-uniform float uTime; // Progresses from 0.0 to 1.0
+uniform float uTime;
 
 half4 main(float2 fragCoord) {
     float2 pos = fragCoord;
