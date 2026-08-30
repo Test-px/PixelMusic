@@ -40,6 +40,9 @@ import com.unshoo.pixelmusic.data.shazam.MusicRecognizer
 import com.unshoo.pixelmusic.data.shazam.RecognitionResult
 import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
+import android.os.Build
+import com.unshoo.pixelmusic.ui.effects.recognitionRippleEffect
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +113,16 @@ fun MusicRecognitionDialog(
         }
     }
 
+    val isListening = status is RecognitionStatus.Listening
+
+    // Safe application for Android 13+ only
+    val rippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.recognitionRippleEffect(isTriggered = isListening)
+    } else {
+        Modifier
+    }
+
+    
     if (isTransparentOverlay) {
         // =========================================================================================
         // ── OVERLAY MODE: Pure Google style floating design (No Solid Card) ──
@@ -124,6 +137,7 @@ fun MusicRecognitionDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(overlayBackground)
+                .then(rippleModifier)
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
@@ -288,6 +302,7 @@ fun MusicRecognitionDialog(
                     .fillMaxWidth()
                     .height(screenHeight * 0.85f)
                     .padding(horizontal = 16.dp, vertical = 24.dp),
+                    .then(rippleModifier),
                 shape = AbsoluteSmoothCornerShape(32.dp, 80),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 6.dp
