@@ -17,18 +17,17 @@ half4 main(float2 fragCoord) {
     // Distance from the current pixel to the expanding ring boundary
     float ringDist = abs(dist - currentRadius);
     
-    // A single, sharp, glowing wave using exponential falloff
-    float wave = exp(-ringDist * 0.012);
+    // Lower number = much THICKER, wider wave
+    float wave = exp(-ringDist * 0.004);
     
-    // Direction of the distortion (pushing outward/upward)
+    // Direction of the distortion
     float2 dir = normalize(pos - origin);
     
-    // Warp the pixels
-    float2 newPos = pos + (dir * wave * 45.0);
+    // Warp the pixels (softened from 45.0 to 30.0 for the wider wave)
+    float2 newPos = pos + (dir * wave * 30.0);
     
-    // Add a bright glass/energy flash on the leading edge
-    float highlight = wave * 0.25;
+    // Softer, wider glass highlight
+    float highlight = wave * 0.15;
     
     return inputShader.eval(newPos) + half4(highlight, highlight, highlight, 0.0);
 }
-
