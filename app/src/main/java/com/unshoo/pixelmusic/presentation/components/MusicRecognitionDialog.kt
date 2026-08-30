@@ -301,7 +301,7 @@ fun MusicRecognitionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(screenHeight * 0.85f)
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
                     .then(rippleModifier),
                 shape = AbsoluteSmoothCornerShape(32.dp, 80),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
