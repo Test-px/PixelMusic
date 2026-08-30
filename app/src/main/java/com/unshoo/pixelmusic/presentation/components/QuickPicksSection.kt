@@ -2,14 +2,14 @@ package com.unshoo.pixelmusic.presentation.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,15 +31,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import com.unshoo.pixelmusic.data.model.Song
-import com.unshoo.pixelmusic.presentation.components.SmartImage
 import com.unshoo.pixelmusic.data.preferences.QuickPicksDisplayMode
 
 private val QuickPicksPillHeight = 56.dp
@@ -109,43 +115,49 @@ fun QuickPicksSection(
                 }
             }
         }
-        
+
         if (displayMode == QuickPicksDisplayMode.CARD) {
-            // 1. A parent Column to stack the two independent rows
+            val topScrollState = rememberScrollState()
+            val bottomScrollState = rememberScrollState()
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 2. TOP ROW with its own independent scroll state
+                // Top Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()) // Independent scroll
+                        .horizontalScroll(topScrollState)
                         .padding(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    songs.take(10).forEach { song ->
+                    songs.take(10).forEachIndexed { index, song ->
                         QuickPickCard(
                             song = song,
+                            index = index,
+                            scrollState = topScrollState,
                             isPlaying = song.id == currentSongId,
                             onClick = { onSongClick(song) }
                         )
                     }
                 }
 
-                // 3. BOTTOM ROW with its own independent scroll state
+                // Bottom Row
                 val bottomRowSongs = songs.drop(10).take(10)
                 if (bottomRowSongs.isNotEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()) // Independent scroll
+                            .horizontalScroll(bottomScrollState)
                             .padding(horizontal = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        bottomRowSongs.forEach { song ->
+                        bottomRowSongs.forEachIndexed { index, song ->
                             QuickPickCard(
                                 song = song,
+                                index = index,
+                                scrollState = bottomScrollState,
                                 isPlaying = song.id == currentSongId,
                                 onClick = { onSongClick(song) }
                             )
@@ -184,9 +196,18 @@ fun QuickPicksSection(
 @Composable
 private fun QuickPickCard(
     song: Song,
+    index: Int,
+    scrollState: ScrollState,
     isPlaying: Boolean,
     onClick: () -> Unit
 ) {
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    var visibilityFactor by remember { mutableFloatStateOf(1f) }
+
     val targetBg = if (isPlaying) MaterialTheme.colorScheme.primaryContainer
     else MaterialTheme.colorScheme.surfaceContainerLow
     val bgColor by animateColorAsState(
@@ -194,12 +215,48 @@ private fun QuickPickCard(
         animationSpec = tween(durationMillis = 220),
         label = "QuickPickBg"
     )
+
+    // Smoothly interpolate corner radius and image shape based on visibility factor
+    val cardCornerRadius = lerp(16.dp, 60.dp, 1f - visibilityFactor)
+    val imageCornerRadius = lerp(12.dp, 56.dp, 1f - visibilityFactor)
+    val contentScaleFactor = 0.90f + (0.10f * visibilityFactor)
+
     Card(
         onClick = onClick,
         modifier = Modifier
             .width(140.dp)
-            .padding(bottom = 8.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(bottom = 8.dp)
+            .onGloballyPositioned { coordinates ->
+                val bounds = coordinates.boundsInWindow()
+
+                // Calculate horizontal factor
+                val cardCenterX = bounds.center.x
+                val hFactor = if (cardCenterX < 0f) {
+                    (1f + (cardCenterX / (bounds.width / 2f))).coerceIn(0f, 1f)
+                } else if (cardCenterX > screenWidthPx) {
+                    (1f - ((cardCenterX - screenWidthPx) / (bounds.width / 2f))).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+
+                // Calculate vertical factor
+                val cardCenterY = bounds.center.y
+                val vFactor = if (cardCenterY < 0f) {
+                    (1f + (cardCenterY / (bounds.height / 2f))).coerceIn(0f, 1f)
+                } else if (cardCenterY > screenHeightPx) {
+                    (1f - ((cardCenterY - screenHeightPx) / (bounds.height / 2f))).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
+
+                visibilityFactor = (hFactor * vFactor).coerceIn(0f, 1f)
+            }
+            .graphicsLayer {
+                scaleX = contentScaleFactor
+                scaleY = contentScaleFactor
+                alpha = 0.5f + (0.5f * visibilityFactor)
+            },
+        shape = RoundedCornerShape(cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -214,7 +271,8 @@ private fun QuickPickCard(
                 model = artUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                shape = RoundedCornerShape(12.dp),
+                isThumbnail = true,
+                shape = RoundedCornerShape(imageCornerRadius),
                 modifier = Modifier
                     .size(124.dp)
                     .align(Alignment.CenterHorizontally)
@@ -250,7 +308,6 @@ private fun QuickPickPill(
     isPlaying: Boolean,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
     val targetBg = if (isPlaying) MaterialTheme.colorScheme.primaryContainer
     else MaterialTheme.colorScheme.surfaceContainerHigh
     val bgColor by animateColorAsState(
@@ -280,6 +337,7 @@ private fun QuickPickPill(
                 model = artUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                isThumbnail = true,
                 shape = CircleShape,
                 modifier = Modifier.size(QuickPicksPillArtSize)
             )
@@ -309,7 +367,6 @@ private fun buildQuickPickRows(songs: List<Song>): List<QuickPicksPillRow> {
         val widthStep = QuickPicksWidthSteps[colIndex % QuickPicksWidthSteps.size]
         group.map { QuickPicksPillCell(it, widthStep) }
     }
-    // Transpose columns -> rows
     val rows = mutableListOf<QuickPicksPillRow>()
     for (rowIdx in 0 until QuickPicksPillsPerColumn) {
         val pills = columns.mapNotNull { col -> col.getOrNull(rowIdx) }
