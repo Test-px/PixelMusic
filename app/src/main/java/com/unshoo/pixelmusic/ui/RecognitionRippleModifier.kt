@@ -33,14 +33,13 @@ fun Modifier.recognitionRippleEffect(
     val runtimeShader = remember { RuntimeShader(shaderCode) }
     val time = remember { Animatable(0f) }
 
-    // Drive the animation continuously while listening
+    // Drive the animation when the trigger state changes
     LaunchedEffect(isTriggered) {
         if (isTriggered) {
             time.snapTo(0f)
-            // Animate continuously for a massive amount of time so the rings never stop
             time.animateTo(
-                targetValue = 10000f,
-                animationSpec = tween(durationMillis = 10000000, easing = LinearEasing)
+                targetValue = durationSec,
+                animationSpec = tween((durationSec * 1000).toInt(), easing = LinearEasing)
             )
         } else {
             time.snapTo(0f)
