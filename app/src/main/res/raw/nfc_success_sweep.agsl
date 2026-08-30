@@ -1,0 +1,34 @@
+uniform shader inputShader;
+uniform float2 uResolution;
+uniform float uTime; // Progresses from 0.0 to 1.0
+
+half4 main(float2 fragCoord) {
+    float2 pos = fragCoord;
+    
+    // Origin at the bottom-center of the screen
+    float2 origin = float2(uResolution.x * 0.5, uResolution.y + 50.0);
+    
+    float dist = length(pos - origin);
+    float maxDist = max(uResolution.y, uResolution.x) * 1.2;
+    
+    // The expanding ring radius based on time
+    float currentRadius = uTime * maxDist;
+    
+    // Distance from the current pixel to the expanding ring boundary
+    float ringDist = abs(dist - currentRadius);
+    
+    // A single, sharp, glowing wave using exponential falloff
+    float wave = exp(-ringDist * 0.012);
+    
+    // Direction of the distortion (pushing outward/upward)
+    float2 dir = normalize(pos - origin);
+    
+    // Warp the pixels
+    float2 newPos = pos + (dir * wave * 45.0);
+    
+    // Add a bright glass/energy flash on the leading edge
+    float highlight = wave * 0.25;
+    
+    return inputShader.eval(newPos) + half4(highlight, highlight, highlight, 0.0);
+}
+
