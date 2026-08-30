@@ -17,11 +17,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.request.ImageRequest
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.preferences.CollagePattern
@@ -49,23 +47,8 @@ fun AlbumArtCollage(
     pattern: CollagePattern = CollagePattern.default,
     onSongClick: (Song) -> Unit,
 ) {
-    val context = LocalContext.current
     val songsToShow = remember(songs) {
         (songs.take(6) + List(6 - songs.size.coerceAtMost(6)) { null }).toImmutableList()
-    }
-
-    val requests = remember(songsToShow) {
-        songsToShow.map { song ->
-            song?.albumArtUriString?.let {
-                ImageRequest.Builder(context)
-                    .data(it)
-                    .dispatcher(Dispatchers.IO)
-                    .crossfade(true)
-                    //.placeholder(R.drawable.ic_music_placeholder)
-                    .error(R.drawable.ic_music_placeholder)
-                    .build()
-            }
-        }.toImmutableList()
     }
 
     BoxWithConstraints(
@@ -90,9 +73,10 @@ fun AlbumArtCollage(
                     topConfigs.forEachIndexed { idx, cfg ->
                         songsToShow.getOrNull(idx)?.let { song ->
                             SmartImage(
-                                model = requests[idx],
+                                model = song.albumArtUriString,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                isThumbnail = true,
                                 modifier = Modifier
                                     .size(cfg.width, cfg.height)
                                     .align(cfg.align)
@@ -112,9 +96,10 @@ fun AlbumArtCollage(
                     bottomConfigs.forEachIndexed { j, cfg ->
                         songsToShow.getOrNull(j + 3)?.let { song ->
                             SmartImage(
-                                model = requests[j + 3],
+                                model = song.albumArtUriString,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                isThumbnail = true,
                                 modifier = Modifier
                                     .size(cfg.width, cfg.height)
                                     .align(cfg.align)
