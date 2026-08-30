@@ -261,7 +261,8 @@ fun HomeScreen(
             maxItems = 64
         )
     }
-val recentlyPlayedSongs = latestRecentlyPlayedSongs
+    
+    val recentlyPlayedSongs = latestRecentlyPlayedSongs
 
     val recentlyPlayedQueue = remember(recentlyPlayedSongs) {
         recentlyPlayedSongs.map { it.song }.toImmutableList()
