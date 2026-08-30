@@ -49,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unshoo.pixelmusic.R
@@ -60,12 +59,13 @@ import com.unshoo.pixelmusic.ui.theme.LocalPixelMusicDarkTheme
 
 private val HomeRecentlyPlayedPillHeight = 58.dp
 private val HomeRecentlyPlayedPillSpacing = 8.dp
-private const val HomeRecentlyPlayedPillsLimit = 64
+private const val HomeRecentlyPlayedPillsLimit = 64 // Raised from 10 to 64!
 private const val HomeRecentlyPlayedPillsPerColumn = 3
 internal const val RecentlyPlayedSectionMinSongsToShow = 4
 private val HomeRecentlyPlayedPillArtSize = 38.dp
 private val HomeRecentlyPlayedWidthSteps = listOf(148.dp, 166.dp, 184.dp, 202.dp, 220.dp)
-private val HomeRecentlyPlayedDefaultContentPadding = PaddingValues(horizontal = 8.dp)
+// Matches the Quick Picks horizontal padding
+private val HomeRecentlyPlayedDefaultContentPadding = PaddingValues(horizontal = 14.dp)
 
 private data class RecentlyPlayedPillCell(
     val item: RecentlyPlayedSongUiModel,
@@ -260,7 +260,6 @@ private fun RecentlyPlayedPill(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
-    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
 
     var visibilityFactor by remember { mutableFloatStateOf(1f) }
 
@@ -281,13 +280,12 @@ private fun RecentlyPlayedPill(
     val targetTitleColor = albumColorScheme?.onPrimaryContainer ?: fallbackTitle
     val targetArtistColor = albumColorScheme?.onPrimaryContainer?.copy(alpha = 0.80f) ?: fallbackArtist
 
-    // Compute dynamic layout properties based on scroll position within 15% edge margins
-    val targetCorner = if (isCurrentSong) 14.dp else (HomeRecentlyPlayedPillHeight / 2)
-    val pillCornerRadius = lerp(targetCorner, 60.dp, 1f - visibilityFactor)
-    val contentScaleFactor = 0.90f + (0.10f * visibilityFactor)
+    // We only animate the scale and opacity for pills, the corner radius stays pill-shaped
+    val contentScaleFactor = 0.85f + (0.15f * visibilityFactor)
 
+    // The corner radius only changes slightly if it's the actively playing song
     val animatedCorner by animateDpAsState(
-        targetValue = pillCornerRadius,
+        targetValue = if (isCurrentSong) 14.dp else (HomeRecentlyPlayedPillHeight / 2),
         animationSpec = tween(durationMillis = 280),
         label = "pillCorner"
     )
@@ -318,8 +316,8 @@ private fun RecentlyPlayedPill(
             .onGloballyPositioned { coordinates ->
                 val bounds = coordinates.boundsInWindow()
                 val cardCenterX = bounds.center.x
-                val cardCenterY = bounds.center.y
 
+                // 15% Edge Margin Animation
                 val hMargin = screenWidthPx * 0.15f
                 val hFactor = when {
                     cardCenterX < hMargin -> (cardCenterX / hMargin).coerceIn(0f, 1f)
@@ -327,19 +325,12 @@ private fun RecentlyPlayedPill(
                     else -> 1f
                 }
 
-                val vMargin = screenHeightPx * 0.15f
-                val vFactor = when {
-                    cardCenterY < vMargin -> (cardCenterY / vMargin).coerceIn(0f, 1f)
-                    cardCenterY > (screenHeightPx - vMargin) -> ((screenHeightPx - cardCenterY) / vMargin).coerceIn(0f, 1f)
-                    else -> 1f
-                }
-
-                visibilityFactor = (hFactor * vFactor).coerceIn(0f, 1f)
+                visibilityFactor = hFactor
             }
             .graphicsLayer {
                 scaleX = contentScaleFactor
                 scaleY = contentScaleFactor
-                alpha = 0.5f + (0.5f * visibilityFactor)
+                alpha = 0.4f + (0.6f * visibilityFactor)
             }
             .clip(shape)
             .clickable(onClick = onClick)
