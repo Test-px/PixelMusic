@@ -87,7 +87,7 @@ fun Modifier.successSweepEffect(isTriggered: Boolean): Modifier = composed {
             time.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 800, 
+                    durationMillis = 2500, 
                     easing = androidx.compose.animation.core.FastOutSlowInEasing
                 )
             )
