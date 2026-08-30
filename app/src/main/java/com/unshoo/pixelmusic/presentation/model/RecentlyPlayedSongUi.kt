@@ -40,8 +40,8 @@ fun mapRecentlyPlayedSongs(
         zoneId = ZoneId.systemDefault()
     )
     
-    // Dynamic 7-day cutoff window
-    val sevenDaysAgoMillis = nowMillis - (7L * 24 * 60 * 60 * 1000)
+    // 30-day cutoff window (1 month)
+    val thirtyDaysAgoMillis = nowMillis - (30L * 24 * 60 * 60 * 1000)
 
     val seenSongIds = HashSet<String>()
     val deduped = ArrayList<RecentlyPlayedSongUiModel>(maxItems.coerceAtMost(playbackHistory.size))
@@ -55,9 +55,7 @@ fun mapRecentlyPlayedSongs(
         if (deduped.size >= maxItems) break
         val safeTimestamp = entry.timestamp.coerceAtLeast(0L)
         
-        // Filter out anything older than 7 days
-        if (safeTimestamp < sevenDaysAgoMillis) continue
-        
+        if (safeTimestamp < thirtyDaysAgoMillis) continue
         if (safeTimestamp > endBound) continue
         if (startBound != null && safeTimestamp < startBound) continue
         if (!seenSongIds.add(entry.songId)) continue
@@ -103,8 +101,8 @@ fun collectRecentlyPlayedSongIds(
         zoneId = ZoneId.systemDefault()
     )
     
-    // Dynamic 7-day cutoff window
-    val sevenDaysAgoMillis = nowMillis - (7L * 24 * 60 * 60 * 1000)
+    // 30-day cutoff window (1 month)
+    val thirtyDaysAgoMillis = nowMillis - (30L * 24 * 60 * 60 * 1000)
 
     val seenSongIds = LinkedHashSet<String>()
     val sortedHistory = playbackHistory.sortedWith(
@@ -116,9 +114,7 @@ fun collectRecentlyPlayedSongIds(
         if (seenSongIds.size >= maxItems) break
         val safeTimestamp = entry.timestamp.coerceAtLeast(0L)
         
-        // Filter out anything older than 7 days
-        if (safeTimestamp < sevenDaysAgoMillis) continue
-        
+        if (safeTimestamp < thirtyDaysAgoMillis) continue
         if (safeTimestamp > endBound) continue
         if (startBound != null && safeTimestamp < startBound) continue
         seenSongIds.add(entry.songId)
