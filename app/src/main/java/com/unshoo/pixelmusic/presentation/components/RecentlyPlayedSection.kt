@@ -60,7 +60,7 @@ import com.unshoo.pixelmusic.ui.theme.LocalPixelMusicDarkTheme
 
 private val HomeRecentlyPlayedPillHeight = 58.dp
 private val HomeRecentlyPlayedPillSpacing = 8.dp
-private const val HomeRecentlyPlayedPillsLimit = 64 // Raised from 10 to allow 7-day volume
+private const val HomeRecentlyPlayedPillsLimit = 64
 private const val HomeRecentlyPlayedPillsPerColumn = 3
 internal const val RecentlyPlayedSectionMinSongsToShow = 4
 private val HomeRecentlyPlayedPillArtSize = 38.dp
@@ -281,7 +281,7 @@ private fun RecentlyPlayedPill(
     val targetTitleColor = albumColorScheme?.onPrimaryContainer ?: fallbackTitle
     val targetArtistColor = albumColorScheme?.onPrimaryContainer?.copy(alpha = 0.80f) ?: fallbackArtist
 
-    // Compute dynamic layout properties based on scroll position
+    // Compute dynamic layout properties based on scroll position within 15% edge margins
     val targetCorner = if (isCurrentSong) 14.dp else (HomeRecentlyPlayedPillHeight / 2)
     val pillCornerRadius = lerp(targetCorner, 60.dp, 1f - visibilityFactor)
     val contentScaleFactor = 0.90f + (0.10f * visibilityFactor)
@@ -317,25 +317,21 @@ private fun RecentlyPlayedPill(
             .height(HomeRecentlyPlayedPillHeight)
             .onGloballyPositioned { coordinates ->
                 val bounds = coordinates.boundsInWindow()
-
-                // Calculate horizontal factor
                 val cardCenterX = bounds.center.x
-                val hFactor = if (cardCenterX < 0f) {
-                    (1f + (cardCenterX / (bounds.width / 2f))).coerceIn(0f, 1f)
-                } else if (cardCenterX > screenWidthPx) {
-                    (1f - ((cardCenterX - screenWidthPx) / (bounds.width / 2f))).coerceIn(0f, 1f)
-                } else {
-                    1f
+                val cardCenterY = bounds.center.y
+
+                val hMargin = screenWidthPx * 0.15f
+                val hFactor = when {
+                    cardCenterX < hMargin -> (cardCenterX / hMargin).coerceIn(0f, 1f)
+                    cardCenterX > (screenWidthPx - hMargin) -> ((screenWidthPx - cardCenterX) / hMargin).coerceIn(0f, 1f)
+                    else -> 1f
                 }
 
-                // Calculate vertical factor
-                val cardCenterY = bounds.center.y
-                val vFactor = if (cardCenterY < 0f) {
-                    (1f + (cardCenterY / (bounds.height / 2f))).coerceIn(0f, 1f)
-                } else if (cardCenterY > screenHeightPx) {
-                    (1f - ((cardCenterY - screenHeightPx) / (bounds.height / 2f))).coerceIn(0f, 1f)
-                } else {
-                    1f
+                val vMargin = screenHeightPx * 0.15f
+                val vFactor = when {
+                    cardCenterY < vMargin -> (cardCenterY / vMargin).coerceIn(0f, 1f)
+                    cardCenterY > (screenHeightPx - vMargin) -> ((screenHeightPx - cardCenterY) / vMargin).coerceIn(0f, 1f)
+                    else -> 1f
                 }
 
                 visibilityFactor = (hFactor * vFactor).coerceIn(0f, 1f)
