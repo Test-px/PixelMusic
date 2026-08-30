@@ -42,13 +42,16 @@ internal fun decodeWidgetAlbumArtBitmap(
         return null
     }
 
+    val reqWidth = if (targetWidthPx > 0) targetWidthPx else 128
+    val reqHeight = if (targetHeightPx > 0) targetHeightPx else 128
+
     var inSampleSize = 1
-    if (bounds.outHeight > targetHeightPx || bounds.outWidth > targetWidthPx) {
+    if (bounds.outHeight > reqHeight || bounds.outWidth > reqWidth) {
         val halfHeight = bounds.outHeight / 2
         val halfWidth = bounds.outWidth / 2
         while (
-            halfHeight / inSampleSize >= targetHeightPx &&
-            halfWidth / inSampleSize >= targetWidthPx
+            halfHeight / inSampleSize >= reqHeight &&
+            halfWidth / inSampleSize >= reqWidth
         ) {
             inSampleSize *= 2
         }
