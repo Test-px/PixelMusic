@@ -679,19 +679,26 @@ object YoutubeHelper {
         }
 
         val audioCandidates = allFormats.filter { it.isAudio }.let { group ->
+            val filtered = if (requireM4a) {
+                val m4aOnly = group.filter { 
+                    it.mimeType.contains("mp4", ignoreCase = true) || 
+                    it.mimeType.contains("m4a", ignoreCase = true) 
+                }
+                if (m4aOnly.isNotEmpty()) m4aOnly else group
+            } else {
+                group
+            }
+
             if (maxBitrateKbps > 0) {
                 val bpsCeiling = maxBitrateKbps * 1000
-                val withinCeiling = group.filter { it.bitrate <= bpsCeiling }
+                val withinCeiling = filtered.filter { it.bitrate <= bpsCeiling }
                 if (withinCeiling.isNotEmpty()) {
-                    // Pick the highest quality that stays UNDER the user's limit
                     withinCeiling.sortedByDescending { it.bitrate }
                 } else {
-                    // If everything is somehow above the limit, pick the absolute lowest to save data
-                    group.sortedBy { it.bitrate }
+                    filtered.sortedBy { it.bitrate }
                 }
             } else {
-                // High Quality (0 = unlimited)
-                group.sortedByDescending { it.bitrate }
+                filtered.sortedByDescending { it.bitrate }
             }
         }
 
