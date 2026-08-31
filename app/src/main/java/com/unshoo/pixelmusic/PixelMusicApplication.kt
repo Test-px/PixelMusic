@@ -127,13 +127,6 @@ class PixelMusicApplication : Application(), ImageLoaderFactory, Configuration.P
             }
         }
 
-        // Initialize NewPipe YouTube Extractor
-        org.schabi.newpipe.extractor.NewPipe.init(
-            com.unshoo.pixelmusic.data.remote.youtube.YoutubeExtractor(
-                com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.client
-            )
-        )
-
         // Bind Content Language and Country to YouTube.locale
         startupScope.launch {
             kotlinx.coroutines.flow.combine(
