@@ -218,6 +218,7 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))
 
+
     // AndroidX & Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -243,6 +244,8 @@ dependencies {
     implementation("androidx.webkit:webkit:1.16.0")
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation("io.github.dokar3:quickjs-kt:1.0.14")
+
 
     // DI & Navigation
     implementation(libs.hilt.android)
