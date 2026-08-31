@@ -8,8 +8,8 @@ import kotlinx.serialization.json.jsonArray
 internal object RemotePlayerConfigParser {
     const val SUPPORTED_SCHEMA_VERSION = 1
 
-    private val SIG_RE = Regex("""^[A-Za-z0-9$_]{1,8}\(\d+,\d+,INPUT\)$""")
-    private val NCLASS_RE = Regex("""^[A-Za-z0-9$_]{1,8}$""")
+    private val SIG_RE = Regex("""^[A-Za-z0-9${'$'}_]{1,8}\(\d+,\d+,INPUT\)$""")
+    private val NCLASS_RE = Regex("""^[A-Za-z0-9${'$'}_]{1,8}$""")
     private val HASH_RE = Regex("""^[a-f0-9]{8}$""")
     private val PLAYER_HASH_PATTERNS =
         listOf(
