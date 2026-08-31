@@ -56,17 +56,21 @@ object SongDownloader {
             tempRemuxedFile = File(context.cacheDir, "clean_$fileName")
             tempImageFile = File(context.cacheDir, "temp_cover.jpg")
 
-            // 2. Download the audio file with Range bypass
+            // 2. Download the audio file with WEB_REMIX headers and unlimited call timeout
             val downloadClient = YoutubeHelper.client.newBuilder()
+                .callTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS) // Disable 4s call timeout
+                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
-                .connectTimeout(1, java.util.concurrent.TimeUnit.MINUTES)
+                .writeTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
                 .build()
 
-            val requestProfile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(streamUrl)
-            val audioRequest = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.applyRequestProfile(
-                Request.Builder().get().url(streamUrl),
-                requestProfile
-            ).build()
+            val audioRequest = Request.Builder()
+                .get()
+                .url(streamUrl)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+                .header("Origin", "https://music.youtube.com")
+                .header("Referer", "https://music.youtube.com/")
+                .build()
 
             val audioResponse = downloadClient.newCall(audioRequest).execute()
             if (!audioResponse.isSuccessful && audioResponse.code != 206) {
