@@ -619,19 +619,18 @@ class DualPlayerEngine @Inject constructor(
                         return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
                     }
 
-                    // Attaches matching User-Agent, Origin, and Referer headers based on client variant
-                    fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
-                        val urlStr = resolvedUri.toString()
-                        if (urlStr.startsWith("http")) {
-                            val profile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
-                            val headers = mutableMapOf<String, String>()
-                            headers["User-Agent"] = profile.userAgent
-                            profile.origin?.let { headers["Origin"] = it }
-                            profile.referer?.let { headers["Referer"] = it }
-                            this.setHttpRequestHeaders(headers)
-                        }
-                        return this
-                    }
+fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
+    val urlStr = resolvedUri.toString()
+    if (urlStr.startsWith("http")) {
+        val headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+            "Origin" to "https://music.youtube.com",
+            "Referer" to "https://music.youtube.com/"
+        )
+        this.setHttpRequestHeaders(headers)
+    }
+    return this
+}
 
                     val resolved = resolvedUriCache.get(originalUri)
                     if (resolved != null) {
@@ -655,9 +654,16 @@ class DualPlayerEngine @Inject constructor(
         }
         
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(8000)
+    .setAllowCrossProtocolRedirects(true)
+    .setConnectTimeoutMs(8000)
+    .setReadTimeoutMs(8000)
+    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+    .setDefaultRequestProperties(
+        mapOf(
+            "Referer" to "https://music.youtube.com/",
+            "Origin" to "https://music.youtube.com"
+        )
+    )
             
         val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val cacheDataSourceFactory = CacheDataSource.Factory()
