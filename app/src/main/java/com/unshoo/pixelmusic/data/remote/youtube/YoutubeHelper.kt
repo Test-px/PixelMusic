@@ -64,6 +64,16 @@ import java.util.concurrent.Executors
 
 
 object YoutubeHelper {
+    private val jsThread = Executors.newSingleThreadExecutor { runnable ->
+        Thread(null, runnable, "QuickJs", 32L * 1024L * 1024L)
+    }.asCoroutineDispatcher()
+
+    private val faradayEngine by lazy {
+        FaradayCipherEngine(
+            httpClient = HttpClient(),
+            jsThread = jsThread
+        )
+    }
     val client = OkHttpClient.Builder()
         .connectionPool(okhttp3.ConnectionPool(15, 5, java.util.concurrent.TimeUnit.MINUTES))
         .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
