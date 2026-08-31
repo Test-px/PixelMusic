@@ -678,8 +678,22 @@ object YoutubeHelper {
             FaradayCipherEngine.DecodeResult(emptyMap(), emptyMap())
         }
 
-        val audioCandidates = allFormats.filter { it.isAudio }
-            .sortedByDescending { it.bitrate }
+        val audioCandidates = allFormats.filter { it.isAudio }.let { group ->
+            if (maxBitrateKbps > 0) {
+                val bpsCeiling = maxBitrateKbps * 1000
+                val withinCeiling = group.filter { it.bitrate <= bpsCeiling }
+                if (withinCeiling.isNotEmpty()) {
+                    // Pick the highest quality that stays UNDER the user's limit
+                    withinCeiling.sortedByDescending { it.bitrate }
+                } else {
+                    // If everything is somehow above the limit, pick the absolute lowest to save data
+                    group.sortedBy { it.bitrate }
+                }
+            } else {
+                // High Quality (0 = unlimited)
+                group.sortedByDescending { it.bitrate }
+            }
+        }
 
         for (candidate in audioCandidates) {
             var streamUrl: String? = candidate.url
