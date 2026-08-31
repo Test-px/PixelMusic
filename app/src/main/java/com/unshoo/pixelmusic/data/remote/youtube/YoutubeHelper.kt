@@ -31,7 +31,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.schabi.newpipe.extractor.ServiceList
 import java.io.File
 import java.util.Locale
 import unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient
@@ -48,7 +47,6 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.Companion.W
 import unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
-import unshoo.ianshulyadav.pixelmusic.innertube.NewPipeUtils
 import unshoo.ianshulyadav.pixelmusic.innertube.PlaybackAuthState
 import unshoo.ianshulyadav.pixelmusic.innertube.models.response.PlayerResponse
 import com.unshoo.pixelmusic.data.preferences.PlayerStreamClient
