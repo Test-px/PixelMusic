@@ -54,6 +54,12 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.response.PlayerResponse
 import com.unshoo.pixelmusic.data.preferences.PlayerStreamClient
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.withTimeoutOrNull
+import com.unshoo.pixelmusic.data.remote.youtube.cipher.FaradayCipherEngine
+import io.ktor.client.HttpClient
+import io.ktor.http.parseQueryString
+import kotlinx.coroutines.asCoroutineDispatcher
+import java.util.concurrent.Executors
+
 
 
 
@@ -602,105 +608,107 @@ object YoutubeHelper {
     }
 
     private suspend fun getSongUrlFromYoutube(
-        context: Context, 
-        song: Song, 
-        retries: Int = Constants.YoutubeApi.RETRY_COUNT, 
-        lowQuality: Boolean = false, 
-        maxBitrateKbps: Int = 0, 
+        context: Context,
+        song: Song,
+        retries: Int = Constants.YoutubeApi.RETRY_COUNT,
+        lowQuality: Boolean = false,
+        maxBitrateKbps: Int = 0,
         requireM4a: Boolean = false
     ): Triple<String, String?, Int?> {
         val videoId = song.youtubeId
-        var authState = YouTube.currentPlaybackAuthState()
-
-        // 1. Initialize VisitorData to prevent bot rejections
-        if (YouTube.visitorData.isNullOrBlank()) {
-            try {
-                val visitor = YouTube.visitorData().getOrNull()
-                if (!visitor.isNullOrBlank()) {
-                    YouTube.visitorData = visitor
-                    authState = authState.copy(visitorData = visitor).normalized()
-                }
-            } catch (e: Exception) { UmihiHelper.printe("Failed to initialize visitor data: ${e.message}") }
-        }
-
-        var signatureTimestamp: Int? = null
-        try { 
-            signatureTimestamp = NewPipeUtils.getSignatureTimestamp(videoId).getOrNull() 
-        } catch (e: Exception) { 
-            UmihiHelper.printe("Failed to get signature timestamp: ${e.message}") 
-        }
-
-        var didRefreshVisitorData = false
-        // Exclusively use WEB_REMIX
         val clientObj = YouTubeClient.WEB_REMIX
 
-        if (isStreamClientTemporarilyBlocked(videoId, clientObj.clientName, authState.fingerprint)) {
-            throw Exception("WEB_REMIX client is temporarily blocked for this video")
+        val playerInfo = faradayEngine.playerInfo()
+        val signatureTimestamp = playerInfo?.signatureTimestamp
+
+        val playerResResult = YouTube.player(
+            videoId = videoId,
+            playlistId = null,
+            client = clientObj,
+            signatureTimestamp = signatureTimestamp,
+            setLogin = true
+        )
+
+        val playerResponse = playerResResult.getOrNull()
+            ?: throw Exception("Failed to fetch WEB_REMIX player response for $videoId")
+
+        if (playerResponse.playabilityStatus.status != "OK") {
+            throw Exception("Track unplayable: ${playerResponse.playabilityStatus.reason}")
         }
 
-        try {
-            UmihiHelper.printd("Trying playback client: ${clientObj.clientName}")
-            
-            var playerResResult = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS) {
-                YouTube.player(
-                    videoId = videoId, 
-                    playlistId = null, 
-                    client = clientObj, 
-                    signatureTimestamp = signatureTimestamp, 
-                    setLogin = authState.hasPlaybackLoginContext, 
-                    authState = authState
+        val streamingData = playerResponse.streamingData
+            ?: throw Exception("No streaming data in response for $videoId")
+
+        val allFormats = (streamingData.formats.orEmpty() + streamingData.adaptiveFormats)
+            .filter { it.isAudio || it.url != null || it.signatureCipher != null }
+
+        if (allFormats.isEmpty()) {
+            throw Exception("No audio formats available for $videoId")
+        }
+
+        val signaturesToSolve = allFormats.mapNotNull { it.signatureCipher }.mapNotNull {
+            parseQueryString(it)["s"]
+        }
+
+        val nParamsToSolve = allFormats.mapNotNull {
+            it.url?.let { url -> parseQueryString(url)["n"] }
+                ?: it.signatureCipher?.let { sc ->
+                    val innerUrl = parseQueryString(sc)["url"] ?: ""
+                    parseQueryString(innerUrl)["n"]
+                }
+        }
+
+        val decodedResult = if (playerInfo != null) {
+            faradayEngine.decode(
+                playerId = playerInfo.playerId,
+                signatures = signaturesToSolve,
+                nParameters = nParamsToSolve
+            )
+        } else {
+            FaradayCipherEngine.DecodeResult(emptyMap(), emptyMap())
+        }
+
+        val audioCandidates = allFormats.filter { it.isAudio }
+            .sortedByDescending { it.bitrate }
+
+        for (candidate in audioCandidates) {
+            var streamUrl: String? = candidate.url
+
+            if (candidate.signatureCipher != null) {
+                val cipherParams = parseQueryString(candidate.signatureCipher)
+                val obfuscatedSig = cipherParams["s"]
+                val sigParamName = cipherParams["sp"] ?: "sig"
+                val baseUrl = cipherParams["url"]
+
+                val solvedSig = decodedResult.signatures[obfuscatedSig]
+                if (baseUrl != null && solvedSig != null) {
+                    val separator = if (baseUrl.contains("?")) "&" else "?"
+                    streamUrl = "$baseUrl$separator$sigParamName=$solvedSig"
+                }
+            }
+
+            if (!streamUrl.isNullOrBlank()) {
+                val urlParams = parseQueryString(streamUrl)
+                val originalN = urlParams["n"]
+                val solvedN = decodedResult.nParameters[originalN]
+
+                if (!originalN.isNullOrBlank() && !solvedN.isNullOrBlank()) {
+                    streamUrl = streamUrl.replace("n=$originalN", "n=$solvedN")
+                }
+
+                playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
+                    playbackTrackingCache[videoId] = baseUrl
+                }
+
+                return Triple(
+                    streamUrl,
+                    normalizeMimeType(candidate.mimeType),
+                    candidate.bitrate
                 )
             }
-            var playerResponse = playerResResult?.getOrNull()
-
-            if (playerResponse != null) {
-                var status = playerResponse.playabilityStatus.status
-                var reason = playerResponse.playabilityStatus.reason.orEmpty()
-                val isBot = "bot" in reason.lowercase(Locale.US) || "unusual traffic" in reason.lowercase(Locale.US) || "automated" in reason.lowercase(Locale.US)
-
-                if (status != "OK" && isBot && !didRefreshVisitorData) {
-                    UmihiHelper.printd("Bot detection triggered. Refreshing visitorData...")
-                    val refreshedVisitorData = YouTube.visitorData().getOrNull()
-                    if (!refreshedVisitorData.isNullOrBlank()) {
-                        YouTube.visitorData = refreshedVisitorData
-                        authState = authState.copy(visitorData = refreshedVisitorData).normalized()
-                        didRefreshVisitorData = true
-                        
-                        playerResResult = withTimeoutOrNull(Constants.YoutubeApi.PLAYER_REQUEST_TIMEOUT_MS) {
-                            YouTube.player(videoId = videoId, playlistId = null, client = clientObj, signatureTimestamp = signatureTimestamp, setLogin = authState.hasPlaybackLoginContext, authState = authState)
-                        }
-                        playerResponse = playerResResult?.getOrNull()
-                    }
-                }
-            }
-
-            if (playerResponse != null && playerResponse.playabilityStatus.status == "OK") {
-                val candidates = selectCandidates(playerResponse, lowQuality, maxBitrateKbps, requireM4a)
-                
-                if (candidates.isNotEmpty()) {
-                    for (candidate in candidates) {
-                        if (shouldSkipCipheredWebCandidate(clientObj, candidate, authState)) continue
-                        
-                        // We still use NewPipeUtils here strictly to decipher the YouTube JS signature, 
-                        // NOT the heavy NewPipe Extractor ServiceList.
-                        val deobfuscated = NewPipeUtils.getStreamUrl(candidate, videoId, clientObj, authState).getOrNull() ?: continue
-                        val patched = StreamClientUtils.patchClientVersion(deobfuscated, clientObj.clientVersion)
-                        
-                        if (patched.isNotBlank()) {
-                            playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl -> 
-                                playbackTrackingCache[videoId] = baseUrl 
-                            }
-                            lastSuccessfulClientKey = StreamClientUtils.buildClientKey(clientObj)
-                            return Triple(patched, normalizeMimeType(candidate.mimeType), candidate.bitrate)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) { 
-            UmihiHelper.printe("Error with client ${clientObj.clientName}: ${e.message}") 
         }
 
-        throw Exception("Fatal fail for song ${song.youtubeId}. Could not retrieve stream using WEB_REMIX.")
+        throw Exception("Could not resolve stream URL for $videoId using WEB_REMIX")
     }
 
     private fun normalizeMimeType(rawMimeType: String): String {
