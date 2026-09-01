@@ -152,8 +152,7 @@ fun SettingsScreen(
     val maxTopBarHeightPx = with(density) { maxTopBarHeight.toPx() }
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-    val currentAiModel by settingsViewModel.currentAiModel.collectAsStateWithLifecycle()
-    val isProUser = currentAiModel.contains("pro", ignoreCase = true)
+    val isProUser = uiState.ytIsProUser
     
     val audioSessionId by playerViewModel.activeAudioSessionId.collectAsStateWithLifecycle()
     val launchTab = uiState.launchTab
