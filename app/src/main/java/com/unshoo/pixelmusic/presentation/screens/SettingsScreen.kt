@@ -152,12 +152,14 @@ fun SettingsScreen(
     val maxTopBarHeightPx = with(density) { maxTopBarHeight.toPx() }
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val currentAiModel by settingsViewModel.currentAiModel.collectAsStateWithLifecycle()
+    val isProUser = currentAiModel.contains("pro", ignoreCase = true)
+    
     val audioSessionId by playerViewModel.activeAudioSessionId.collectAsStateWithLifecycle()
     val launchTab = uiState.launchTab
     val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
 
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
-    var showAccountDialog by remember { mutableStateOf(false) }
     var showLoginOptionsDialog by remember { mutableStateOf(false) }
     var showTokenDialog by remember { mutableStateOf(false) }
     
@@ -239,15 +241,11 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize()
         ) {
             item {
-                ProfileHeaderCard(
+                com.unshoo.pixelmusic.presentation.components.ExpandableAccountCard(
                     uiState = uiState,
-                    onClick = {
-                        if (uiState.ytUsername.isNotEmpty()) {
-                            showAccountDialog = true
-                        } else {
-                            showLoginOptionsDialog = true // Opens the chooser dialog
-                        }
-                    },
+                    isPro = isProUser,
+                    onLoginNew = { showLoginOptionsDialog = true },
+                    onLogout = { settingsViewModel.logoutYoutube() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 4.dp)
@@ -368,188 +366,7 @@ fun SettingsScreen(
                 }
             )
         }
-
-        if (showAccountDialog && uiState.ytUsername.isNotEmpty()) {
-            val nameText = uiState.ytUsername
-            val handleText = uiState.ytHandle
-            val avatarUrl = uiState.ytAvatarUrl
-            
-            val dialogPrimary = MaterialTheme.colorScheme.primary
-            val dialogSecondary = MaterialTheme.colorScheme.secondaryContainer
-            val dialogAvatarGradient = remember(dialogPrimary, dialogSecondary) {
-                androidx.compose.ui.graphics.Brush.linearGradient(
-                    colors = listOf(dialogPrimary, dialogSecondary)
-                )
-            }
-            val dialogOnPrimary = MaterialTheme.colorScheme.onPrimary
-
-            AlertDialog(
-                onDismissRequest = { showAccountDialog = false },
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_youtube),
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Text(
-                            text = "YouTube Music Account",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
-                text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .padding(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(dialogAvatarGradient),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (avatarUrl.isNotEmpty()) {
-                                    AsyncImage(
-                                        model = avatarUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "Y"
-                                    Text(
-                                        text = initial,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = dialogOnPrimary
-                                    )
-                                }
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = nameText,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = handleText,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                        
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        Surface(
-                            onClick = {
-                                showAccountDialog = false
-                                settingsViewModel.logoutYoutube()
-                                navController.navigateSafely(Screen.YoutubeAuth.route)
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.Transparent,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp, horizontal = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.PersonAdd,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "Login to a new account",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Sign in with a different YouTube account",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
-                        Surface(
-                            onClick = {
-                                showAccountDialog = false
-                                settingsViewModel.logoutYoutube()
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.Transparent,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp, horizontal = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Logout,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "Log out",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Disconnect YouTube Music and clear cache",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showAccountDialog = false }) {
-                        Text("Close", fontWeight = FontWeight.Bold)
-                    }
-                }
-            )
-        }
+        
         // 1. The Sign In Options Chooser (Premium Custom UI - Tall Container)
         if (showLoginOptionsDialog) {
             androidx.compose.ui.window.Dialog(
@@ -949,121 +766,6 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.DEVICE_CAPABILITIES -> Color(0xFFACEFEE) to Color(0xFF002022)
             SettingsCategory.ABOUT -> Color(0xFFEFF1F7) to Color(0xFF44474F)
             SettingsCategory.LASTFM -> Color(0xFFFFDAD9) to Color(0xFF6E1B1B)
-        }
-    }
-}
-
-@Composable
-private fun ProfileHeaderCard(
-    uiState: SettingsUiState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val primary = MaterialTheme.colorScheme.primary
-    val onPrimary = MaterialTheme.colorScheme.onPrimary
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
-    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val avatarGradient = remember(primary, secondaryContainer) {
-        androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = listOf(primary, secondaryContainer)
-        )
-    }
-
-    val hasProfile = uiState.ytUsername.isNotEmpty()
-    val nameText = if (hasProfile) uiState.ytUsername else "Guest User"
-    val handleText = if (hasProfile) uiState.ytHandle else "Sign in to sync"
-    val avatarUrl = if (hasProfile) uiState.ytAvatarUrl else ""
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
-        color = surfaceContainer,
-        tonalElevation = 2.dp,
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Avatar circle with gradient and initial letter OR AsyncImage
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(62.dp)
-                    .clip(CircleShape)
-                    .background(avatarGradient)
-            ) {
-                if (avatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "G"
-                    Text(
-                        text = initial,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = onPrimary
-                    )
-                }
-            }
-
-            // Name + handle
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = nameText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = handleText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Decorative accent badge
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(if (hasProfile) Color.Transparent else primaryContainer)
-            ) {
-                if (hasProfile) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_youtube),
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.AccountCircle,
-                        contentDescription = null,
-                        tint = onPrimaryContainer,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
         }
     }
 }
