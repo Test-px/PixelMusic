@@ -57,6 +57,8 @@ import io.ktor.client.HttpClient
 import io.ktor.http.parseQueryString
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
+import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.stream.StreamInfo
 
 
 
@@ -616,140 +618,38 @@ object YoutubeHelper {
     }
 
 private suspend fun getSongUrlFromYoutube(
-        context: Context,
-        song: Song,
-        retries: Int = Constants.YoutubeApi.RETRY_COUNT,
-        lowQuality: Boolean = false,
-        maxBitrateKbps: Int = 0,
-        requireM4a: Boolean = false
-    ): Triple<String, String?, Int?> {
-        val videoId = song.youtubeId ?: throw Exception("Invalid video ID")
-        val clientObj = unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.WEB_REMIX
+    context: Context,
+    song: Song,
+    retries: Int = 3,
+    lowQuality: Boolean = false,
+    maxBitrateKbps: Int = 0,
+    requireM4a: Boolean = false
+): Triple<String, String?, Int?> = withContext(Dispatchers.IO) {
+    val videoId = song.youtubeId ?: throw Exception("Invalid video ID")
+    val streamInfo = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$videoId")
+    
+    val audioStreams = streamInfo.audioStreams
+    if (audioStreams.isNullOrEmpty()) throw Exception("No audio streams found for $videoId")
 
-        val playerInfo = faradayEngine.playerInfo()
-        val signatureTimestamp = playerInfo?.signatureTimestamp
+    val filteredStreams = if (requireM4a) {
+        audioStreams.filter { it.format.name.contains("m4a", true) || it.format.name.contains("mp4", true) }
+    } else audioStreams
+    
+    val targetStreams = if (filteredStreams.isNotEmpty()) filteredStreams else audioStreams
 
-        // 1. Generate the Client Playback Nonce (CPN) just like SimpMusic
-        val cpn = (1..16).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_".random() }.joinToString("")
-
-        val playerResResult = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.player(
-            videoId = videoId,
-            playlistId = null,
-            client = clientObj,
-            signatureTimestamp = signatureTimestamp,
-            setLogin = true
-        )
-
-        val playerResponse = playerResResult.getOrNull()
-            ?: throw Exception("Failed to fetch WEB_REMIX player response for $videoId")
-
-        if (playerResponse.playabilityStatus.status != "OK") {
-            throw Exception("Track unplayable: ${playerResponse.playabilityStatus.reason}")
+    val candidate = when {
+        lowQuality -> targetStreams.minByOrNull { it.averageBitrate }
+        maxBitrateKbps > 0 -> {
+            val bpsCeiling = maxBitrateKbps * 1000
+            val withinCeiling = targetStreams.filter { it.averageBitrate <= bpsCeiling }
+            if (withinCeiling.isNotEmpty()) withinCeiling.maxByOrNull { it.averageBitrate }
+            else targetStreams.minByOrNull { it.averageBitrate }
         }
+        else -> targetStreams.maxByOrNull { it.averageBitrate }
+    } ?: targetStreams.first()
 
-        val streamingData = playerResponse.streamingData
-            ?: throw Exception("No streaming data in response for $videoId")
-
-        val allFormats = (streamingData.formats.orEmpty() + streamingData.adaptiveFormats)
-            .filter { it.isAudio || it.url != null || it.signatureCipher != null }
-
-        if (allFormats.isEmpty()) {
-            throw Exception("No audio formats available for $videoId")
-        }
-
-        val signaturesToSolve = allFormats.mapNotNull { it.signatureCipher }.mapNotNull {
-            io.ktor.http.parseQueryString(it)["s"]
-        }
-
-        val nParamsToSolve = allFormats.mapNotNull {
-            it.url?.let { url -> io.ktor.http.parseQueryString(url)["n"] }
-                ?: it.signatureCipher?.let { sc ->
-                    val innerUrl = io.ktor.http.parseQueryString(sc)["url"] ?: ""
-                    io.ktor.http.parseQueryString(innerUrl)["n"]
-                }
-        }
-
-        val decodedResult = if (playerInfo != null) {
-            faradayEngine.decode(
-                playerId = playerInfo.playerId,
-                signatures = signaturesToSolve,
-                nParameters = nParamsToSolve
-            )
-        } else {
-            com.unshoo.pixelmusic.data.remote.youtube.cipher.FaradayCipherEngine.DecodeResult(emptyMap(), emptyMap())
-        }
-
-        val audioCandidates = allFormats.filter { it.isAudio }.let { group ->
-            val filtered = if (requireM4a) {
-                val m4aOnly = group.filter { 
-                    it.mimeType.contains("mp4", ignoreCase = true) || 
-                    it.mimeType.contains("m4a", ignoreCase = true) 
-                }
-                if (m4aOnly.isNotEmpty()) m4aOnly else group
-            } else {
-                group
-            }
-
-            if (maxBitrateKbps > 0) {
-                val bpsCeiling = maxBitrateKbps * 1000
-                val withinCeiling = filtered.filter { it.bitrate <= bpsCeiling }
-                if (withinCeiling.isNotEmpty()) {
-                    withinCeiling.sortedByDescending { it.bitrate }
-                } else {
-                    filtered.sortedBy { it.bitrate }
-                }
-            } else {
-                filtered.sortedByDescending { it.bitrate }
-            }
-        }
-
-        for (candidate in audioCandidates) {
-            var streamUrl: String? = candidate.url
-
-            if (candidate.signatureCipher != null) {
-                val cipherParams = io.ktor.http.parseQueryString(candidate.signatureCipher)
-                val obfuscatedSig = cipherParams["s"]
-                val sigParamName = cipherParams["sp"] ?: "sig"
-                val baseUrl = cipherParams["url"]
-
-                val solvedSig = decodedResult.signatures[obfuscatedSig]
-                if (baseUrl != null && solvedSig != null) {
-                    val separator = if (baseUrl.contains("?")) "&" else "?"
-                    streamUrl = "$baseUrl$separator$sigParamName=$solvedSig"
-                }
-            }
-
-            if (!streamUrl.isNullOrBlank()) {
-                val urlParams = io.ktor.http.parseQueryString(streamUrl)
-                val originalN = urlParams["n"]
-                val solvedN = decodedResult.nParameters[originalN]
-
-                if (!originalN.isNullOrBlank() && !solvedN.isNullOrBlank()) {
-                    streamUrl = streamUrl.replace("n=$originalN", "n=$solvedN")
-                }
-
-                // 2. APPLY THE SIMPMUSIC STRATEGY: Hardcode CPN and Range to bypass ExoPlayer 403s
-                val isManifestUrl = streamUrl.contains("manifest") || streamUrl.contains("m3u8")
-                streamUrl = if (isManifestUrl) {
-                    streamUrl.plus("&cpn=$cpn")
-                } else {
-                    val contentLength = candidate.contentLength ?: 10000000
-                    streamUrl.plus("&cpn=$cpn&range=0-$contentLength")
-                }
-
-                playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
-                    playbackTrackingCache[videoId] = baseUrl
-                }
-
-                return Triple(
-                    streamUrl,
-                    normalizeMimeType(candidate.mimeType),
-                    candidate.bitrate
-                )
-            }
-        }
-
-        throw Exception("Could not resolve stream URL for $videoId using WEB_REMIX")
+    val mimeType = "audio/" + candidate.format.name.lowercase().replace("m4a", "mp4")
+    Triple(candidate.content, mimeType, candidate.averageBitrate)
 }
     private fun normalizeMimeType(rawMimeType: String): String {
         val lower = rawMimeType.lowercase(Locale.US)
