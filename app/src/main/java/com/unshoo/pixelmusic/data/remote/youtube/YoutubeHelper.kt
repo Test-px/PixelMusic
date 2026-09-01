@@ -624,26 +624,28 @@ private suspend fun getSongUrlFromYoutube(
         requireM4a: Boolean = false
     ): Triple<String, String?, Int?> {
         val videoId = song.youtubeId ?: throw Exception("Invalid video ID")
+        
+        // SimpMusic Strategy: Generate a 16-character Client Playback Nonce (CPN)
+        val cpn = (1..16).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_".random() }.joinToString("")
+        
         val playerInfo = faradayEngine.playerInfo()
         val signatureTimestamp = playerInfo?.signatureTimestamp
 
-// Priority list of clients to bypass "Video unavailable" and PoToken blocks
+        // STRICT SIMPMUSIC STRATEGY: 
+        // 1. TVHTML5_SIMPLY_EMBEDDED_PLAYER bypasses PoToken and WebView timeouts entirely!
+        // 2. ANDROID_VR_NO_AUTH is an invincible native fallback.
+        // 3. WEB_REMIX is strictly the absolute last resort.
         val clientsToTry = listOf(
-            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.WEB_REMIX, // Highest audio quality (requires PoToken)
-            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // High quality, NO PoToken required!
-            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.IOS_MUSIC,
-            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.ANDROID_VR_NO_AUTH
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER to false,
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.ANDROID_VR_NO_AUTH to false,
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.WEB_REMIX to true
         )
 
         var lastException: Exception? = null
 
-        for (clientObj in clientsToTry) {
+        for ((clientObj, useLogin) in clientsToTry) {
             try {
-                // If using a no-auth client, don't send login cookies to prevent mismatch errors
-                val useLogin = clientObj != YouTubeClient.ANDROID_VR_NO_AUTH && 
-                               clientObj != YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER
-
-                val playerResResult = YouTube.player(
+                val playerResResult = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.player(
                     videoId = videoId,
                     playlistId = null,
                     client = clientObj,
@@ -668,18 +670,18 @@ private suspend fun getSongUrlFromYoutube(
                 }
 
                 val signaturesToSolve = allFormats.mapNotNull { it.signatureCipher }.mapNotNull {
-                    parseQueryString(it)["s"]
+                    io.ktor.http.parseQueryString(it)["s"]
                 }
 
                 val nParamsToSolve = allFormats.mapNotNull {
-                    it.url?.let { url -> parseQueryString(url)["n"] }
+                    it.url?.let { url -> io.ktor.http.parseQueryString(url)["n"] }
                         ?: it.signatureCipher?.let { sc ->
-                            val innerUrl = parseQueryString(sc)["url"] ?: ""
-                            parseQueryString(innerUrl)["n"]
+                            val innerUrl = io.ktor.http.parseQueryString(sc)["url"] ?: ""
+                            io.ktor.http.parseQueryString(innerUrl)["n"]
                         }
                 }
 
-                val decodedResult = if (playerInfo != null) {
+                val decodedResult = if (playerInfo != null && (signaturesToSolve.isNotEmpty() || nParamsToSolve.isNotEmpty())) {
                     faradayEngine.decode(
                         playerId = playerInfo.playerId,
                         signatures = signaturesToSolve,
@@ -717,7 +719,7 @@ private suspend fun getSongUrlFromYoutube(
                     var streamUrl: String? = candidate.url
 
                     if (candidate.signatureCipher != null) {
-                        val cipherParams = parseQueryString(candidate.signatureCipher)
+                        val cipherParams = io.ktor.http.parseQueryString(candidate.signatureCipher)
                         val obfuscatedSig = cipherParams["s"]
                         val sigParamName = cipherParams["sp"] ?: "sig"
                         val baseUrl = cipherParams["url"]
@@ -730,7 +732,7 @@ private suspend fun getSongUrlFromYoutube(
                     }
 
                     if (!streamUrl.isNullOrBlank()) {
-                        val urlParams = parseQueryString(streamUrl)
+                        val urlParams = io.ktor.http.parseQueryString(streamUrl)
                         val originalN = urlParams["n"]
                         val solvedN = decodedResult.nParameters[originalN]
 
@@ -738,8 +740,15 @@ private suspend fun getSongUrlFromYoutube(
                             streamUrl = streamUrl.replace("n=$originalN", "n=$solvedN")
                         }
 
-                        // Patch client version in URL if necessary to match the requested client
-                        streamUrl = StreamClientUtils.patchClientVersion(streamUrl, clientObj.clientVersion)
+                        // EXPLICIT SIMPMUSIC RANGE STRATEGY: Append range and cpn to bypass 403s permanently
+                        streamUrl = if (streamUrl.contains("range=")) {
+                            "$streamUrl&cpn=$cpn"
+                        } else {
+                            "$streamUrl&cpn=$cpn&range=0-${candidate.contentLength ?: 10000000}"
+                        }
+
+                        // Patch client version using StreamClientUtils
+                        streamUrl = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.patchClientVersion(streamUrl, clientObj.clientVersion)
 
                         playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
                             playbackTrackingCache[videoId] = baseUrl
@@ -754,7 +763,7 @@ private suspend fun getSongUrlFromYoutube(
                 }
             } catch (e: Exception) {
                 lastException = e
-                // Loop will automatically proceed to the next client (e.g. from WEB_REMIX -> ANDROID_VR_NO_AUTH)
+                continue // Silent fallback to the next invincible client without freezing the player
             }
         }
 
