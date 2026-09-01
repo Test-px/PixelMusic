@@ -47,14 +47,31 @@ data class AccountMenuResponse(
                             val email: Runs?,
                             val channelHandle: Runs?,
                             val accountPhoto: Thumbnails,
+                            val badges: List<Badge>? = null
                         ) {
+                            @Serializable
+                            data class Badge(
+                                val metadataBadgeRenderer: MetadataBadgeRenderer? = null
+                            ) {
+                                @Serializable
+                                data class MetadataBadgeRenderer(
+                                    val label: String? = null
+                                )
+                            }
+                            
                             fun toAccountInfo(): AccountInfo? {
                                 val name = accountName.runs?.firstOrNull()?.text ?: return null
+                                val hasProBadge = badges?.any { badge ->
+                                    val label = badge.metadataBadgeRenderer?.label ?: ""
+                                    label.contains("Pro", ignoreCase = true) || label.contains("Premium", ignoreCase = true)
+                                } ?: false
+                                
                                 return AccountInfo(
                                     name = name,
                                     email = email?.runs?.firstOrNull()?.text,
                                     channelHandle = channelHandle?.runs?.firstOrNull()?.text,
                                     thumbnailUrl = accountPhoto.thumbnails.lastOrNull()?.normalizedUrl,
+                                    isPro = hasProBadge
                                 )
                             }
                         }
