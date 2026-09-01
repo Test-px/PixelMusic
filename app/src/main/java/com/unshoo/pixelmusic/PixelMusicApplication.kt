@@ -40,6 +40,13 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 import com.unshoo.pixelmusic.utils.UpdateWorker
+import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.downloader.Downloader
+import org.schabi.newpipe.extractor.downloader.Request
+import org.schabi.newpipe.extractor.downloader.Response
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody
+
 
 @HiltAndroidApp
 class PixelMusicApplication : Application(), ImageLoaderFactory, Configuration.Provider {
@@ -105,6 +112,26 @@ class PixelMusicApplication : Application(), ImageLoaderFactory, Configuration.P
         super.onCreate()
 
         MediaItemBuilder.initialize(this)
+
+        val newPipeHttpClient = OkHttpClient.Builder().build()
+NewPipe.init(object : Downloader() {
+    override fun execute(request: Request): Response {
+        val builder = okhttp3.Request.Builder().url(request.url())
+        request.headers()?.forEach { (key, values) ->
+            values.forEach { builder.addHeader(key, it) }
+        }
+        if (request.httpMethod() == "POST") {
+            val body = request.dataToSend() ?: ByteArray(0)
+            builder.post(RequestBody.create(null, body))
+        }
+        val okHttpResponse = newPipeHttpClient.newCall(builder.build()).execute()
+        val headersMap = mutableMapOf<String, List<String>>()
+        okHttpResponse.headers.names().forEach { name ->
+            headersMap[name] = okHttpResponse.headers.values(name)
+        }
+        return Response(okHttpResponse.code, okHttpResponse.message, headersMap, okHttpResponse.body?.string() ?: "", okHttpResponse.request.url.toString())
+    }
+})
 
         // Initialize Last.fm client
         com.unshoo.pixelmusic.data.lastfm.LastFM.initialize(
