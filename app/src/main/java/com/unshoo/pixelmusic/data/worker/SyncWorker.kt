@@ -1407,6 +1407,23 @@ constructor(
             val isMobile = isMobileNetwork(applicationContext)
             val localPlaylistsExist = appDatabase.playlistRepository().getAll().isNotEmpty()
 
+            // 0. Fetch & Sync User Profile with Google Pro/Premium Badge
+            try {
+                if (settings.cookies.raw.isNotBlank()) {
+                    YouTube.accountInfo().onSuccess { accountInfo ->
+                        youtubeDatastoreRepository.saveYtProfile(
+                            name = accountInfo.name,
+                            handle = accountInfo.channelHandle ?: "",
+                            avatarUrl = accountInfo.thumbnailUrl ?: "",
+                            isPro = accountInfo.isPro
+                        )
+                        Log.i(TAG, "Synced YouTube account info: ${accountInfo.name}, isPro: ${accountInfo.isPro}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync YouTube account info", e)
+            }
+
             // 1. Fetch remote user-created playlists (delta sync — only insert new songs)
             var remotePlaylistsSuccess = false
             try {
