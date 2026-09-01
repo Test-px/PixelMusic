@@ -632,7 +632,10 @@ private suspend fun getSongUrlFromYoutube(
     if (audioStreams.isNullOrEmpty()) throw Exception("No audio streams found for $videoId")
 
     val filteredStreams = if (requireM4a) {
-        audioStreams.filter { it.format.name.contains("m4a", true) || it.format.name.contains("mp4", true) }
+        audioStreams.filter { 
+            val formatName = it.format?.name ?: ""
+            formatName.contains("m4a", true) || formatName.contains("mp4", true) 
+        }
     } else audioStreams
     
     val targetStreams = if (filteredStreams.isNotEmpty()) filteredStreams else audioStreams
@@ -648,7 +651,8 @@ private suspend fun getSongUrlFromYoutube(
         else -> targetStreams.maxByOrNull { it.averageBitrate }
     } ?: targetStreams.first()
 
-    val mimeType = "audio/" + candidate.format.name.lowercase().replace("m4a", "mp4")
+    val formatName = candidate.format?.name ?: "mp4"
+    val mimeType = "audio/" + formatName.lowercase().replace("m4a", "mp4")
     Triple(candidate.content, mimeType, candidate.averageBitrate)
 }
     private fun normalizeMimeType(rawMimeType: String): String {
