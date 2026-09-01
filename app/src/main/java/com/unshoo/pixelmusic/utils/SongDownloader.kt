@@ -1,27 +1,37 @@
 package com.unshoo.pixelmusic.utils
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
-import okhttp3.Request
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.StandardArtwork
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.nio.ByteBuffer
+import java.util.Locale
 
 object SongDownloader {
+
+    private const val CHANNEL_ID = "pixelmusic_download_channel"
+    private const val CHUNK_SIZE = 5 * 1024 * 1024L // 5MB throttle-bypass chunks
 
     suspend fun downloadAndTagSong(
         context: Context,
@@ -32,12 +42,27 @@ object SongDownloader {
         var tempRemuxedFile: File? = null
         var tempImageFile: File? = null
 
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationId = (song.youtubeId ?: song.id).hashCode()
+
+        createNotificationChannel(notificationManager)
+
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle(song.title)
+            .setContentText("Connecting...")
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setProgress(100, 0, true)
+
         try {
+            updateNotification(notificationManager, notificationId, notificationBuilder)
+
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Downloading ${song.title}...", Toast.LENGTH_SHORT).show()
             }
 
-            // 1. Get the stream URL honoring the user's Quality settings
+            // 1. Resolve stream URL
             val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
                 youtubeId = song.youtubeId ?: song.id.removePrefix("youtube_"),
                 title = song.title,
@@ -54,44 +79,124 @@ object SongDownloader {
 
             tempAudioFile = File(context.cacheDir, "raw_$fileName")
             tempRemuxedFile = File(context.cacheDir, "clean_$fileName")
-            tempImageFile = File(context.cacheDir, "temp_cover.jpg")
+            tempImageFile = File(context.cacheDir, "temp_cover_${System.currentTimeMillis()}.jpg")
 
-            // 2. Download the audio file with WEB_REMIX headers and unlimited call timeout
-            val downloadClient = YoutubeHelper.client.newBuilder()
-                .callTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS) // Disable 4s call timeout
-                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
-                .writeTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
-                .build()
-
-            val audioRequest = Request.Builder()
-                .get()
-                .url(streamUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
-                .header("Origin", "https://music.youtube.com")
-                .header("Referer", "https://music.youtube.com/")
-                .build()
-
-            val audioResponse = downloadClient.newCall(audioRequest).execute()
-            if (!audioResponse.isSuccessful && audioResponse.code != 206) {
-                throw Exception("Failed to download audio. Code: ${audioResponse.code}")
-            }
-
-            audioResponse.body?.byteStream()?.use { input ->
-                FileOutputStream(tempAudioFile).use { output ->
-                    input.copyTo(output)
+            // 2. Concurrently download album artwork via native HttpURLConnection
+            val imageDownloadJob = async(Dispatchers.IO) {
+                if (!song.albumArtUriString.isNullOrBlank()) {
+                    try {
+                        val url = URL(song.albumArtUriString!!)
+                        val connection = (url.openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 15000
+                            readTimeout = 15000
+                            instanceFollowRedirects = true
+                        }
+                        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                            connection.inputStream.use { input ->
+                                FileOutputStream(tempImageFile).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                        }
+                        connection.disconnect()
+                    } catch (_: Exception) {
+                        // Non-fatal if cover art fetch fails
+                    }
                 }
             }
 
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Processing audio file...", Toast.LENGTH_SHORT).show()
+            // 3. Download audio file in 5MB chunks via HttpURLConnection with accurate live progress
+            var startByte = 0L
+            var totalBytes = -1L
+            var totalDownloaded = 0L
+            var isFinished = false
+            var lastNotificationUpdateTime = 0L
+
+            FileOutputStream(tempAudioFile).use { output ->
+                while (!isFinished) {
+                    val endByte = startByte + CHUNK_SIZE - 1
+                    val connection = (URL(streamUrl).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15000
+                        readTimeout = 60000
+                        requestMethod = "GET"
+                        setRequestProperty("Range", "bytes=$startByte-$endByte")
+                        setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+                        setRequestProperty("Origin", "https://music.youtube.com")
+                        setRequestProperty("Referer", "https://music.youtube.com/")
+                        instanceFollowRedirects = true
+                    }
+
+                    try {
+                        connection.connect()
+                        val responseCode = connection.responseCode
+                        if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                            throw Exception("Chunk download failed. HTTP Code: $responseCode")
+                        }
+
+                        // Determine total file size from Content-Range header (e.g. "bytes 0-5242879/12582912")
+                        if (totalBytes <= 0) {
+                            val contentRange = connection.getHeaderField("Content-Range")
+                            if (contentRange != null && contentRange.contains("/")) {
+                                totalBytes = contentRange.substringAfterLast("/").trim().toLongOrNull() ?: -1L
+                            }
+                            if (totalBytes <= 0) {
+                                totalBytes = connection.contentLengthLong
+                            }
+                        }
+
+                        val inputStream = connection.inputStream
+                        val buffer = ByteArray(64 * 1024)
+                        var bytesRead: Int
+                        var chunkReadTotal = 0L
+
+                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                            chunkReadTotal += bytesRead
+                            totalDownloaded += bytesRead
+
+                            val now = System.currentTimeMillis()
+                            if (now - lastNotificationUpdateTime > 250L) { // Throttle updates to 4Hz to prevent UI lag
+                                lastNotificationUpdateTime = now
+                                updateLiveProgress(
+                                    notificationManager,
+                                    notificationId,
+                                    notificationBuilder,
+                                    totalDownloaded,
+                                    totalBytes
+                                )
+                            }
+                        }
+
+                        if (chunkReadTotal < CHUNK_SIZE) {
+                            isFinished = true
+                        }
+                        startByte += chunkReadTotal
+                        inputStream.close()
+                    } finally {
+                        connection.disconnect()
+                    }
+                }
+                output.flush()
             }
 
-            // 3. Remux DASH M4A to Standard M4A
-            // YouTube sends fragmented/DASH MP4s which crash jaudiotagger.
-            // We use Android's native MediaMuxer to repackage it instantly without quality loss.
-            val extractor = MediaExtractor()
-            extractor.setDataSource(tempAudioFile.absolutePath)
+            // Ensure final 100% download state is reflected
+            updateLiveProgress(
+                notificationManager,
+                notificationId,
+                notificationBuilder,
+                totalDownloaded,
+                if (totalBytes > 0) totalBytes else totalDownloaded
+            )
+
+            // 4. Remux DASH M4A to Standard M4A
+            notificationBuilder
+                .setContentText("Processing audio file...")
+                .setProgress(100, 100, true)
+            updateNotification(notificationManager, notificationId, notificationBuilder)
+
+            val extractor = MediaExtractor().apply {
+                setDataSource(tempAudioFile.absolutePath)
+            }
 
             var audioTrackIndex = -1
             for (i in 0 until extractor.trackCount) {
@@ -111,7 +216,7 @@ object SongDownloader {
                 val muxerTrackIndex = muxer.addTrack(format)
                 muxer.start()
 
-                val buffer = ByteBuffer.allocate(1024 * 1024)
+                val buffer = ByteBuffer.allocateDirect(1024 * 1024)
                 val bufferInfo = MediaCodec.BufferInfo()
 
                 while (true) {
@@ -133,24 +238,12 @@ object SongDownloader {
                 throw Exception("No audio track found in downloaded file")
             }
 
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Writing metadata...", Toast.LENGTH_SHORT).show()
-            }
+            imageDownloadJob.await()
 
-            // 4. Download Album Art
-            if (!song.albumArtUriString.isNullOrBlank()) {
-                val imageRequest = Request.Builder().url(song.albumArtUriString!!).build()
-                val imageResponse = YoutubeHelper.client.newCall(imageRequest).execute()
-                if (imageResponse.isSuccessful) {
-                    imageResponse.body?.byteStream()?.use { input ->
-                        FileOutputStream(tempImageFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                }
-            }
+            // 5. Embed Metadata using jaudiotagger
+            notificationBuilder.setContentText("Writing metadata...")
+            updateNotification(notificationManager, notificationId, notificationBuilder)
 
-            // 5. Embed Metadata using jaudiotagger on the REMUXED file
             val audioFile = AudioFileIO.read(tempRemuxedFile)
             val tag = audioFile.tagOrCreateAndSetDefault
 
@@ -159,19 +252,17 @@ object SongDownloader {
             if (!song.album.isNullOrBlank()) {
                 tag.setField(FieldKey.ALBUM, song.album)
             }
-
             if (!lyricsText.isNullOrBlank()) {
                 tag.setField(FieldKey.LYRICS, lyricsText)
             }
-
-            if (tempImageFile.exists()) {
+            if (tempImageFile.exists() && tempImageFile.length() > 0) {
                 val artwork = StandardArtwork.createArtworkFromFile(tempImageFile)
                 tag.setField(artwork)
             }
 
             audioFile.commit()
 
-            // 6. Move to Public MediaStore
+            // 6. Save to Public MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
                 put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
@@ -190,9 +281,22 @@ object SongDownloader {
 
             resolver.openOutputStream(uri)?.use { outputStream ->
                 tempRemuxedFile.inputStream().use { inputStream ->
-                    inputStream.copyTo(outputStream)
+                    val copyBuffer = ByteArray(64 * 1024)
+                    var readCount: Int
+                    while (inputStream.read(copyBuffer).also { readCount = it } != -1) {
+                        outputStream.write(copyBuffer, 0, readCount)
+                    }
+                    outputStream.flush()
                 }
             }
+
+            notificationBuilder
+                .setContentText("Download complete (${formatMb(totalDownloaded)})")
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setProgress(0, 0, false)
+                .setOngoing(false)
+                .setAutoCancel(true)
+            updateNotification(notificationManager, notificationId, notificationBuilder)
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Saved to Music/PixelMusic!", Toast.LENGTH_LONG).show()
@@ -202,6 +306,15 @@ object SongDownloader {
 
         } catch (e: Exception) {
             e.printStackTrace()
+
+            notificationBuilder
+                .setContentText("Download failed: ${e.message ?: "Unknown error"}")
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setProgress(0, 0, false)
+                .setOngoing(false)
+                .setAutoCancel(true)
+            updateNotification(notificationManager, notificationId, notificationBuilder)
+
             withContext(Dispatchers.Main) {
                 val errorMsg = e.message ?: "Unknown error"
                 Toast.makeText(context, "Download failed: $errorMsg", Toast.LENGTH_LONG).show()
@@ -213,5 +326,58 @@ object SongDownloader {
             tempRemuxedFile?.takeIf { it.exists() }?.delete()
             tempImageFile?.takeIf { it.exists() }?.delete()
         }
+    }
+
+    private fun createNotificationChannel(notificationManager: NotificationManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Song Downloads",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shows live download progress for songs"
+                setShowBadge(false)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun updateLiveProgress(
+        notificationManager: NotificationManager,
+        notificationId: Int,
+        builder: NotificationCompat.Builder,
+        currentBytes: Long,
+        totalBytes: Long
+    ) {
+        if (totalBytes > 0) {
+            val progressPercent = ((currentBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
+            val currentMb = formatMb(currentBytes)
+            val totalMb = formatMb(totalBytes)
+            builder
+                .setContentText("$currentMb / $totalMb ($progressPercent%)")
+                .setProgress(100, progressPercent, false)
+        } else {
+            builder
+                .setContentText("${formatMb(currentBytes)} downloaded")
+                .setProgress(0, 0, true)
+        }
+        updateNotification(notificationManager, notificationId, builder)
+    }
+
+    private fun updateNotification(
+        notificationManager: NotificationManager,
+        notificationId: Int,
+        builder: NotificationCompat.Builder
+    ) {
+        try {
+            notificationManager.notify(notificationId, builder.build())
+        } catch (_: SecurityException) {
+            // Handled safely if POST_NOTIFICATIONS runtime permission has not been granted yet
+        }
+    }
+
+    private fun formatMb(bytes: Long): String {
+        val mb = bytes.toDouble() / (1024.0 * 1024.0)
+        return String.format(Locale.US, "%.1f MB", mb)
     }
 }
