@@ -627,12 +627,12 @@ private suspend fun getSongUrlFromYoutube(
         val playerInfo = faradayEngine.playerInfo()
         val signatureTimestamp = playerInfo?.signatureTimestamp
 
-        // Priority list of clients to bypass "Video unavailable" and PoToken blocks
+// Priority list of clients to bypass "Video unavailable" and PoToken blocks
         val clientsToTry = listOf(
-            YouTubeClient.ANDROID_VR_NO_AUTH, // Highly resistant to blocks
-            YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // No PoToken required
-            YouTubeClient.IOS,
-            YouTubeClient.WEB_REMIX
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.WEB_REMIX, // Highest audio quality (requires PoToken)
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // High quality, NO PoToken required!
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.IOS_MUSIC,
+            unshoo.ianshulyadav.pixelmusic.innertube.models.YouTubeClient.ANDROID_VR_NO_AUTH
         )
 
         var lastException: Exception? = null
