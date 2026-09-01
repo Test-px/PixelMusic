@@ -631,7 +631,7 @@ class DualPlayerEngine @Inject constructor(
                     fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
     val urlStr = resolvedUri.toString()
     if (urlStr.startsWith("http")) {
-        // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter!
+        // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter
         val profile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
         val headers = mutableMapOf<String, String>()
         
