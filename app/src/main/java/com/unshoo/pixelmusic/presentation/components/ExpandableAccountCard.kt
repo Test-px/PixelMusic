@@ -108,24 +108,24 @@ fun ExpandableAccountCard(
                         }
                     }
                     
-    if (isPro) {
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = Color(0xFFE8F0FE), // Light blue container
-            border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
-            modifier = Modifier.offset(y = 8.dp)
-        ) {
-            Text(
-                text = "Pro",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = Color(0xFF1967D2), // Google Blue
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-            )
-        }
-    }
+                    if (isPro) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFFE8F0FE), // Google light blue
+                            border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
+                            modifier = Modifier.offset(y = 8.dp)
+                        ) {
+                            Text(
+                                text = "Pro",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = Color(0xFF1967D2), // Google deep blue
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
 
                 Column(
