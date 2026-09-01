@@ -166,12 +166,12 @@ fun ExpandableAccountCard(
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, bottom = 12.dp)
+                       .fillMaxWidth()
+                       .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
                 ) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(horizontal = 8.dp, bottom = 8.dp)
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                     )
 
                     Surface(
