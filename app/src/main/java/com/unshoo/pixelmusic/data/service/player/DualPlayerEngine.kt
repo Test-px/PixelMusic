@@ -628,18 +628,21 @@ class DualPlayerEngine @Inject constructor(
                         return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
                     }
 
-fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
+                    fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
     val urlStr = resolvedUri.toString()
     if (urlStr.startsWith("http")) {
-        val headers = mapOf(
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-            "Origin" to "https://music.youtube.com",
-            "Referer" to "https://music.youtube.com/"
-        )
+        // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter!
+        val profile = unshoo.ianshulyadav.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
+        val headers = mutableMapOf<String, String>()
+        
+        headers["User-Agent"] = profile.userAgent
+        if (profile.origin != null) headers["Origin"] = profile.origin
+        if (profile.referer != null) headers["Referer"] = profile.referer
+        
         this.setHttpRequestHeaders(headers)
     }
     return this
-}
+                    }
 
                     val resolved = resolvedUriCache.get(originalUri)
                     if (resolved != null) {
@@ -667,16 +670,9 @@ fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
         }
         
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-    .setAllowCrossProtocolRedirects(true)
-    .setConnectTimeoutMs(8000)
-    .setReadTimeoutMs(8000)
-    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
-    .setDefaultRequestProperties(
-        mapOf(
-            "Referer" to "https://music.youtube.com/",
-            "Origin" to "https://music.youtube.com"
-        )
-    )
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(8000)
             
         val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val cacheDataSourceFactory = CacheDataSource.Factory()
