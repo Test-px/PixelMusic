@@ -18,6 +18,8 @@ val Context.youtubeDataStore: DataStore<Preferences> by preferencesDataStore(nam
 
 open class DatastoreRepository(private val context: Context) {
     object PreferenceKeys {
+        val YT_AVATAR_URL = stringPreferencesKey("yt_avatar_url")
+        val IS_PRO_USER = booleanPreferencesKey("is_pro_user")
         val COOKIES = stringPreferencesKey(Constants.Datastore.COOKIES_KEY)
         val DATA_SYNC_ID = stringPreferencesKey(Constants.Datastore.DATA_SYNC_ID)
         val UPDATE_CHANNEL = stringPreferencesKey(Constants.Datastore.UPDATE_CHANNEL_KEY)
@@ -122,11 +124,16 @@ open class DatastoreRepository(private val context: Context) {
         it[PreferenceKeys.YT_AVATAR_URL] ?: ""
     }
 
-    suspend fun saveYtProfile(name: String, handle: String, avatarUrl: String) {
+    val ytIsProUser = context.youtubeDataStore.data.map {
+        it[PreferenceKeys.IS_PRO_USER] ?: false
+    }
+
+    suspend fun saveYtProfile(name: String, handle: String, avatarUrl: String, isPro: Boolean = false) {
         context.youtubeDataStore.edit {
             it[PreferenceKeys.YT_USERNAME] = name
             it[PreferenceKeys.YT_HANDLE] = handle
             it[PreferenceKeys.YT_AVATAR_URL] = avatarUrl
+            it[PreferenceKeys.IS_PRO_USER] = isPro
         }
     }
 
