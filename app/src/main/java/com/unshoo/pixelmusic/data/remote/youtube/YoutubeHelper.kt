@@ -615,7 +615,7 @@ object YoutubeHelper {
         return sortGroup(opusFormats) + sortGroup(m4aFormats) + sortGroup(webmFormats) + sortGroup(otherFormats)
     }
 
-    private suspend fun getSongUrlFromYoutube(
+private suspend fun getSongUrlFromYoutube(
         context: Context,
         song: Song,
         retries: Int = Constants.YoutubeApi.RETRY_COUNT,
@@ -623,123 +623,143 @@ object YoutubeHelper {
         maxBitrateKbps: Int = 0,
         requireM4a: Boolean = false
     ): Triple<String, String?, Int?> {
-        val videoId = song.youtubeId
-        val clientObj = YouTubeClient.WEB_REMIX
-
+        val videoId = song.youtubeId ?: throw Exception("Invalid video ID")
         val playerInfo = faradayEngine.playerInfo()
         val signatureTimestamp = playerInfo?.signatureTimestamp
 
-        val playerResResult = YouTube.player(
-            videoId = videoId,
-            playlistId = null,
-            client = clientObj,
-            signatureTimestamp = signatureTimestamp,
-            setLogin = true
+        // Priority list of clients to bypass "Video unavailable" and PoToken blocks
+        val clientsToTry = listOf(
+            YouTubeClient.ANDROID_VR_NO_AUTH, // Highly resistant to blocks
+            YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER, // No PoToken required
+            YouTubeClient.IOS,
+            YouTubeClient.WEB_REMIX
         )
 
-        val playerResponse = playerResResult.getOrNull()
-            ?: throw Exception("Failed to fetch WEB_REMIX player response for $videoId")
+        var lastException: Exception? = null
 
-        if (playerResponse.playabilityStatus.status != "OK") {
-            throw Exception("Track unplayable: ${playerResponse.playabilityStatus.reason}")
-        }
+        for (clientObj in clientsToTry) {
+            try {
+                // If using a no-auth client, don't send login cookies to prevent mismatch errors
+                val useLogin = clientObj != YouTubeClient.ANDROID_VR_NO_AUTH && 
+                               clientObj != YouTubeClient.TVHTML5_SIMPLY_EMBEDDED_PLAYER
 
-        val streamingData = playerResponse.streamingData
-            ?: throw Exception("No streaming data in response for $videoId")
-
-        val allFormats = (streamingData.formats.orEmpty() + streamingData.adaptiveFormats)
-            .filter { it.isAudio || it.url != null || it.signatureCipher != null }
-
-        if (allFormats.isEmpty()) {
-            throw Exception("No audio formats available for $videoId")
-        }
-
-        val signaturesToSolve = allFormats.mapNotNull { it.signatureCipher }.mapNotNull {
-            parseQueryString(it)["s"]
-        }
-
-        val nParamsToSolve = allFormats.mapNotNull {
-            it.url?.let { url -> parseQueryString(url)["n"] }
-                ?: it.signatureCipher?.let { sc ->
-                    val innerUrl = parseQueryString(sc)["url"] ?: ""
-                    parseQueryString(innerUrl)["n"]
-                }
-        }
-
-        val decodedResult = if (playerInfo != null) {
-            faradayEngine.decode(
-                playerId = playerInfo.playerId,
-                signatures = signaturesToSolve,
-                nParameters = nParamsToSolve
-            )
-        } else {
-            FaradayCipherEngine.DecodeResult(emptyMap(), emptyMap())
-        }
-
-        val audioCandidates = allFormats.filter { it.isAudio }.let { group ->
-            val filtered = if (requireM4a) {
-                val m4aOnly = group.filter { 
-                    it.mimeType.contains("mp4", ignoreCase = true) || 
-                    it.mimeType.contains("m4a", ignoreCase = true) 
-                }
-                if (m4aOnly.isNotEmpty()) m4aOnly else group
-            } else {
-                group
-            }
-
-            if (maxBitrateKbps > 0) {
-                val bpsCeiling = maxBitrateKbps * 1000
-                val withinCeiling = filtered.filter { it.bitrate <= bpsCeiling }
-                if (withinCeiling.isNotEmpty()) {
-                    withinCeiling.sortedByDescending { it.bitrate }
-                } else {
-                    filtered.sortedBy { it.bitrate }
-                }
-            } else {
-                filtered.sortedByDescending { it.bitrate }
-            }
-        }
-
-        for (candidate in audioCandidates) {
-            var streamUrl: String? = candidate.url
-
-            if (candidate.signatureCipher != null) {
-                val cipherParams = parseQueryString(candidate.signatureCipher)
-                val obfuscatedSig = cipherParams["s"]
-                val sigParamName = cipherParams["sp"] ?: "sig"
-                val baseUrl = cipherParams["url"]
-
-                val solvedSig = decodedResult.signatures[obfuscatedSig]
-                if (baseUrl != null && solvedSig != null) {
-                    val separator = if (baseUrl.contains("?")) "&" else "?"
-                    streamUrl = "$baseUrl$separator$sigParamName=$solvedSig"
-                }
-            }
-
-            if (!streamUrl.isNullOrBlank()) {
-                val urlParams = parseQueryString(streamUrl)
-                val originalN = urlParams["n"]
-                val solvedN = decodedResult.nParameters[originalN]
-
-                if (!originalN.isNullOrBlank() && !solvedN.isNullOrBlank()) {
-                    streamUrl = streamUrl.replace("n=$originalN", "n=$solvedN")
-                }
-
-                playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
-                    playbackTrackingCache[videoId] = baseUrl
-                }
-
-                return Triple(
-                    streamUrl,
-                    normalizeMimeType(candidate.mimeType),
-                    candidate.bitrate
+                val playerResResult = YouTube.player(
+                    videoId = videoId,
+                    playlistId = null,
+                    client = clientObj,
+                    signatureTimestamp = signatureTimestamp,
+                    setLogin = useLogin
                 )
+
+                val playerResponse = playerResResult.getOrNull()
+                
+                if (playerResponse == null || playerResponse.playabilityStatus.status != "OK") {
+                    throw Exception("Track unplayable on ${clientObj.clientName}: ${playerResponse?.playabilityStatus?.reason}")
+                }
+
+                val streamingData = playerResponse.streamingData
+                    ?: throw Exception("No streaming data in response")
+
+                val allFormats = (streamingData.formats.orEmpty() + streamingData.adaptiveFormats)
+                    .filter { it.isAudio || it.url != null || it.signatureCipher != null }
+
+                if (allFormats.isEmpty()) {
+                    throw Exception("No audio formats available")
+                }
+
+                val signaturesToSolve = allFormats.mapNotNull { it.signatureCipher }.mapNotNull {
+                    parseQueryString(it)["s"]
+                }
+
+                val nParamsToSolve = allFormats.mapNotNull {
+                    it.url?.let { url -> parseQueryString(url)["n"] }
+                        ?: it.signatureCipher?.let { sc ->
+                            val innerUrl = parseQueryString(sc)["url"] ?: ""
+                            parseQueryString(innerUrl)["n"]
+                        }
+                }
+
+                val decodedResult = if (playerInfo != null) {
+                    faradayEngine.decode(
+                        playerId = playerInfo.playerId,
+                        signatures = signaturesToSolve,
+                        nParameters = nParamsToSolve
+                    )
+                } else {
+                    com.unshoo.pixelmusic.data.remote.youtube.cipher.FaradayCipherEngine.DecodeResult(emptyMap(), emptyMap())
+                }
+
+                val audioCandidates = allFormats.filter { it.isAudio }.let { group ->
+                    val filtered = if (requireM4a) {
+                        val m4aOnly = group.filter { 
+                            it.mimeType.contains("mp4", ignoreCase = true) || 
+                            it.mimeType.contains("m4a", ignoreCase = true) 
+                        }
+                        if (m4aOnly.isNotEmpty()) m4aOnly else group
+                    } else {
+                        group
+                    }
+
+                    if (maxBitrateKbps > 0) {
+                        val bpsCeiling = maxBitrateKbps * 1000
+                        val withinCeiling = filtered.filter { it.bitrate <= bpsCeiling }
+                        if (withinCeiling.isNotEmpty()) {
+                            withinCeiling.sortedByDescending { it.bitrate }
+                        } else {
+                            filtered.sortedBy { it.bitrate }
+                        }
+                    } else {
+                        filtered.sortedByDescending { it.bitrate }
+                    }
+                }
+
+                for (candidate in audioCandidates) {
+                    var streamUrl: String? = candidate.url
+
+                    if (candidate.signatureCipher != null) {
+                        val cipherParams = parseQueryString(candidate.signatureCipher)
+                        val obfuscatedSig = cipherParams["s"]
+                        val sigParamName = cipherParams["sp"] ?: "sig"
+                        val baseUrl = cipherParams["url"]
+
+                        val solvedSig = decodedResult.signatures[obfuscatedSig]
+                        if (baseUrl != null && solvedSig != null) {
+                            val separator = if (baseUrl.contains("?")) "&" else "?"
+                            streamUrl = "$baseUrl$separator$sigParamName=$solvedSig"
+                        }
+                    }
+
+                    if (!streamUrl.isNullOrBlank()) {
+                        val urlParams = parseQueryString(streamUrl)
+                        val originalN = urlParams["n"]
+                        val solvedN = decodedResult.nParameters[originalN]
+
+                        if (!originalN.isNullOrBlank() && !solvedN.isNullOrBlank()) {
+                            streamUrl = streamUrl.replace("n=$originalN", "n=$solvedN")
+                        }
+
+                        // Patch client version in URL if necessary to match the requested client
+                        streamUrl = StreamClientUtils.patchClientVersion(streamUrl, clientObj.clientVersion)
+
+                        playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
+                            playbackTrackingCache[videoId] = baseUrl
+                        }
+
+                        return Triple(
+                            streamUrl,
+                            normalizeMimeType(candidate.mimeType),
+                            candidate.bitrate
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                lastException = e
+                // Loop will automatically proceed to the next client (e.g. from WEB_REMIX -> ANDROID_VR_NO_AUTH)
             }
         }
 
-        throw Exception("Could not resolve stream URL for $videoId using WEB_REMIX")
-    }
-
+        throw Exception("Could not resolve stream URL for $videoId. Last error: ${lastException?.message}")
+}
     private fun normalizeMimeType(rawMimeType: String): String {
         val lower = rawMimeType.lowercase(Locale.US)
         return when {
