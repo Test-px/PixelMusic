@@ -155,6 +155,10 @@
 -keep class unshoo.ianshulyadav.pixelmusic.innertube.utils.** { *; }
 -keep class com.unshoo.pixelmusic.data.model.youtube.** { *; }
 
+-keep class org.schabi.newpipe.extractor.** { *; }
+-keep class org.mozilla.javascript.** { *; }
+-keep class com.grack.nanojson.** { *; }
+
 
 # Mozilla Rhino JS engine references missing javax.script API
 -dontwarn javax.script.**
