@@ -18,7 +18,6 @@ val Context.youtubeDataStore: DataStore<Preferences> by preferencesDataStore(nam
 
 open class DatastoreRepository(private val context: Context) {
     object PreferenceKeys {
-        val YT_AVATAR_URL = stringPreferencesKey("yt_avatar_url")
         val IS_PRO_USER = booleanPreferencesKey("is_pro_user")
         val COOKIES = stringPreferencesKey(Constants.Datastore.COOKIES_KEY)
         val DATA_SYNC_ID = stringPreferencesKey(Constants.Datastore.DATA_SYNC_ID)
