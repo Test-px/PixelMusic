@@ -52,14 +52,14 @@ fun ExpandableAccountCard(
 
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
 
-    // Google-style ring colors
+    // Google Blue-Purple AI Pro Gradient
     val proGradient = Brush.sweepGradient(
         colors = listOf(
-            Color(0xFF4285F4), // Blue
-            Color(0xFFEA4335), // Red
-            Color(0xFFFBBC05), // Yellow
-            Color(0xFF34A853), // Green
-            Color(0xFF4285F4)  // Blue
+            Color(0xFF4285F4), // Electric Blue
+            Color(0xFF7C4DFF), // Deep Violet
+            Color(0xFF9C27B0), // Purple/Magenta
+            Color(0xFF00B0FF), // Sky Cyan
+            Color(0xFF4285F4)  // Electric Blue
         )
     )
 
@@ -108,20 +108,24 @@ fun ExpandableAccountCard(
                         }
                     }
                     
-                    if (isPro) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.offset(y = 8.dp)
-                        ) {
-                            Text(
-                                text = "Pro",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
+    if (isPro) {
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = Color(0xFFE8F0FE), // Light blue container
+            border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
+            modifier = Modifier.offset(y = 8.dp)
+        ) {
+            Text(
+                text = "Pro",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Color(0xFF1967D2), // Google Blue
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+    }
                 }
 
                 Column(
