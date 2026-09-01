@@ -178,3 +178,6 @@
 -dontwarn io.ktor.client.plugins.contentnegotiation.**
 -dontwarn com.google.ai.client.generativeai.**
 
+# Ignore missing jdk.dynalink classes referenced by Mozilla Rhino JS engine
+-dontwarn jdk.dynalink.**
+
