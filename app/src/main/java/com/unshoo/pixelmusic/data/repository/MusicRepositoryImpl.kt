@@ -1489,7 +1489,7 @@ class MusicRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun handleDownloadOnLike(song: Song, isFavorite: Boolean) {
+private fun handleDownloadOnLike(song: Song, isFavorite: Boolean) {
         repositoryScope.launch(Dispatchers.IO) {
             try {
                 val isDownloadOnLikeEnabled = userPreferencesRepository.cacheLikedSongsOfflineFlow.first()
@@ -1503,32 +1503,8 @@ class MusicRepositoryImpl @Inject constructor(
                     val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                     val targetFile = java.io.File(pixelMusicDir, "$cleanTitle - $cleanArtist.m4a")
 
-                    // 1. Setup Notification Manager & Channel
-                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                    val channelId = "pixel_music_downloads"
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        val channel = android.app.NotificationChannel(
-                            channelId,
-                            "Downloads",
-                            android.app.NotificationManager.IMPORTANCE_LOW
-                        ).apply { description = "Offline music downloads" }
-                        notificationManager.createNotificationChannel(channel)
-                    }
-
-                    val notifId = song.id.hashCode()
-
                     if (isFavorite) {
                         if (!targetFile.exists()) {
-                            // 2. Show "Downloading..." progress notification
-                            val downloadingNotification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                                .setSmallIcon(com.unshoo.pixelmusic.R.drawable.monochrome_player)
-                                .setContentTitle("Downloading: ${song.title}")
-                                .setContentText("Saving for offline playback...")
-                                .setProgress(0, 0, true) // Indeterminate progress bar
-                                .setOngoing(true)
-                                .build()
-                            notificationManager.notify(notifId, downloadingNotification)
-
                             val lyricsText = if (!song.lyrics.isNullOrBlank()) {
                                 val parsed = com.unshoo.pixelmusic.utils.LyricsUtils.parseLyrics(song.lyrics!!)
                                 if (!parsed.synced.isNullOrEmpty()) {
@@ -1538,58 +1514,23 @@ class MusicRepositoryImpl @Inject constructor(
                                 }
                             } else null
 
-                            val success = com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
+                            com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
                                 context = context,
                                 song = song,
                                 lyricsText = lyricsText
                             )
-
-                            if (success) {
-                                // 3. Create the Intent to open the app and play the song
-                                val playIntent = android.content.Intent(context, Class.forName("com.unshoo.pixelmusic.MainActivity")).apply {
-                                    action = "PLAY_DOWNLOADED_SONG"
-                                    putExtra("song_id", song.id)
-                                    putExtra("ACTION_SHOW_PLAYER", true)
-                                    flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                }
-                                val pendingIntent = android.app.PendingIntent.getActivity(
-                                    context, 
-                                    notifId, 
-                                    playIntent, 
-                                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-                                )
-
-                                // 4. Show "Success" notification with the tap-to-play intent
-                                val successNotification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                                    .setSmallIcon(com.unshoo.pixelmusic.R.drawable.monochrome_player)
-                                    .setContentTitle("Downloaded: ${song.title}")
-                                    .setContentText("Tap to play offline")
-                                    .setContentIntent(pendingIntent)
-                                    .setAutoCancel(true)
-                                    .build()
-                                notificationManager.notify(notifId, successNotification)
-                            } else {
-                                // 5. Show "Failed" notification
-                                val failNotification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                                    .setSmallIcon(com.unshoo.pixelmusic.R.drawable.monochrome_player)
-                                    .setContentTitle("Download failed: ${song.title}")
-                                    .setAutoCancel(true)
-                                    .build()
-                                notificationManager.notify(notifId, failNotification)
-                            }
                         }
                     } else {
-                        // Cleanup file if unliked
                         if (targetFile.exists() && targetFile.canWrite()) {
                             targetFile.delete()
                             
-                            // 6. Show "Deleted" notification
-                            val deleteNotification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                                .setSmallIcon(com.unshoo.pixelmusic.R.drawable.monochrome_player)
+                            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                            val deleteNotification = androidx.core.app.NotificationCompat.Builder(context, "pixelmusic_song_download_channel")
+                                .setSmallIcon(android.R.drawable.ic_menu_delete) // Or your preferred icon
                                 .setContentTitle("Removed from device: ${song.title}")
                                 .setAutoCancel(true)
                                 .build()
-                            notificationManager.notify(notifId + 1, deleteNotification)
+                            notificationManager.notify(song.id.hashCode() + 1, deleteNotification)
                             
                             withContext(Dispatchers.Main) {
                                 android.widget.Toast.makeText(
@@ -1605,5 +1546,5 @@ class MusicRepositoryImpl @Inject constructor(
                 Timber.e(e, "Error handling download on like")
             }
         }
-    }
+}
 }
