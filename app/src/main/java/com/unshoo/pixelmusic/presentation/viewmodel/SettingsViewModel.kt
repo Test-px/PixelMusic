@@ -146,6 +146,7 @@ data class SettingsUiState(
     val ytUsername: String = "",
     val ytHandle: String = "",
     val ytAvatarUrl: String = "",
+    val ytIsProUser: Boolean = false,
     val performanceModeEnabled: Boolean = false,
     val audioOffloadEnabled: Boolean = false,
     val preferTelegramAlternative: Boolean = false,
@@ -940,6 +941,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             datastoreRepository.ytAvatarUrl.collect { value ->
                 _uiState.update { it.copy(ytAvatarUrl = value) }
+            }
+        }
+        viewModelScope.launch {
+            datastoreRepository.ytIsProUser.collect { value ->
+                _uiState.update { it.copy(ytIsProUser = value) }
             }
         }
     }
