@@ -265,15 +265,24 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Pausing to recover without skipping.")
-            playerA.playWhenReady = false
-            if (transitionRunning) playerB.playWhenReady = false
-
+            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Attempting auto-skip recovery.")
+            
             val currentMediaId = playerA.currentMediaItem?.mediaId
             if (currentMediaId != null) {
-                val uriString = "youtube://$currentMediaId"
+                val uriString = if (currentMediaId.startsWith("youtube://")) currentMediaId else "youtube://$currentMediaId"
                 resolvedUriCache.remove(uriString)
                 activePlaybackResolvedUris.remove(uriString)
+            }
+
+            scope.launch {
+                delay(300)
+                if (playerA.hasNextMediaItem()) {
+                    playerA.seekToNextMediaItem()
+                    playerA.prepare()
+                    playerA.play()
+                } else {
+                    playerA.playWhenReady = false
+                }
             }
         }
 
@@ -638,15 +647,19 @@ fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
                     }
 
                     try {
-                        val fallbackResolved = runBlocking { resolveCloudUri(uri) }
-                        if (fallbackResolved != uri) {
+                        val fallbackResolved = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                            kotlinx.coroutines.withTimeoutOrNull(6000L) {
+                                resolveCloudUri(uri)
+                            }
+                        }
+                        if (fallbackResolved != null && fallbackResolved != uri) {
                             return dataSpec.buildUpon().setUri(fallbackResolved).applyYtHeaders(fallbackResolved).build()
                         } else {
-                            throw IOException("Stream resolution failed for $originalUri")
+                            throw IOException("Stream resolution failed or timed out for $originalUri")
                         }
                     } catch (e: Exception) {
                         Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
-                        throw IOException("Stream resolution interrupted", e)
+                        throw IOException("Stream resolution failed", e)
                     }
                 }
                 return dataSpec
