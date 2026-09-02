@@ -158,6 +158,34 @@ object InAppUpdater {
         currentFileName = "PixelMusic_$versionName.apk"
         val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), currentFileName!!)
 
+        fun finishDownload() {
+            downloadState.value = GlobalDownloadState.Finished(file, versionName)
+            
+            val authority = "${appContext!!.packageName}.provider"
+            val apkUri = FileProvider.getUriForFile(appContext!!, authority, file)
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+
+            val pendingInstall = android.app.PendingIntent.getActivity(
+                appContext, 0, installIntent, 
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val finishedNotif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Download Complete")
+                .setContentText("Tap to install PixelMusic $versionName")
+                .setContentIntent(pendingInstall)
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .build()
+                
+            val notificationManager = appContext!!.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            notificationManager.notify(999, finishedNotif)
+        }
+
         if (downloadState.value is GlobalDownloadState.Finished && file.exists()) {
             return
         }
@@ -176,7 +204,7 @@ object InAppUpdater {
                 
                 if (file.exists() && downloadedBytes > 0) {
                     if (totalBytes > 0 && downloadedBytes >= totalBytes) {
-                        downloadState.value = GlobalDownloadState.Finished(file, versionName)
+                        finishDownload()
                         return@launch
                     }
                     requestBuilder.addHeader("Range", "bytes=$downloadedBytes-")
@@ -223,14 +251,14 @@ object InAppUpdater {
                     downloadedBytes += bytes
 
                     val currentTime = System.currentTimeMillis()
-                    // Push out progress if time elapsed OR the download just completed
-                    if (currentTime - lastEmitTime > 150 || downloadedBytes >= totalBytes) {
-                        val progress = downloadedBytes.toFloat() / totalBytes.toFloat()
+                    // Push out progress if time elapsed
+                    if (currentTime - lastEmitTime > 150) {
+                        val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f
                         downloadState.value = GlobalDownloadState.Downloading(progress, false, versionName, totalBytes, downloadedBytes)
                         
                         val totalMb = totalBytes / (1024f * 1024f)
                         val downMb = downloadedBytes / (1024f * 1024f)
-                        val mbString = String.format(Locale.US, "%.1f / %.1f MB", downMb, totalMb)
+                        val mbString = if (totalBytes > 0) String.format(Locale.US, "%.1f / %.1f MB", downMb, totalMb) else String.format(Locale.US, "%.1f MB downloaded", downMb)
 
                         val notif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
                             .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -253,31 +281,9 @@ object InAppUpdater {
                 outputStream.close()
                 inputStream.close()
 
-                // Finished condition
-                if (downloadedBytes >= totalBytes && totalBytes > 0) {
-                    downloadState.value = GlobalDownloadState.Finished(file, versionName)
-                    
-                    val authority = "${appContext!!.packageName}.provider"
-                    val apkUri = FileProvider.getUriForFile(appContext!!, authority, file)
-                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(apkUri, "application/vnd.android.package-archive")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    }
-
-                    val pendingInstall = android.app.PendingIntent.getActivity(
-                        appContext, 0, installIntent, 
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-                    )
-                    
-                    val finishedNotif = androidx.core.app.NotificationCompat.Builder(appContext!!, "app_updates")
-                        .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                        .setContentTitle("Download Complete")
-                        .setContentText("Tap to install PixelMusic $versionName")
-                        .setContentIntent(pendingInstall)
-                        .setOngoing(false)
-                        .setAutoCancel(true)
-                        .build()
-                    notificationManager.notify(notifId, finishedNotif)
+                // Finished condition: If the stream reached EOF naturally without being paused or cancelled
+                if (isActive) {
+                    finishDownload()
                 }
 
             } catch (e: Exception) {
@@ -295,7 +301,7 @@ object InAppUpdater {
     }
 
     fun pauseDownload() {
-        downloadJob?.cancel()
+        downloadJob?.cancel() // This safely exits the while loop due to !isActive
         currentVersionName?.let {
             val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0f
             downloadState.value = GlobalDownloadState.Downloading(progress, isPaused = true, versionName = it, totalBytes = totalBytes, downloadedBytes = downloadedBytes)
