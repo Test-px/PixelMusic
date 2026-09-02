@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,10 +36,10 @@ import com.unshoo.pixelmusic.presentation.viewmodel.SettingsUiState
 @Composable
 fun ExpandableAccountCard(
     uiState: SettingsUiState,
-    isPro: Boolean,
+    isPro: Boolean, 
     onLoginNew: () -> Unit,
     onLogout: () -> Unit,
-    onManageAccounts: () -> Unit = {},
+    onManageAccounts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -52,7 +52,6 @@ fun ExpandableAccountCard(
 
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
 
-    // Dynamic Material You Expressive Gradient
     val dynamicGradient = Brush.sweepGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primary,
@@ -78,7 +77,6 @@ fun ExpandableAccountCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Outer container for the dynamic gradient ring
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -88,7 +86,6 @@ fun ExpandableAccountCard(
                             else Modifier
                         )
                 ) {
-                    // Inner container for the avatar, creating the transparent gap
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -153,12 +150,14 @@ fun ExpandableAccountCard(
             ) {
                 Column(
                     modifier = Modifier
-                       .fillMaxWidth()
-                       .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
 
                     Surface(
@@ -167,19 +166,19 @@ fun ExpandableAccountCard(
                             onLoginNew() 
                         },
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp)
+                            modifier = Modifier.padding(16.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.PersonAdd,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(26.dp)
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
                             )
                             Text(
                                 text = "Add another account",
@@ -196,33 +195,26 @@ fun ExpandableAccountCard(
                             onManageAccounts() 
                         },
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp)
+                            modifier = Modifier.padding(16.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.AccountCircle,
+                                imageVector = Icons.Rounded.ManageAccounts,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(26.dp)
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
                             )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Manage cloud account",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Youtube , Last.fm......",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = "Manage accounts ",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
 
@@ -233,25 +225,25 @@ fun ExpandableAccountCard(
                                 onLogout() 
                             },
                             shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                            color = MaterialTheme.colorScheme.errorContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp)
+                                modifier = Modifier.padding(16.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Logout,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(26.dp)
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Text(
                                     text = "Log out",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }
