@@ -3670,6 +3670,15 @@ class PlayerViewModel @Inject constructor(
                 }
             }
 
+            // ---> NEW FIX: Normalize NewPipe bitrate or force fallback <---
+            if (cachedBitrate != null) {
+                if (cachedBitrate <= 0) {
+                    cachedBitrate = null // Force fallback to the precise itag parser below
+                } else if (cachedBitrate < 1000) {
+                    cachedBitrate *= 1000 // Convert kbps (e.g., 160) to bps (160000) for the UI formatter
+                }
+            }
+
             // Look up the cached mime type
             var cachedMime = cacheKey?.let { com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.streamMimeTypeLruCache.get(it) }
             if (cachedMime == null) {
@@ -3680,7 +3689,7 @@ class PlayerViewModel @Inject constructor(
                 }
             }
 
-            // Bulletproof fallback: Parse the itag parameter from the YouTube URL if cache missed
+            // Bulletproof fallback: Parse the itag parameter from the YouTube URL if cache missed or was 0
             if (cachedBitrate == null || cachedMime == null) {
                 val playingUriString = uri.toString()
                 if (playingUriString.startsWith("http")) {
