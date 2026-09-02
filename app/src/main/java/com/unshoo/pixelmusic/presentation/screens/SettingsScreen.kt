@@ -1,6 +1,6 @@
 package com.unshoo.pixelmusic.presentation.screens
 
-import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -10,6 +10,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,66 +30,66 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.VpnKey
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.presentation.components.CollapsibleCommonTopBar
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
 import com.unshoo.pixelmusic.presentation.model.SettingsCategory
 import com.unshoo.pixelmusic.presentation.navigation.Screen
+import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
+import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.SettingsViewModel
+import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.common.util.UnstableApi
-import androidx.navigation.NavController
-import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.outlined.Info
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +100,8 @@ fun SettingsScreen(
     onNavigationIconClick: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
         
     val transitionState = remember { MutableTransitionState(false) }
     LaunchedEffect(true) { transitionState.targetState = true }
@@ -132,6 +135,30 @@ fun SettingsScreen(
 
     var showLoginOptionsDialog by remember { mutableStateOf(false) }
     var showTokenDialog by remember { mutableStateOf(false) }
+    var triggerSweepAnimation by remember { mutableStateOf(false) }
+    var isWaitingForAuthReturn by rememberSaveable { mutableStateOf(false) }
+
+    // Auto-reset trigger so it can re-trigger on subsequent logins
+    LaunchedEffect(triggerSweepAnimation) {
+        if (triggerSweepAnimation) {
+            delay(2600)
+            triggerSweepAnimation = false
+        }
+    }
+
+    // Trigger animation as soon as the user returns from manual web sign-in
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (isWaitingForAuthReturn && uiState.ytUsername.isNotEmpty()) {
+                    triggerSweepAnimation = true
+                    isWaitingForAuthReturn = false
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
@@ -179,11 +206,21 @@ fun SettingsScreen(
         }
     }
 
+    val sweepModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.successSweepEffect(isTriggered = triggerSweepAnimation)
+    } else {
+        Modifier
+    }
+
     Box(
-        modifier = Modifier.nestedScroll(nestedScrollConnection).fillMaxSize().graphicsLayer {
-            alpha = contentAlpha
-            translationY = contentOffset.toPx()
-        }
+        modifier = Modifier
+            .fillMaxSize()
+            .then(sweepModifier)
+            .nestedScroll(nestedScrollConnection)
+            .graphicsLayer {
+                alpha = contentAlpha
+                translationY = contentOffset.toPx()
+            }
     ) {
         val currentTopBarHeightDp = with(density) { topBarHeight.value.toDp() }
         LazyColumn(
@@ -216,7 +253,7 @@ fun SettingsScreen(
                         it != SettingsCategory.LASTFM
                     }
 
-                    val totalItems = mainCategories.size + 2 // Only Device & About remain
+                    val totalItems = mainCategories.size + 2
                     fun shapeFor(index: Int) =
                         when {
                             totalItems == 1 -> RoundedCornerShape(24.dp)
@@ -387,6 +424,7 @@ fun SettingsScreen(
                             Surface(
                                 onClick = {
                                     showLoginOptionsDialog = false
+                                    isWaitingForAuthReturn = true
                                     navController.navigateSafely(Screen.YoutubeAuth.route)
                                 },
                                 shape = RoundedCornerShape(20.dp),
@@ -501,6 +539,7 @@ fun SettingsScreen(
                 onSaveToken = { token ->
                     showTokenDialog = false
                     authViewModel.saveManualCookie(token)
+                    triggerSweepAnimation = true
                     android.widget.Toast.makeText(context, "Cookie saved! Syncing library...", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
