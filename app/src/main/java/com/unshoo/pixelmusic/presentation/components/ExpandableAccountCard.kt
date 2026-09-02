@@ -30,7 +30,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.unshoo.pixelmusic.presentation.viewmodel.SettingsUiState
 
@@ -50,19 +49,16 @@ fun ExpandableAccountCard(
     val handleText = if (hasProfile) uiState.ytHandle else "Sign in to sync"
     val avatarUrl = if (hasProfile) uiState.ytAvatarUrl else ""
 
-    // Fake Pro status: always true if the user is logged in
-    val showFakePro = hasProfile
-
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
 
-    // Google Blue-Purple AI Pro Gradient
-    val proGradient = Brush.sweepGradient(
+    // Dynamic Material You Expressive Gradient
+    val dynamicGradient = Brush.sweepGradient(
         colors = listOf(
-            Color(0xFF4285F4), // Electric Blue
-            Color(0xFF7C4DFF), // Deep Violet
-            Color(0xFF9C27B0), // Purple/Magenta
-            Color(0xFF00B0FF), // Sky Cyan
-            Color(0xFF4285F4)  // Electric Blue
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.primary
         )
     )
 
@@ -81,67 +77,39 @@ fun ExpandableAccountCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(contentAlignment = Alignment.BottomCenter) {
-                    // Outer container for the gradient ring
+                // Outer container for the dynamic gradient ring
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(68.dp) 
+                        .then(
+                            if (hasProfile) Modifier.border(BorderStroke(2.5.dp, dynamicGradient), CircleShape)
+                            else Modifier
+                        )
+                ) {
+                    // Inner container for the avatar, creating the transparent gap
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(68.dp) 
-                            .then(
-                                if (showFakePro) Modifier.border(BorderStroke(2.5.dp, proGradient), CircleShape)
-                                else Modifier
-                            )
+                            .size(56.dp) 
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        // Inner container for the avatar, creating the transparent gap
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(56.dp) 
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            if (avatarUrl.isNotEmpty()) {
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "G"
-                                Text(
-                                    text = initial,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-                    }
-                    
-                    if (showFakePro) {
-                        // Background-colored Surface to "punch out" the ring behind the badge
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = surfaceContainer, 
-                            modifier = Modifier.offset(y = 8.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFFE8F0FE), 
-                                border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
-                                modifier = Modifier.padding(2.dp) 
-                            ) {
-                                Text(
-                                    text = "Pro",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = Color(0xFF1967D2), 
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
+                        if (avatarUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "G"
+                            Text(
+                                text = initial,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
                     }
                 }
