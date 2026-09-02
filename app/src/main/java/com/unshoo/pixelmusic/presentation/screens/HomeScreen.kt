@@ -4,11 +4,19 @@
 )
 package com.unshoo.pixelmusic.presentation.screens
 
-import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
-import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
-
 import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.ReportDrawnWhen
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,10 +37,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
@@ -43,19 +55,19 @@ import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,12 +78,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -84,84 +100,66 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.common.util.UnstableApi
-import androidx.navigation.NavController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.preferences.CollagePattern
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
 import com.unshoo.pixelmusic.presentation.components.AlbumArtCollage
 import com.unshoo.pixelmusic.presentation.components.BetaInfoBottomSheet
-import com.unshoo.pixelmusic.presentation.components.InstagramPromoDialog
 import com.unshoo.pixelmusic.presentation.components.ChangelogBottomSheet
 import com.unshoo.pixelmusic.presentation.components.DailyMixSection
+import com.unshoo.pixelmusic.presentation.components.FavoriteArtistReleasesSection
 import com.unshoo.pixelmusic.presentation.components.HomeGradientTopBar
 import com.unshoo.pixelmusic.presentation.components.HomeOptionsBottomSheet
+import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
+import com.unshoo.pixelmusic.presentation.components.InstagramPromoDialog
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
 import com.unshoo.pixelmusic.presentation.components.QuickPicksSection
 import com.unshoo.pixelmusic.presentation.components.RecentlyPlayedSection
 import com.unshoo.pixelmusic.presentation.components.RecentlyPlayedSectionMinSongsToShow
-import com.unshoo.pixelmusic.presentation.viewmodel.QuickPicksViewModel
 import com.unshoo.pixelmusic.presentation.components.SmartImage
 import com.unshoo.pixelmusic.presentation.components.StatsOverviewCard
-import com.unshoo.pixelmusic.presentation.viewmodel.FavoriteArtistReleasesViewModel
-import com.unshoo.pixelmusic.presentation.components.FavoriteArtistReleasesSection
-import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
+import com.unshoo.pixelmusic.presentation.components.StreamingProviderSheet
+import com.unshoo.pixelmusic.presentation.components.UpdateNotificationSheet
 import com.unshoo.pixelmusic.presentation.components.resolveMainScreenBottomGradientHeight
+import com.unshoo.pixelmusic.presentation.components.subcomps.MaterialYouVectorDrawable
+import com.unshoo.pixelmusic.presentation.components.subcomps.PlayingEqIcon
+import com.unshoo.pixelmusic.presentation.components.subcomps.SineWaveLine
 import com.unshoo.pixelmusic.presentation.model.collectRecentlyPlayedSongIds
 import com.unshoo.pixelmusic.presentation.model.mapRecentlyPlayedSongs
-import com.unshoo.pixelmusic.presentation.components.subcomps.PlayingEqIcon
 import com.unshoo.pixelmusic.presentation.navigation.Screen
-import com.unshoo.pixelmusic.presentation.components.StreamingProviderSheet
-import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
-import com.unshoo.pixelmusic.presentation.viewmodel.SettingsViewModel
-import com.unshoo.pixelmusic.presentation.viewmodel.StatsViewModel
+import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
+import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
 import com.unshoo.pixelmusic.presentation.viewmodel.AccountsViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.ExternalServiceAccount
+import com.unshoo.pixelmusic.presentation.viewmodel.FavoriteArtistReleasesViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.QuickPicksViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.SettingsViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.StatsViewModel
+import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 import com.unshoo.pixelmusic.ui.theme.ExpTitleTypography
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
-import androidx.compose.ui.res.stringResource
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.platform.LocalConfiguration
-import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.unshoo.pixelmusic.presentation.components.subcomps.MaterialYouVectorDrawable
-import com.unshoo.pixelmusic.presentation.components.subcomps.SineWaveLine
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.material3.Button
-import kotlinx.coroutines.flow.first
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.ui.draw.clip
-import kotlinx.coroutines.flow.first
-import androidx.compose.material3.TextButton
-import com.unshoo.pixelmusic.presentation.components.UpdateNotificationSheet
-
-
-
-
 
 private const val HomeLoadingPlaceholderMinDurationMillis = 1200L
 
-// Modern HomeScreen with collapsible top bar and staggered grid layout
+// Tracks cold launch in-memory across the app process lifetime
+private var isColdLaunchSweepPlayed = false
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,7 +175,6 @@ fun HomeScreen(
     onOpenSidebar: () -> Unit
 ) {
     val context = LocalContext.current
-    // DETECTAR MODO BENCHMARK
     val isBenchmarkMode = remember {
         (context as? android.app.Activity)?.intent?.getBooleanExtra("is_benchmark", false) ?: false
     }
@@ -274,12 +271,10 @@ fun HomeScreen(
 
     val yourMixSong: String = "Today's Mix for you"
 
-    // 2) Observar sólo el currentSong (o null) para saber si mostrar padding
     val currentSong by remember(playerViewModel.stablePlayerState) {
         playerViewModel.stablePlayerState.map { it.currentSong }
     }.collectAsStateWithLifecycle(initialValue = null)
 
-    // 3) Observe shuffle state for sync
     val isShuffleEnabled by remember(playerViewModel.stablePlayerState) {
         playerViewModel.stablePlayerState
             .map { it.isShuffleEnabled }
@@ -287,8 +282,6 @@ fun HomeScreen(
     }.collectAsStateWithLifecycle(initialValue = false)
     
     val density = LocalDensity.current
-    
-// Padding inferior si hay canción en reproducción (still used by LazyColumn below — keep it)
     val bottomPadding = if (currentSong != null) MiniPlayerHeight else 0.dp
     
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
@@ -302,7 +295,6 @@ fun HomeScreen(
     val sheetState = rememberModalBottomSheetState()
     val betaSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
-    LocalContext.current
 
     val homeStatsOverview by statsViewModel.homeOverview.collectAsStateWithLifecycle()
     val quickPicks by quickPicksViewModel.quickPicks.collectAsStateWithLifecycle()
@@ -315,9 +307,6 @@ fun HomeScreen(
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > scrollThresholdPx }
     }
 
-    // Persist the scroll position across navigation away/back. The Stats card and other
-    // conditional sections can shift indices while data re-emits when returning, which
-    // would otherwise leave the list scrolled to the wrong place or jump to the top.
     var savedScrollIndex by rememberSaveable { mutableIntStateOf(0) }
     var savedScrollOffset by rememberSaveable { mutableIntStateOf(0) }
     var needsScrollRestore by rememberSaveable { mutableStateOf(false) }
@@ -349,7 +338,6 @@ fun HomeScreen(
         needsScrollRestore = false
     }
 
-    // Drawer state for sidebar
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
     val userPrefs = playerViewModel.userPreferencesRepository
@@ -363,14 +351,11 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         val currentAppVersion = com.unshoo.pixelmusic.BuildConfig.VERSION_NAME
-        
         val lastPrompt = userPrefs.lastUpdatePromptTimeFlow.first()
         val lastVersionSeen = userPrefs.lastSeenChangelogVersionFlow.first()
-        
         val now = System.currentTimeMillis()
         val oneDayMs = 24 * 60 * 60 * 1000L
 
-        // Directly query GitHub on every launch
         val updateState = com.unshoo.pixelmusic.utils.InAppUpdater.checkForUpdate(currentAppVersion)
 
         when (updateState) {
@@ -378,30 +363,22 @@ fun HomeScreen(
                 val cleanLatest = updateState.versionName.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
                 val cleanCurrent = currentAppVersion.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
 
-                // Only show if the GitHub release is strictly higher than installed
                 if (cleanLatest > cleanCurrent) {
-                    // Check if the user snoozed it for the day
                     if (now - lastPrompt > oneDayMs) {
                         isUpdateAvailableState = true
                         sheetVersionName = updateState.versionName
                         sheetChangelog = updateState.changelog
-                        
-                        // 2.5s delay before popping up smoothly
                         delay(2500)
-                        
                         showUpdateSheet = true
                     }
                 }
             }
             is com.unshoo.pixelmusic.utils.UpdateState.UpToDate -> {
-                // "What's New" celebration after a fresh update
                 if (lastVersionSeen.isNotEmpty() && lastVersionSeen != currentAppVersion) {
                     isUpdateAvailableState = false
                     sheetVersionName = currentAppVersion
                     sheetChangelog = updateState.changelog ?: "Welcome to the latest version of PixelMusic! 🎉"
-                    
                     delay(2500)
-                    
                     showUpdateSheet = true
                     userPrefs.setLastSeenChangelogVersion(currentAppVersion)
                 } else if (lastVersionSeen.isEmpty()) {
@@ -416,8 +393,27 @@ fun HomeScreen(
         settingsUiState.beta05CleanInstallDisclaimerDismissed == false &&
             !cleanInstallDisclaimerDismissedThisSession
 
+    // Drive the cold launch sweep animation once per process lifetime
+    var triggerColdLaunchSweep by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!isColdLaunchSweepPlayed) {
+            isColdLaunchSweepPlayed = true
+            delay(350L)
+            triggerColdLaunchSweep = true
+        }
+    }
+
+    val sweepModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.successSweepEffect(isTriggered = triggerColdLaunchSweep)
+    } else {
+        Modifier
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .then(sweepModifier)
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -436,7 +432,6 @@ fun HomeScreen(
                          showStreamingProviderSheet = true
                     },
                     onMenuClick = {
-                        // onOpenSidebar() // Disabled
                     },
                     isScrolled = isScrolledPastThreshold.value
                 )
@@ -484,7 +479,6 @@ fun HomeScreen(
                     HomeGreetingHeader(userName = userName)
                 }
 
-                // Quick Picks (above Your Mix, shown when there is engagement data)
                 if (quickPicks.isNotEmpty()) {
                     item(
                         key = "quick_picks_section",
@@ -542,7 +536,6 @@ fun HomeScreen(
                     }
                 }
 
-                // Collage
                 if (yourMixSongs.isNotEmpty()) {
                     item(
                         key = "album_art_collage",
@@ -579,7 +572,6 @@ fun HomeScreen(
                     }
                 }
 
-                // Daily Mix
                 if (dailyMixSongs.isNotEmpty()) {
                     item(
                         key = "daily_mix_section",
@@ -664,9 +656,9 @@ fun HomeScreen(
                     }
                 }
             }
-            } // end PullToRefreshBox
+            }
         }
-        // Bottom Gradient Box
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -682,11 +674,8 @@ fun HomeScreen(
                         )
                     )
                 )
-        ) {
-            // Empty content
-        }
+        )
 
-        // ---> OUR NEW TRULY INDEPENDENT FAB <---
         HomeShuffleFab(
             isShuffleEnabled = isShuffleEnabled,
             isPlayerActive = currentSong != null, 
@@ -696,9 +685,9 @@ fun HomeScreen(
                     playerViewModel.playSongsShuffled(songsToUse, "Your Mix")
                 }
             },
-            modifier = Modifier.align(Alignment.BottomEnd) // <-- Back to the original
+            modifier = Modifier.align(Alignment.BottomEnd)
         )
-    } // <-- End of main screen Box
+    }
 
     if (showOptionsBottomSheet) {
         ModalBottomSheet(
@@ -732,7 +721,6 @@ fun HomeScreen(
                 }
             },
             onSnoozeClick = {
-                // Save the timestamp so they aren't bothered for the rest of the day!
                 scope.launch {
                     userPrefs.setLastUpdatePromptTime(System.currentTimeMillis())
                 }
@@ -752,7 +740,6 @@ fun HomeScreen(
         ModalBottomSheet(
             onDismissRequest = { showBetaInfoBottomSheet = false },
             sheetState = betaSheetState,
-            //contentWindowInsets = { WindowInsets.statusBars.only(WindowInsets.statusBars) }
         ) {
             BetaInfoBottomSheet()
         }
@@ -768,7 +755,6 @@ fun HomeScreen(
     if (shouldShowCleanInstallDisclaimer) {
         InstagramPromoDialog(
             onDismiss = {
-                // Instantly mark it as dismissed forever so it never annoys the user again!
                 cleanInstallDisclaimerDismissedThisSession = true
                 settingsViewModel.setBeta05CleanInstallDisclaimerDismissed(true)
             }
@@ -901,7 +887,6 @@ fun YourMixHeader(
                 .weight(1f)
                 .padding(start = 12.dp, top = 8.dp)
         ) {
-            // Your Mix Title
             Text(
                 text = stringResource(R.string.home_your_mix_title),
                 style = titleStyle,
@@ -912,7 +897,6 @@ fun YourMixHeader(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Subtitle
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
@@ -921,7 +905,6 @@ fun YourMixHeader(
             )
         }
 
-        // ---> OUR NEW FEATURED QUICK PICK <---
         if (featuredSong != null) {
             Surface(
                 modifier = Modifier
@@ -947,8 +930,6 @@ fun YourMixHeader(
     }
 }
 
-
-// SongListItem (modificado para aceptar parámetros individuales)
 @Composable
 fun SongListItemFavs(
     modifier: Modifier = Modifier,
@@ -980,8 +961,7 @@ fun SongListItemFavs(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
-                modifier = Modifier
-                    .weight(0.9f),
+                modifier = Modifier.weight(0.9f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SmartImage(
@@ -992,7 +972,7 @@ fun SongListItemFavs(
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier) {
+                Column {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
@@ -1013,16 +993,15 @@ fun SongListItemFavs(
                     modifier = Modifier
                         .weight(0.1f)
                         .padding(start = 8.dp)
-                        .size(width = 18.dp, height = 16.dp), // similar al tamaño del ícono
+                        .size(width = 18.dp, height = 16.dp),
                     color = colors.primary,
-                    isPlaying = isPlaying  // o conectalo a tu estado real de reproducción
+                    isPlaying = isPlaying
                 )
             }
         }
     }
 }
 
-// Wrapper Composable for SongListItemFavs to isolate state observation
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun SongListItemFavsWrapper(
@@ -1031,15 +1010,12 @@ fun SongListItemFavsWrapper(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Collect the stablePlayerState once
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
 
-    // Derive isThisSongPlaying using remember
     val isThisSongPlaying = remember(song.id, stablePlayerState.currentSong?.id, stablePlayerState.isPlaying) {
         song.id == stablePlayerState.currentSong?.id
     }
 
-    // Call the presentational composable
     SongListItemFavs(
         modifier = modifier,
         cardCorners = 0.dp,
@@ -1051,7 +1027,6 @@ fun SongListItemFavsWrapper(
         onClick = onClick
     )
 }
-
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
