@@ -79,51 +79,66 @@ fun ExpandableAccountCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Box(contentAlignment = Alignment.BottomCenter) {
+                    // Outer container for the gradient ring
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(62.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .size(68.dp) 
                             .then(
-                                if (isPro) Modifier.border(BorderStroke(3.dp, proGradient), CircleShape)
+                                if (isPro) Modifier.border(BorderStroke(2.5.dp, proGradient), CircleShape)
                                 else Modifier
                             )
                     ) {
-                        if (avatarUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = avatarUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "G"
-                            Text(
-                                text = initial,
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                        // Inner container for the avatar, creating the transparent gap
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(56.dp) 
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            if (avatarUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                val initial = nameText.firstOrNull()?.toString()?.uppercase() ?: "G"
+                                Text(
+                                    text = initial,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                     
                     if (isPro) {
+                        // Background-colored Surface to "punch out" the ring behind the badge
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = Color(0xFFE8F0FE), // Google light blue
-                            border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
+                            color = surfaceContainer, 
                             modifier = Modifier.offset(y = 8.dp)
                         ) {
-                            Text(
-                                text = "Pro",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = Color(0xFF1967D2), // Google deep blue
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFE8F0FE), 
+                                border = BorderStroke(1.dp, Color(0xFFD2E3FC)),
+                                modifier = Modifier.padding(2.dp) 
+                            ) {
+                                Text(
+                                    text = "Pro",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color(0xFF1967D2), 
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -238,4 +253,3 @@ fun ExpandableAccountCard(
         }
     }
 }
-
