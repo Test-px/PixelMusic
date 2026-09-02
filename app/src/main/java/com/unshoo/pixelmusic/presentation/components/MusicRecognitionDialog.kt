@@ -2,21 +2,62 @@ package com.unshoo.pixelmusic.presentation.components
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,24 +67,25 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
-import kotlinx.coroutines.launch
-import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import com.unshoo.pixelmusic.data.shazam.MusicRecognizer
 import com.unshoo.pixelmusic.data.shazam.RecognitionResult
 import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
-import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
-import android.os.Build
 import com.unshoo.pixelmusic.ui.effects.recognitionRippleEffect
 import com.unshoo.pixelmusic.ui.effects.successSweepEffect
-
+import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +97,7 @@ fun MusicRecognitionDialog(
     var status by remember { mutableStateOf<RecognitionStatus>(RecognitionStatus.Ready) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
@@ -117,7 +160,6 @@ fun MusicRecognitionDialog(
     val isListening = status is RecognitionStatus.Listening
     val isSuccess = status is RecognitionStatus.Success
 
-    // Safe application for Android 13+ only
     val rippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Modifier
             .recognitionRippleEffect(isTriggered = isListening)
@@ -126,78 +168,125 @@ fun MusicRecognitionDialog(
         Modifier
     }
 
-    
     if (isTransparentOverlay) {
-        // =========================================================================================
-        // ── OVERLAY MODE: Pure Google style floating design (No Solid Card) ──
-        // =========================================================================================
-        
-        // Uses the dynamic theme background (Dark or Light) with 85% opacity for a beautiful glass effect
-        val overlayBackground = MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
         val textColor = MaterialTheme.colorScheme.onSurface
         val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+        val offscreenStartY = with(density) { -screenHeight.toPx() - 300f }
+        val dropOffsetY = remember { Animatable(offscreenStartY) }
+        val backdropAlpha = remember { Animatable(0f) }
+
+        var isDismissing by remember { mutableStateOf(false) }
+        val dismissWithReverseAnimation: () -> Unit = {
+            if (!isDismissing) {
+                isDismissing = true
+                coroutineScope.launch {
+                    launch { backdropAlpha.animateTo(0f, tween(240)) }
+                    dropOffsetY.animateTo(
+                        targetValue = offscreenStartY,
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    )
+                    onDismiss()
+                }
+            }
+        }
+
+        BackHandler {
+            dismissWithReverseAnimation()
+        }
+
+        LaunchedEffect(Unit) {
+            launch {
+                backdropAlpha.animateTo(
+                    targetValue = 0.82f,
+                    animationSpec = tween(durationMillis = 320)
+                )
+            }
+            dropOffsetY.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = 0.68f,
+                    stiffness = 380f
+                )
+            )
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(overlayBackground)
-                .then(rippleModifier)
+                .background(MaterialTheme.colorScheme.background.copy(alpha = backdropAlpha.value))
                 .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onDismiss
+                    onClick = dismissWithReverseAnimation
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 16.dp, top = 40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Close",
-                        tint = textColor
-                    )
-                }
+            IconButton(
+                onClick = dismissWithReverseAnimation,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "Close",
+                    tint = textColor
+                )
+            }
 
+            Surface(
+                modifier = Modifier
+                    .offset { IntOffset(0, dropOffsetY.value.roundToInt()) }
+                    .widthIn(max = 340.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .then(rippleModifier)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    ),
+                shape = AbsoluteSmoothCornerShape(32.dp, 60),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 10.dp,
+                shadowElevation = 16.dp
+            ) {
                 AnimatedContent(
                     targetState = status,
                     transitionSpec = {
-                        fadeIn(tween(400)) + scaleIn(initialScale = 0.85f) togetherWith fadeOut(tween(300))
+                        (fadeIn(tween(350)) + scaleIn(initialScale = 0.90f))
+                            .togetherWith(fadeOut(tween(220)))
                     },
-                    modifier = Modifier.align(Alignment.Center),
-                    label = "overlay_content"
+                    label = "overlay_portrait_content"
                 ) { currentStatus ->
                     when (currentStatus) {
                         is RecognitionStatus.Success -> {
                             val song = currentStatus.result
-                            Surface(
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp),
-                                shape = AbsoluteSmoothCornerShape(28.dp, 60),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                tonalElevation = 8.dp
+                                    .heightIn(min = 520.dp)
+                                    .padding(24.dp)
                             ) {
+                                AsyncImage(
+                                    model = song.coverArtHqUrl ?: song.coverArtUrl,
+                                    contentDescription = "Album Art",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(width = 210.dp, height = 245.dp)
+                                        .clip(AbsoluteSmoothCornerShape(22.dp, 60))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                )
+
+                                Spacer(modifier = Modifier.height(18.dp))
+
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(24.dp)
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    AsyncImage(
-                                        model = song.coverArtHqUrl ?: song.coverArtUrl,
-                                        contentDescription = "Album Art",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(180.dp)
-                                            .clip(AbsoluteSmoothCornerShape(20.dp, 60))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    )
-
-                                    Spacer(modifier = Modifier.height(20.dp))
-
                                     Text(
                                         text = song.title,
                                         style = MaterialTheme.typography.titleLarge,
@@ -208,7 +297,7 @@ fun MusicRecognitionDialog(
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
-
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = song.artist,
                                         style = MaterialTheme.typography.bodyLarge,
@@ -217,65 +306,90 @@ fun MusicRecognitionDialog(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                }
 
-                                    Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(26.dp))
 
-                                    Button(
-                                        onClick = { onPlayMusic(song) },
-                                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = CircleShape,
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary
-                                        )
-                                    ) {
-                                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "Play on PixelMusic",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                Button(
+                                    onClick = { onPlayMusic(song) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(54.dp),
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Play on PixelMusic",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
+
                         is RecognitionStatus.Error -> {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(32.dp)
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 380.dp)
+                                    .padding(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Search,
                                     contentDescription = "Error",
-                                    modifier = Modifier.size(72.dp),
+                                    modifier = Modifier.size(68.dp),
                                     tint = MaterialTheme.colorScheme.error
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(18.dp))
                                 Text(
                                     text = currentStatus.message,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = textColor,
                                     textAlign = TextAlign.Center
                                 )
-                                Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(28.dp))
                                 Button(
                                     onClick = onScannerClick,
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
                                 ) {
-                                    Text("Try Again")
+                                    Text(
+                                        text = "Try Again",
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
+
                         else -> {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(32.dp)
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 420.dp)
+                                    .padding(28.dp)
                             ) {
                                 ScannerButton(
                                     isListening = currentStatus is RecognitionStatus.Listening,
                                     onClick = onScannerClick
                                 )
-                                Spacer(modifier = Modifier.height(36.dp))
+                                Spacer(modifier = Modifier.height(32.dp))
                                 Text(
                                     text = if (currentStatus is RecognitionStatus.Listening) "Listening for music…" else "Tap to recognize",
                                     style = MaterialTheme.typography.headlineSmall,
@@ -291,9 +405,6 @@ fun MusicRecognitionDialog(
             }
         }
     } else {
-        // =========================================================================================
-        // ── IN-APP MODE: Standard full dialog card floating over the UI ──
-        // =========================================================================================
         val textColor = MaterialTheme.colorScheme.onSurface
         val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -382,7 +493,7 @@ fun MusicRecognitionDialog(
                                             contentDescription = "Album Art",
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier
-                                                .size(200.dp)
+                                                .size(width = 200.dp, height = 230.dp)
                                                 .clip(AbsoluteSmoothCornerShape(24.dp, 60))
                                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                         )
@@ -413,16 +524,22 @@ fun MusicRecognitionDialog(
 
                                         Button(
                                             onClick = { onPlayMusic(song) },
-                                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(56.dp),
                                             shape = CircleShape,
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.primary
                                             )
                                         ) {
-                                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
+                                            Icon(
+                                                imageVector = Icons.Rounded.PlayArrow,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(28.dp)
+                                            )
                                             Spacer(modifier = Modifier.width(12.dp))
                                             Text(
-                                                "Play on PixelMusic",
+                                                text = "Play on PixelMusic",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold
                                             )
@@ -443,10 +560,11 @@ fun MusicRecognitionDialog(
                                             text = currentStatus.message,
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = subTextColor,
-                                            textAlign = TextAlign.Center,
+                                            textAlign = TextAlign.Center
                                         )
                                     }
                                 }
+
                                 else -> {
                                     Box(modifier = Modifier.height(200.dp))
                                 }
@@ -465,7 +583,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     
     val waveScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 5.5f else 1f, // PUMPED UP THE EXPANSION!
+        targetValue = if (isListening) 5.5f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -474,7 +592,7 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
     )
     
     val waveAlpha by infiniteTransition.animateFloat(
-        initialValue = if (isListening) 1f else 0f, // STARTS AT 100% OPACITY!
+        initialValue = if (isListening) 1f else 0f,
         targetValue = 0f, 
         animationSpec = infiniteRepeatable(
             animation = tween(1500, easing = FastOutSlowInEasing),
@@ -495,10 +613,9 @@ fun ScannerButton(isListening: Boolean, onClick: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(250.dp) // INCREASED CONTAINER BOUNDS!
+        modifier = Modifier.size(250.dp)
     ) {
         if (isListening) {
-            // Simplified gradient so the Primary color shines boldly
             val surgeGradient = Brush.radialGradient(
                 colors = listOf(
                     MaterialTheme.colorScheme.primary,
