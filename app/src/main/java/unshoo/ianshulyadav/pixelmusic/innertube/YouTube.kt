@@ -761,7 +761,7 @@ object YouTube {
 
     private suspend fun homeContinuation(continuation: String): Result<HomePage> = runCatching {
         val response =
-            innerTube.browse(WEB_REMIX, continuation = continuation).body<BrowseResponse>()
+            innerTube.browse(WEB_REMIX, continuation = continuation, setLogin = true).body<BrowseResponse>()
         val sections = response.continuationContents?.sectionListContinuation?.contents
             ?.mapNotNull { it.musicCarouselShelfRenderer }
             ?.mapNotNull {
