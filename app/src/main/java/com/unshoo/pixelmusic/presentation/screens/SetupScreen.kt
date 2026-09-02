@@ -4,10 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.RuntimeShader
-import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -22,7 +18,6 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -38,7 +33,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -119,10 +113,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -161,6 +153,7 @@ import com.unshoo.pixelmusic.utils.StorageInfo
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import java.io.File
@@ -179,6 +172,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import com.unshoo.pixelmusic.presentation.screens.AdvancedTokenLoginDialog
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import androidx.compose.material.icons.rounded.VpnKey
+import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 
 @OptIn(ExperimentalPermissionsApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -188,7 +182,7 @@ fun SetupScreen(
     onSetupComplete: () -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by setupViewModel.uiState.collectAsStateWithLifecycle()
     val currentPath by setupViewModel.currentPath.collectAsStateWithLifecycle()
     val directoryChildren by setupViewModel.currentDirectoryChildren.collectAsStateWithLifecycle()
@@ -201,8 +195,16 @@ fun SetupScreen(
     var showAdvancedYtLoginDialog by remember { mutableStateOf(false) }
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
 
-    // State for NFC success sweep animation
+    // AGSL Sweep state
     var triggerSweepAnimation by remember { mutableStateOf(false) }
+    var isWaitingForAuthReturn by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(triggerSweepAnimation) {
+        if (triggerSweepAnimation) {
+            delay(2600)
+            triggerSweepAnimation = false
+        }
+    }
 
     val backupPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -217,6 +219,10 @@ fun SetupScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 setupViewModel.checkPermissions(context)
+                if (isWaitingForAuthReturn && uiState.ytUsername.isNotEmpty()) {
+                    triggerSweepAnimation = true
+                    isWaitingForAuthReturn = false
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -246,15 +252,11 @@ fun SetupScreen(
     val directorySelectionPageIndex = remember(pages) { pages.indexOf(SetupPage.DirectorySelection) }
     val loginPageIndex = remember(pages) { pages.indexOf(SetupPage.Login) }
 
-    // Trigger sweep animation when login is detected or when arriving on connected page
-    var previousUsername by rememberSaveable { mutableStateOf(uiState.ytUsername) }
-    LaunchedEffect(uiState.ytUsername, pagerState.currentPage) {
-        if (uiState.ytUsername.isNotEmpty()) {
-            if (previousUsername.isEmpty() || pagerState.currentPage == loginPageIndex) {
-                triggerSweepAnimation = true
-            }
+    // Trigger sweep when landing on connected state
+    LaunchedEffect(pagerState.currentPage, uiState.ytUsername) {
+        if (pagerState.currentPage == loginPageIndex && uiState.ytUsername.isNotEmpty()) {
+            triggerSweepAnimation = true
         }
-        previousUsername = uiState.ytUsername
     }
 
     LaunchedEffect(Unit) {
@@ -264,7 +266,7 @@ fun SetupScreen(
                     Toast.makeText(context, event.value, Toast.LENGTH_LONG).show()
                 }
                 is SetupEvent.RestoreCompleted -> {
-                    // Trigger AGSL sweep animation upon successful backup restore
+                    // Trigger AGSL animation on successful backup import
                     triggerSweepAnimation = true
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                     
@@ -308,7 +310,17 @@ fun SetupScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val sweepModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.successSweepEffect(isTriggered = triggerSweepAnimation)
+    } else {
+        Modifier
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(sweepModifier)
+    ) {
         Scaffold(
             bottomBar = {
                 SetupBottomBar(
@@ -373,7 +385,10 @@ fun SetupScreen(
                         )
                         SetupPage.Login -> LoginPage(
                             uiState = uiState,
-                            onLoginClick = { navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route) },
+                            onLoginClick = {
+                                isWaitingForAuthReturn = true
+                                navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route)
+                            },
                             onAdvancedLoginClick = { showAdvancedYtLoginDialog = true }
                         )
                         SetupPage.DirectorySelection -> DirectorySelectionPage(
@@ -406,6 +421,7 @@ fun SetupScreen(
                         SetupPage.OverlayPermission -> OverlayPermissionPage(
                             uiState = uiState,
                             onPermissionGranted = {
+                                // Trigger AGSL sweep when overlay permission is granted
                                 triggerSweepAnimation = true
                             },
                             onSkip = {
@@ -498,12 +514,6 @@ fun SetupScreen(
                 isFullWidth = uiState.navBarStyle == "full_width"
             )
         }
-
-        // Fullscreen AGSL NFC Sweep Animation Overlay
-        NfcSuccessSweepOverlay(
-            trigger = triggerSweepAnimation,
-            onAnimationEnd = { triggerSweepAnimation = false }
-        )
     }
 }
 
@@ -2264,95 +2274,5 @@ fun NavBarCornerRadiusContent(
     onBack: () -> Unit,
     isFullWidth: Boolean
 ) {
-    // Left as-is
-}
-
-@Composable
-fun NfcSuccessSweepOverlay(
-    trigger: Boolean,
-    onAnimationEnd: () -> Unit
-) {
-    if (!trigger) return
-
-    val progress = remember { Animatable(0f) }
-    val context = LocalContext.current
-
-    val sweepShader = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                val rawSource = context.resources.openRawResource(R.raw.nfc_success_sweep)
-                    .bufferedReader().use { it.readText() }
-                RuntimeShader(rawSource).apply {
-                    try {
-                        val emptyBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-                        val bitmapShader = BitmapShader(emptyBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-                        setInputShader("in_src", bitmapShader)
-                    } catch (_: Exception) {}
-                }
-            } catch (e: Exception) {
-                null
-            }
-        } else null
-    }
-
-    LaunchedEffect(trigger) {
-        progress.snapTo(0f)
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 1300, easing = FastOutSlowInEasing)
-        )
-        onAnimationEnd()
-    }
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                alpha = (1f - (progress.value * 0.25f)).coerceIn(0f, 1f)
-            }
-    ) {
-        val w = size.width
-        val h = size.height
-        val p = progress.value
-
-        if (sweepShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            fun safeSet(name: String, vararg v: Float) {
-                try {
-                    when (v.size) {
-                        1 -> sweepShader.setFloatUniform(name, v[0])
-                        2 -> sweepShader.setFloatUniform(name, v[0], v[1])
-                        3 -> sweepShader.setFloatUniform(name, v[0], v[1], v[2])
-                        4 -> sweepShader.setFloatUniform(name, v[0], v[1], v[2], v[3])
-                    }
-                } catch (_: Exception) {}
-            }
-
-            listOf("in_resolution", "resolution", "u_resolution", "uResolution", "iResolution").forEach {
-                safeSet(it, w, h)
-            }
-            listOf("in_progress", "progress", "u_progress", "uProgress", "in_time", "time", "u_time", "uTime").forEach {
-                safeSet(it, p)
-            }
-
-            drawRect(brush = ShaderBrush(sweepShader))
-        } else {
-            val radius = (w.coerceAtLeast(h) * 1.5f) * p
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        primaryColor.copy(alpha = 0.5f * (1f - p)),
-                        tertiaryColor.copy(alpha = 0.3f * (1f - p)),
-                        Color.Transparent
-                    ),
-                    center = Offset(w / 2f, h / 4f),
-                    radius = radius.coerceAtLeast(1f)
-                ),
-                radius = radius,
-                center = Offset(w / 2f, h / 4f)
-            )
-        }
-    }
+    // Retained as-is
 }
