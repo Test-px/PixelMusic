@@ -1197,17 +1197,15 @@ class PlayerViewModel @Inject constructor(
             }
             .collect { (queue, index, sourcePref) ->
                 if (index in queue.indices) {
+                    // Match Queue Preload logic: Fetch lyrics only for next 2 tracks
+                    val preloadSize = 2 
                     val nextSongs = mutableListOf<Song>()
                     val qSize = queue.size
                     if (qSize > 1) {
-                        val nextIndex1 = (index + 1) % qSize
-                        if (nextIndex1 != index) {
-                            nextSongs.add(queue[nextIndex1])
-                        }
-                        if (qSize > 2) {
-                            val nextIndex2 = (index + 2) % qSize
-                            if (nextIndex2 != index && nextIndex2 != nextIndex1) {
-                                nextSongs.add(queue[nextIndex2])
+                        for (i in 1..preloadSize) {
+                            val nextIndex = (index + i) % qSize
+                            if (nextIndex != index && !nextSongs.contains(queue[nextIndex])) {
+                                nextSongs.add(queue[nextIndex])
                             }
                         }
                     }
@@ -3806,7 +3804,10 @@ class PlayerViewModel @Inject constructor(
         lyricsStateHolder.cancelLoading()
         resetLyricsSearchState()
 
-        val song = resolveSongFromMediaItem(mediaItem)
+        val song = resolveSongFromMediaItem(mediaItem)?.let { 
+            // Upgrade thumbnail to HQ (1000px) specifically for the active playing track
+            it.copy(albumArtUriString = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getHighResThumbnailUrl(it.albumArtUriString) ?: it.albumArtUriString)
+        }
         val currentPosition = player.currentPosition.coerceAtLeast(0L)
         val resolvedDuration = if (song != null) {
             playbackStateHolder.resolveDurationForPlaybackState(
