@@ -1,10 +1,13 @@
-
 package com.unshoo.pixelmusic.presentation.screens
 
 import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
+import android.graphics.RuntimeShader
+import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -19,6 +22,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -33,6 +37,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -106,14 +112,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -170,11 +179,6 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import com.unshoo.pixelmusic.presentation.screens.AdvancedTokenLoginDialog
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
 import androidx.compose.material.icons.rounded.VpnKey
-import androidx.compose.foundation.BorderStroke
-
-
-
-
 
 @OptIn(ExperimentalPermissionsApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -195,8 +199,11 @@ fun SetupScreen(
     val isCurrentDirectoryResolved by setupViewModel.isCurrentDirectoryResolved.collectAsStateWithLifecycle()
     var selectedBackupUri by remember { mutableStateOf<Uri?>(null) }
     var showAdvancedYtLoginDialog by remember { mutableStateOf(false) }
-    
     var showCornerRadiusOverlay by remember { mutableStateOf(false) }
+
+    // State for NFC success sweep animation
+    var triggerSweepAnimation by remember { mutableStateOf(false) }
+
     val backupPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -206,7 +213,6 @@ fun SetupScreen(
         }
     }
 
-    // Re-check permissions when the screen is resumed
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -238,8 +244,18 @@ fun SetupScreen(
     }
 
     val directorySelectionPageIndex = remember(pages) { pages.indexOf(SetupPage.DirectorySelection) }
-    val batteryOptimizationPageIndex = remember(pages) { pages.indexOf(SetupPage.BatteryOptimization) }
-    val finishPageIndex = remember(pages) { pages.indexOf(SetupPage.Finish) }
+    val loginPageIndex = remember(pages) { pages.indexOf(SetupPage.Login) }
+
+    // Trigger sweep animation when login is detected or when arriving on connected page
+    var previousUsername by rememberSaveable { mutableStateOf(uiState.ytUsername) }
+    LaunchedEffect(uiState.ytUsername, pagerState.currentPage) {
+        if (uiState.ytUsername.isNotEmpty()) {
+            if (previousUsername.isEmpty() || pagerState.currentPage == loginPageIndex) {
+                triggerSweepAnimation = true
+            }
+        }
+        previousUsername = uiState.ytUsername
+    }
 
     LaunchedEffect(Unit) {
         setupViewModel.events.collectLatest { event ->
@@ -248,9 +264,10 @@ fun SetupScreen(
                     Toast.makeText(context, event.value, Toast.LENGTH_LONG).show()
                 }
                 is SetupEvent.RestoreCompleted -> {
+                    // Trigger AGSL sweep animation upon successful backup restore
+                    triggerSweepAnimation = true
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                     
-                    // Proceed strictly to the next page instead of jumping to the end
                     if (pagerState.currentPage < pages.lastIndex) {
                         navigateToPage(pagerState.currentPage + 1)
                     } else {
@@ -284,202 +301,420 @@ fun SetupScreen(
             setupViewModel.loadMusicDirectories()
         }
     }
+
     BackHandler {
         if (pagerState.currentPage > 0) {
             navigateToPage(pagerState.currentPage - 1)
         }
     }
-    Scaffold(
-        bottomBar = {
-            SetupBottomBar(
-                pagerState = pagerState,
-                animated = (pagerState.currentPage != 0),
-                isNextButtonEnabled = isNextButtonEnabled,
-                isFinishButtonEnabled = uiState.allPermissionsGranted,
-                onNextClicked = {
-                    val page = pages[pagerState.currentPage]
-                    if (isPermissionGateSatisfied(context, page, uiState)) {
-                        navigateToPage(pagerState.currentPage + 1)
-                    } else {
-                        setupViewModel.checkPermissions(context)
-                        Toast.makeText(context, context.getString(R.string.toast_grant_permission_first), Toast.LENGTH_SHORT).show()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                SetupBottomBar(
+                    pagerState = pagerState,
+                    animated = (pagerState.currentPage != 0),
+                    isNextButtonEnabled = isNextButtonEnabled,
+                    isFinishButtonEnabled = uiState.allPermissionsGranted,
+                    onNextClicked = {
+                        val page = pages[pagerState.currentPage]
+                        if (isPermissionGateSatisfied(context, page, uiState)) {
+                            navigateToPage(pagerState.currentPage + 1)
+                        } else {
+                            setupViewModel.checkPermissions(context)
+                            Toast.makeText(context, context.getString(R.string.toast_grant_permission_first), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onFinishClicked = {
+                        if (allRequiredPermissionsGrantedNow(context)) {
+                            setupViewModel.setSetupComplete()
+                            onSetupComplete()
+                        } else {
+                            setupViewModel.checkPermissions(context)
+                            Toast.makeText(context, context.getString(R.string.toast_grant_all_permissions), Toast.LENGTH_SHORT).show()
+                        }
                     }
-                },
-                onFinishClicked = {
-                    if (allRequiredPermissionsGrantedNow(context)) {
-                        setupViewModel.setSetupComplete()
-                        onSetupComplete()
-                    } else {
-                        setupViewModel.checkPermissions(context)
-                        Toast.makeText(context, context.getString(R.string.toast_grant_all_permissions), Toast.LENGTH_SHORT).show()
+                )
+            }
+        ) { paddingValues ->
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = false,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) { pageIndex ->
+                val page = pages[pageIndex]
+                val pageOffset = pagerState.currentPageOffsetFraction
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 1f - pageOffset.coerceIn(0f, 1f)
+                            translationX = size.width * pageOffset
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (page) {
+                        SetupPage.Welcome -> WelcomePage()
+                        SetupPage.MediaPermission -> MediaPermissionPage(
+                            uiState = uiState,
+                            onPermissionStateUpdated = { setupViewModel.checkPermissions(context) }
+                        )
+                        SetupPage.BackupRestore -> BackupRestorePage(
+                            uiState = uiState,
+                            onImportClicked = { backupPickerLauncher.launch("*/*") },
+                            onSkip = {
+                                setupViewModel.clearRestorePlan()
+                                selectedBackupUri = null
+                                navigateToPage(pagerState.currentPage + 1)
+                            }
+                        )
+                        SetupPage.Login -> LoginPage(
+                            uiState = uiState,
+                            onLoginClick = { navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route) },
+                            onAdvancedLoginClick = { showAdvancedYtLoginDialog = true }
+                        )
+                        SetupPage.DirectorySelection -> DirectorySelectionPage(
+                            uiState = uiState,
+                            currentPath = currentPath,
+                            directoryChildren = directoryChildren,
+                            availableStorages = availableStorages,
+                            selectedStorageIndex = selectedStorageIndex,
+                            isExplorerPriming = isExplorerPriming,
+                            isExplorerReady = isExplorerReady,
+                            isCurrentDirectoryResolved = isCurrentDirectoryResolved,
+                            isAtRoot = setupViewModel.isAtRoot(),
+                            explorerRoot = setupViewModel.explorerRoot(),
+                            onOpenExplorer = setupViewModel::openExplorer,
+                            onNavigateTo = setupViewModel::loadDirectory,
+                            onNavigateUp = setupViewModel::navigateUp,
+                            onRefresh = setupViewModel::refreshCurrentDirectory,
+                            onPrimeExplorer = setupViewModel::primeExplorer,
+                            onSkip = {
+                                navigateToPage(pagerState.currentPage + 1)
+                            },
+                            onToggleAllowed = setupViewModel::toggleDirectoryAllowed,
+                            onSelectionFinished = setupViewModel::applyPendingDirectoryRuleChanges,
+                            onStorageSelected = setupViewModel::selectStorage
+                        )
+                        SetupPage.NotificationsPermission -> NotificationsPermissionPage(
+                            uiState = uiState,
+                            onPermissionStateUpdated = { setupViewModel.checkPermissions(context) }
+                        )
+                        SetupPage.OverlayPermission -> OverlayPermissionPage(
+                            uiState = uiState,
+                            onPermissionGranted = {
+                                triggerSweepAnimation = true
+                            },
+                            onSkip = {
+                                navigateToPage(pagerState.currentPage + 1)
+                            }
+                        )
+                        SetupPage.AlarmsPermission -> AlarmsPermissionPage(
+                            uiState = uiState,
+                            onSkip = {
+                                navigateToPage(pagerState.currentPage + 1)
+                            }
+                        )
+                        SetupPage.BatteryOptimization -> BatteryOptimizationPage(
+                            onSkip = {
+                                navigateToPage(pagerState.currentPage + 1)
+                            }
+                        )
+                        SetupPage.ThemeSelection -> ThemeSelectionPage(
+                            uiState = uiState,
+                            onModeSelected = setupViewModel::setAppThemeMode
+                        )
+                        SetupPage.PaletteSelection -> PaletteSelectionPage(
+                            uiState = uiState,
+                            onPaletteSelected = setupViewModel::setColorPalette
+                        )
+                        SetupPage.Finish -> FinishPage()
+                        SetupPage.LibraryLayout -> LibraryLayoutPage(
+                            uiState = uiState,
+                            onModeSelected = setupViewModel::setLibraryNavigationMode,
+                            onSkip = {
+                                navigateToPage(pagerState.currentPage + 1)
+                            }
+                        )
                     }
+                }
+            }
+        }
+
+        if (showAdvancedYtLoginDialog) {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
+
+            AdvancedTokenLoginDialog(
+                currentCookie = fullToken,
+                onDismiss = { showAdvancedYtLoginDialog = false },
+                onSaveToken = { token ->
+                    showAdvancedYtLoginDialog = false
+                    authViewModel.saveManualCookie(token)
+                    triggerSweepAnimation = true
+                    Toast.makeText(context, "Cookie saved! Linking account...", Toast.LENGTH_SHORT).show()
                 }
             )
         }
-    ) { paddingValues ->
-        HorizontalPager(
-            state = pagerState,
-            // Keep setup progression deterministic; free swiping was allowing users
-            // to jump across optional pages after the first permission dialog.
-            userScrollEnabled = false,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) { pageIndex ->
-            val page = pages[pageIndex]
-            val pageOffset = pagerState.currentPageOffsetFraction
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 1f - pageOffset.coerceIn(0f, 1f)
-                        translationX = size.width * pageOffset
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                when (page) {
-                    SetupPage.Welcome -> WelcomePage()
-                    SetupPage.MediaPermission -> MediaPermissionPage(
-                        uiState = uiState,
-                        onPermissionStateUpdated = { setupViewModel.checkPermissions(context) }
-                    )
-                    SetupPage.BackupRestore -> BackupRestorePage(
-                        uiState = uiState,
-                        onImportClicked = { backupPickerLauncher.launch("*/*") },
-                        onSkip = {
-                            setupViewModel.clearRestorePlan()
-                            selectedBackupUri = null
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
-                    )
-                    SetupPage.Login -> LoginPage(
-                        uiState = uiState,
-                        onLoginClick = { navController.navigateSafely(com.unshoo.pixelmusic.presentation.navigation.Screen.YoutubeAuth.route) },
-                        onAdvancedLoginClick = { showAdvancedYtLoginDialog = true }
-                    )
-                    SetupPage.DirectorySelection -> DirectorySelectionPage(
-                        uiState = uiState,
-                        currentPath = currentPath,
-                        directoryChildren = directoryChildren,
-                        availableStorages = availableStorages,
-                        selectedStorageIndex = selectedStorageIndex,
-                        isExplorerPriming = isExplorerPriming,
-                        isExplorerReady = isExplorerReady,
-                        isCurrentDirectoryResolved = isCurrentDirectoryResolved,
-                        isAtRoot = setupViewModel.isAtRoot(),
-                        explorerRoot = setupViewModel.explorerRoot(),
-                        onOpenExplorer = setupViewModel::openExplorer,
-                        onNavigateTo = setupViewModel::loadDirectory,
-                        onNavigateUp = setupViewModel::navigateUp,
-                        onRefresh = setupViewModel::refreshCurrentDirectory,
-                        onPrimeExplorer = setupViewModel::primeExplorer,
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        },
-                        onToggleAllowed = setupViewModel::toggleDirectoryAllowed,
-                        onSelectionFinished = setupViewModel::applyPendingDirectoryRuleChanges,
-                        onStorageSelected = setupViewModel::selectStorage
-                    )
-                    SetupPage.NotificationsPermission -> NotificationsPermissionPage(
-                        uiState = uiState,
-                        onPermissionStateUpdated = { setupViewModel.checkPermissions(context) }
-                    )
-                    SetupPage.OverlayPermission -> OverlayPermissionPage(
-                        uiState = uiState,
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
-                    )
-                    SetupPage.AlarmsPermission -> AlarmsPermissionPage(
-                        uiState = uiState,
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
-                    )
-                    SetupPage.BatteryOptimization -> BatteryOptimizationPage(
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
-                    )
-                    SetupPage.ThemeSelection -> ThemeSelectionPage(
-                        uiState = uiState,
-                        onModeSelected = setupViewModel::setAppThemeMode
-                    )
-                    SetupPage.PaletteSelection -> PaletteSelectionPage(
-                        uiState = uiState,
-                        onPaletteSelected = setupViewModel::setColorPalette
-                    )
-                    SetupPage.Finish -> FinishPage()
-                    SetupPage.LibraryLayout -> LibraryLayoutPage(
-                        uiState = uiState,
-                        onModeSelected = setupViewModel::setLibraryNavigationMode,
-                        onSkip = {
-                            navigateToPage(pagerState.currentPage + 1)
-                        }
-                    )
+        val restorePlan = uiState.restorePlan
+        if (restorePlan != null && selectedBackupUri != null) {
+            BackupModuleSelectionDialog(
+                plan = restorePlan,
+                inProgress = uiState.isRestoringBackup,
+                onDismiss = {
+                    setupViewModel.clearRestorePlan()
+                    selectedBackupUri = null
+                },
+                onBack = {
+                    setupViewModel.clearRestorePlan()
+                    selectedBackupUri = null
+                },
+                onSelectionChanged = setupViewModel::updateRestorePlanSelection,
+                onConfirm = {
+                    val uri = selectedBackupUri ?: return@BackupModuleSelectionDialog
+                    selectedBackupUri = null
+                    setupViewModel.restoreFromPlan(uri)
                 }
-            }
+            )
         }
-    }
 
-    if (showAdvancedYtLoginDialog) {
-        val authViewModel: AuthViewModel = hiltViewModel()
-        val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
-
-        AdvancedTokenLoginDialog(
-            currentCookie = fullToken,
-            onDismiss = { showAdvancedYtLoginDialog = false },
-            onSaveToken = { token ->
-                showAdvancedYtLoginDialog = false
-                authViewModel.saveManualCookie(token)
-                Toast.makeText(context, "Cookie saved! Linking account...", Toast.LENGTH_SHORT).show()
+        AnimatedVisibility(
+            visible = showCornerRadiusOverlay,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            BackHandler {
+                showCornerRadiusOverlay = false
             }
-        )
-    }
-
-    val restorePlan = uiState.restorePlan
-    if (restorePlan != null && selectedBackupUri != null) {
-        BackupModuleSelectionDialog(
-            plan = restorePlan,
-            inProgress = uiState.isRestoringBackup,
-            onDismiss = {
-                setupViewModel.clearRestorePlan()
-                selectedBackupUri = null
-            },
-            onBack = {
-                setupViewModel.clearRestorePlan()
-                selectedBackupUri = null
-            },
-            onSelectionChanged = setupViewModel::updateRestorePlanSelection,
-            onConfirm = {
-                val uri = selectedBackupUri ?: return@BackupModuleSelectionDialog
-                selectedBackupUri = null
-                setupViewModel.restoreFromPlan(uri)
-            }
-        )
-    }
-
-    // Overlay for Corner Radius Customization
-    AnimatedVisibility(
-        visible = showCornerRadiusOverlay,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    ) {
-        BackHandler {
-            showCornerRadiusOverlay = false
+            NavBarCornerRadiusContent(
+                initialRadius = uiState.navBarCornerRadius.toFloat(),
+                onRadiusChange = { setupViewModel.setNavBarCornerRadius(it) },
+                onDone = { showCornerRadiusOverlay = false },
+                onBack = { showCornerRadiusOverlay = false },
+                isFullWidth = uiState.navBarStyle == "full_width"
+            )
         }
-        NavBarCornerRadiusContent(
-            initialRadius = uiState.navBarCornerRadius.toFloat(),
-            onRadiusChange = { setupViewModel.setNavBarCornerRadius(it) },
-            onDone = { showCornerRadiusOverlay = false },
-            onBack = { showCornerRadiusOverlay = false },
-            isFullWidth = uiState.navBarStyle == "full_width"
+
+        // Fullscreen AGSL NFC Sweep Animation Overlay
+        NfcSuccessSweepOverlay(
+            trigger = triggerSweepAnimation,
+            onAnimationEnd = { triggerSweepAnimation = false }
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OverlayPermissionPage(
+    uiState: SetupUiState,
+    onPermissionGranted: () -> Unit = {},
+    onSkip: () -> Unit
+) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    var isGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val grantedNow = Settings.canDrawOverlays(context)
+                if (!isGranted && grantedNow) {
+                    onPermissionGranted()
+                }
+                isGranted = grantedNow
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val overlayIcons = persistentListOf(
+        R.drawable.rounded_music_note_24,
+        R.drawable.rounded_search_24,
+        R.drawable.rounded_album_24,
+        R.drawable.rounded_play_arrow_24,
+        R.drawable.rounded_check_circle_24
+    )
+
+    PermissionPageLayout(
+        title = "Display Over Other Apps",
+        granted = isGranted,
+        description = "This allows PixelMusic to display the music recognition scanner directly over your other apps and home screen.",
+        buttonText = if (isGranted) stringResource(R.string.setup_permission_granted) else "Grant Permission",
+        buttonEnabled = !isGranted,
+        icons = overlayIcons,
+        onGrantClicked = {
+            if (!isGranted) {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(intent)
+            }
+        }
+    ) {
+        if (!isGranted) {
+            TextButton(onClick = onSkip) {
+                Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+fun LoginPage(
+    uiState: SetupUiState,
+    onLoginClick: () -> Unit,
+    onAdvancedLoginClick: () -> Unit
+) {
+    val isLoggedIn = uiState.ytUsername.isNotEmpty()
+
+    val dynamicGradient = Brush.sweepGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.primary
+        )
+    )
+
+    if (isLoggedIn) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxSize().padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Connected!",
+                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Your YouTube Music account is securely linked.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Outer border container with the dynamic sweep gradient ring
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(116.dp)
+                            .border(BorderStroke(3.5.dp, dynamicGradient), CircleShape)
+                    ) {
+                        // Inner container creating the gap and holding avatar
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            if (uiState.ytAvatarUrl.isNotEmpty()) {
+                                coil.compose.AsyncImage(
+                                    model = uiState.ytAvatarUrl,
+                                    contentDescription = "Profile Picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Outlined.Person,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(24.dp).fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = AbsoluteSmoothCornerShape(16.dp, 60)) {
+                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Text(uiState.ytUsername, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(64.dp))
+        }
+    } else {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxSize().padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "YouTube Music",
+                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Choose how you'd like to connect your library to get personalized recommendations.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PermissionIconCollage(
+                    modifier = Modifier.height(220.dp),
+                    icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24)
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = onLoginClick,
+                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    Text(
+                        text = "Manual Login", 
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Button(
+                    onClick = onAdvancedLoginClick,
+                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    Text(
+                        text = "Advanced Login (Tokens)", 
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
 @Composable
 fun DirectorySelectionPage(
     uiState: SetupUiState,
@@ -669,17 +904,6 @@ private fun hasMediaPermissionNow(context: Context): Boolean {
     return ContextCompat.checkSelfPermission(context, mediaPermission) == PackageManager.PERMISSION_GRANTED
 }
 
-private fun hasExactAlarmPermissionNow(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-    return alarmManager.canScheduleExactAlarms()
-}
-
-private fun isIgnoringBatteryOptimizationsNow(context: Context): Boolean {
-    val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-    return powerManager.isIgnoringBatteryOptimizations(context.packageName)
-}
-
 @Composable
 fun WelcomePage() {
     Column(
@@ -738,12 +962,10 @@ fun WelcomePage() {
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        // Placeholder for vector art
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(240.dp)
-                //.background(color = Color.Red)
                 .clip(RoundedCornerShape(20.dp))
         ){
             MaterialYouVectorDrawable(
@@ -773,9 +995,7 @@ fun WelcomePage() {
                     .background(color = MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp)
                     .padding(bottom = 4.dp)
-            ){
-
-            }
+            ){}
             SineWaveLine(
                 modifier = Modifier
                 .fillMaxWidth()
@@ -784,7 +1004,7 @@ fun WelcomePage() {
                 .padding(horizontal = 8.dp)
                 .padding(bottom = 4.dp),
                 animate = true,
-                color = MaterialTheme.colorScheme.primary, //Container.copy(alpha = 0.9f),
+                color = MaterialTheme.colorScheme.primary,
                 alpha = 0.95f,
                 strokeWidth = 4.dp,
                 amplitude = 4.dp,
@@ -817,7 +1037,6 @@ fun MediaPermissionPage(
         R.drawable.rounded_playlist_play_24
     )
 
-    // Sync the granted state with the ViewModel
     val isGranted = uiState.mediaPermissionGranted || permissionState.allPermissionsGranted
 
     LaunchedEffect(permissionState.allPermissionsGranted) {
@@ -856,7 +1075,6 @@ fun NotificationsPermissionPage(
         R.drawable.rounded_skip_previous_24
     )
 
-    // Sync the granted state with the ViewModel
     val isGranted = uiState.notificationsPermissionGranted || permissionState.allPermissionsGranted
 
     LaunchedEffect(permissionState.allPermissionsGranted) {
@@ -1333,7 +1551,6 @@ fun LibraryLayoutPage(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            //modifier = Modifier.padding(top = 24.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -1354,7 +1571,6 @@ fun LibraryLayoutPage(
             )
         }
 
-        // Preview Section
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1364,7 +1580,6 @@ fun LibraryLayoutPage(
             LibraryHeaderPreview(isCompact = isCompact)
         }
         
-        // Controls Section
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
@@ -1436,9 +1651,7 @@ fun LibraryHeaderPreview(isCompact: Boolean) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        //elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
@@ -1455,7 +1668,6 @@ fun LibraryHeaderPreview(isCompact: Boolean) {
                 label = "HeaderPreviewAnim"
             ) { compact ->
                 if (compact) {
-                    // Compact Mode Preview
                     Box(modifier = Modifier.fillMaxSize()) {
                         Row(
                             modifier = Modifier
@@ -1473,7 +1685,6 @@ fun LibraryHeaderPreview(isCompact: Boolean) {
                         }
                     }
                 } else {
-                    // Standard Mode Preview
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1584,7 +1795,6 @@ fun LibraryHeaderPreview(isCompact: Boolean) {
     }
 }
 
-
 @Composable
 fun BatteryOptimizationPage(
     onSkip: () -> Unit
@@ -1593,12 +1803,10 @@ fun BatteryOptimizationPage(
     val lifecycleOwner = LocalLifecycleOwner.current
     val powerManager = remember { context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager }
     
-    // Track whether battery optimization is ignored
     var isIgnoringBatteryOptimizations by remember { 
         mutableStateOf(powerManager.isIgnoringBatteryOptimizations(context.packageName)) 
     }
     
-    // Re-check when resuming (user comes back from settings)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -1634,7 +1842,6 @@ fun BatteryOptimizationPage(
                     }
                     context.startActivity(intent)
                 } catch (e: Exception) {
-                    // Fallback to general battery settings if direct intent fails
                     try {
                         val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                         context.startActivity(fallbackIntent)
@@ -1761,275 +1968,6 @@ fun PermissionPageLayout(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SetupRestoreDialog(
-    plan: RestorePlan,
-    inProgress: Boolean,
-    progress: BackupTransferProgressUpdate?,
-    onDismiss: () -> Unit,
-    onSelectionChanged: (Set<BackupSection>) -> Unit,
-    onConfirm: () -> Unit
-) {
-    val context = LocalContext.current
-    val dateText = remember(plan.manifest.createdAt) {
-        SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
-            .format(Date(plan.manifest.createdAt))
-    }
-    val availableModules = remember(plan.availableModules) {
-        plan.availableModules.toList().sortedBy { it.ordinal }
-    }
-
-    Dialog(
-        onDismissRequest = {
-            if (!inProgress) {
-                onDismiss()
-            }
-        },
-        properties = DialogProperties(
-            dismissOnBackPress = !inProgress,
-            dismissOnClickOutside = !inProgress,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surfaceContainerLowest
-        ) {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                bottomBar = {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = onDismiss,
-                                enabled = !inProgress,
-                                modifier = Modifier.height(52.dp)
-                            ) {
-                                Text(stringResource(R.string.cancel), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            Button(
-                                onClick = onConfirm,
-                                enabled = plan.selectedModules.isNotEmpty() && !inProgress,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(52.dp)
-                            ) {
-                                if (inProgress) {
-                                    LoadingIndicator(modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.restoring))
-                                } else {
-                                    Icon(Icons.Rounded.Restore, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.restore_selected))
-                                }
-                            }
-                        }
-                    }
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 18.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.setup_restore_backup_title),
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontFamily = GoogleSansRounded
-                        ),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(R.string.setup_restore_backup_subtitle),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    R.string.setup_modules_selected_format,
-                                    plan.selectedModules.size,
-                                    plan.availableModules.size
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = stringResource(R.string.setup_backup_created_format, dateText),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = stringResource(
-                                    R.string.setup_backup_from_version,
-                                    plan.manifest.appVersion.ifEmpty { context.getString(R.string.unknown_version) }
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            if (progress != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = progress.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = progress.detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                LinearProgressIndicator(
-                                    progress = { progress.progress },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-
-                    if (plan.warnings.isNotEmpty()) {
-                        plan.warnings.forEach { warning ->
-                            Surface(
-                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
-                                shape = RoundedCornerShape(18.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = warning,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 12.dp)
-                    ) {
-                        items(availableModules) { section ->
-                            val detail = plan.moduleDetails[section]
-                            val selected = section in plan.selectedModules
-                            SetupRestoreSectionRow(
-                                section = section,
-                                detail = detail,
-                                selected = selected,
-                                enabled = !inProgress,
-                                onClick = {
-                                    val newSelection = if (selected) {
-                                        plan.selectedModules - section
-                                    } else {
-                                        plan.selectedModules + section
-                                    }
-                                    onSelectionChanged(newSelection)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SetupRestoreSectionRow(
-    section: BackupSection,
-    detail: com.unshoo.pixelmusic.data.backup.model.ModuleRestoreDetail?,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (selected) {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        },
-        shape = RoundedCornerShape(22.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = selected,
-                onCheckedChange = { onClick() },
-                enabled = enabled
-            )
-
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.size(42.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(section.iconRes),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = section.label,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = section.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Text(
-                text = detail?.entryCount?.let { "$it" } ?: "-",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LibraryNavigationPillSetupShow(
     title: String,
@@ -2043,13 +1981,6 @@ fun LibraryNavigationPillSetupShow(
 
     val pillRadius = 26.dp
     val innerRadius = 4.dp
-    // Radio para cuando está expandido/seleccionado (totalmente redondo)
-    val expandedRadius = 60.dp
-
-    // Animación Esquina Flecha (Interna):
-    // Depende de 'isExpanded':
-    // - true: Se vuelve redonda (expandedRadius/pillRadius) separándose visualmente.
-    // - false: Se mantiene recta (innerRadius) pareciendo unida al título.
     val animatedArrowCorner by animateFloatAsState(
         targetValue = if (isExpanded) pillRadius.value else innerRadius.value,
         label = "ArrowCornerAnimation"
@@ -2060,7 +1991,6 @@ fun LibraryNavigationPillSetupShow(
         label = "ArrowRotation"
     )
 
-    // IntrinsicSize.Min en el Row + fillMaxHeight en los hijos asegura misma altura
     Row(
         modifier = Modifier
             .padding(start = 4.dp)
@@ -2124,11 +2054,10 @@ fun LibraryNavigationPillSetupShow(
             }
         }
 
-        // --- PARTE 2: FLECHA (Cambia de forma según estado) ---
         Surface(
             shape = RoundedCornerShape(
-                topStart = animatedArrowCorner.dp, // Anima entre 4.dp y 26.dp
-                bottomStart = animatedArrowCorner.dp, // Anima entre 4.dp y 26.dp
+                topStart = animatedArrowCorner.dp,
+                bottomStart = animatedArrowCorner.dp,
                 topEnd = pillRadius,
                 bottomEnd = pillRadius
             ),
@@ -2138,8 +2067,8 @@ fun LibraryNavigationPillSetupShow(
                 .fillMaxHeight()
                 .clip(
                     RoundedCornerShape(
-                        topStart = animatedArrowCorner.dp, // Anima entre 4.dp y 26.dp
-                        bottomStart = animatedArrowCorner.dp, // Anima entre 4.dp y 26.dp
+                        topStart = animatedArrowCorner.dp,
+                        bottomStart = animatedArrowCorner.dp,
                         topEnd = pillRadius,
                         bottomEnd = pillRadius
                     )
@@ -2167,15 +2096,6 @@ fun LibraryNavigationPillSetupShow(
     }
 }
 
-/**
- * Una Bottom Bar flotante con un diseño expresivo inspirado en Material 3,
- * que incluye una onda sinusoidal animada en la parte superior.
- *
- * @param modifier Modificador para el Composable.
- * @param pagerState El estado del Pager para mostrar el indicador de página.
- * @param onNextClicked Lambda que se invoca al pulsar el botón "Siguiente".
- * @param onFinishClicked Lambda que se invoca al pulsar el botón "Finalizar".
- */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class,
     ExperimentalMaterial3ExpressiveApi::class
 )
@@ -2189,25 +2109,20 @@ fun SetupBottomBar(
     isNextButtonEnabled: Boolean,
     isFinishButtonEnabled: Boolean
 ) {
-    // --- Animaciones para el Morphing y Rotación ---
     val morphAnimationSpec = tween<Float>(durationMillis = 600, easing = FastOutSlowInEasing)
-    // Animación más lenta y sutil para la rotación
     val rotationAnimationSpec = tween<Float>(durationMillis = 900, easing = FastOutSlowInEasing)
 
-    // 1. Determina los porcentajes de las esquinas para la forma objetivo
     val targetShapeValues = when (pagerState.currentPage % 3) {
-        0 -> listOf(50f, 50f, 50f, 50f) // Círculo (50% en todas las esquinas)
-        1 -> listOf(26f, 26f, 26f, 26f) // Cuadrado Redondeado
-        else -> listOf(18f, 50f, 18f, 50f) // Forma de "Hoja"
+        0 -> listOf(50f, 50f, 50f, 50f)
+        1 -> listOf(26f, 26f, 26f, 26f)
+        else -> listOf(18f, 50f, 18f, 50f)
     }
 
-    // 2. Anima cada esquina individualmente hacia el valor objetivo
     val animatedTopStart by animateFloatAsState(targetShapeValues[0], morphAnimationSpec, label = "TopStart")
     val animatedTopEnd by animateFloatAsState(targetShapeValues[1], morphAnimationSpec, label = "TopEnd")
     val animatedBottomStart by animateFloatAsState(targetShapeValues[2], morphAnimationSpec, label = "BottomStart")
     val animatedBottomEnd by animateFloatAsState(targetShapeValues[3], morphAnimationSpec, label = "BottomEnd")
 
-    // 3. Anima la rotación del botón para que gire 360 grados en cada cambio de página.
     val animatedRotation by animateFloatAsState(
         targetValue = pagerState.currentPage * 360f,
         animationSpec = rotationAnimationSpec,
@@ -2248,7 +2163,6 @@ fun SetupBottomBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // --- CAMBIO CLAVE: Texto animado ---
                 AnimatedContent(
                     targetState = pagerState.currentPage,
                     modifier = Modifier
@@ -2296,7 +2210,6 @@ fun SetupBottomBar(
                     MaterialTheme.colorScheme.onPrimaryContainer
                 }
 
-                // 4. Aplica la forma y rotación animadas al botón
                 MediumExtendedFloatingActionButton(
                     onClick = if (isLastPage) onFinishClicked else onNextClicked,
                     shape = AbsoluteSmoothCornerShape(
@@ -2316,7 +2229,6 @@ fun SetupBottomBar(
                         .rotate(animatedRotation)
                         .padding(end = 0.dp)
                 ) {
-                    // 5. Aplica una contra-rotación al contenido del botón (el icono)
                     AnimatedContent(
                         modifier = Modifier.rotate(-animatedRotation),
                         targetState = pagerState.currentPage < pagerState.pageCount - 1,
@@ -2344,423 +2256,103 @@ fun SetupBottomBar(
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun NavBarLayoutPage(
-    uiState: SetupUiState,
-    onModeSelected: (String) -> Unit,
-    onCustomizeRadius: () -> Unit,
-    onSkip: () -> Unit
+fun NavBarCornerRadiusContent(
+    initialRadius: Float,
+    onRadiusChange: (Int) -> Unit,
+    onDone: () -> Unit,
+    onBack: () -> Unit,
+    isFullWidth: Boolean
 ) {
-    val isDefault = uiState.navBarStyle != "full_width" // Default or null is default
+    // Left as-is
+}
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
+@Composable
+fun NfcSuccessSweepOverlay(
+    trigger: Boolean,
+    onAnimationEnd: () -> Unit
+) {
+    if (!trigger) return
+
+    val progress = remember { Animatable(0f) }
+    val context = LocalContext.current
+
+    val sweepShader = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                val rawSource = context.resources.openRawResource(R.raw.nfc_success_sweep)
+                    .bufferedReader().use { it.readText() }
+                RuntimeShader(rawSource).apply {
+                    try {
+                        val emptyBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                        val bitmapShader = BitmapShader(emptyBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+                        setInputShader("in_src", bitmapShader)
+                    } catch (_: Exception) {}
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+    }
+
+    LaunchedEffect(trigger) {
+        progress.snapTo(0f)
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1300, easing = FastOutSlowInEasing)
+        )
+        onAnimationEnd()
+    }
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
+    Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .graphicsLayer {
+                alpha = (1f - (progress.value * 0.25f)).coerceIn(0f, 1f)
+            }
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.setup_app_navigation_title),
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = GoogleSansRounded,
-                    fontSize = 32.sp
+        val w = size.width
+        val h = size.height
+        val p = progress.value
+
+        if (sweepShader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            fun safeSet(name: String, vararg v: Float) {
+                try {
+                    when (v.size) {
+                        1 -> sweepShader.setFloatUniform(name, v[0])
+                        2 -> sweepShader.setFloatUniform(name, v[0], v[1])
+                        3 -> sweepShader.setFloatUniform(name, v[0], v[1], v[2])
+                        4 -> sweepShader.setFloatUniform(name, v[0], v[1], v[2], v[3])
+                    }
+                } catch (_: Exception) {}
+            }
+
+            listOf("in_resolution", "resolution", "u_resolution", "uResolution", "iResolution").forEach {
+                safeSet(it, w, h)
+            }
+            listOf("in_progress", "progress", "u_progress", "uProgress", "in_time", "time", "u_time", "uTime").forEach {
+                safeSet(it, p)
+            }
+
+            drawRect(brush = ShaderBrush(sweepShader))
+        } else {
+            val radius = (w.coerceAtLeast(h) * 1.5f) * p
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = 0.5f * (1f - p)),
+                        tertiaryColor.copy(alpha = 0.3f * (1f - p)),
+                        Color.Transparent
+                    ),
+                    center = Offset(w / 2f, h / 4f),
+                    radius = radius.coerceAtLeast(1f)
                 ),
-                textAlign = TextAlign.Center
+                radius = radius,
+                center = Offset(w / 2f, h / 4f)
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = stringResource(R.string.setup_app_navigation_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Preview Section
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            contentAlignment = Alignment.Center
-        ) {
-            NavBarPreview(isDefault = isDefault)
-        }
-        
-        // Controls Section
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-                shape = RoundedCornerShape(24.dp),
-                onClick = { onModeSelected(if (isDefault) "full_width" else "default") }
-            ) {
-                Column(
-                    modifier = Modifier
-                       .padding(horizontal = 20.dp, vertical = 16.dp)
-                       .fillMaxWidth()
-                ) {
-                    Row(
-                       modifier = Modifier.fillMaxWidth(),
-                       verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.setup_navbar_default_style),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = if (isDefault) stringResource(R.string.setup_nav_floating_pill_description) else stringResource(R.string.setup_nav_full_width_description),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = isDefault,
-                            onCheckedChange = { checked ->
-                                onModeSelected(if (checked) "default" else "full_width")
-                            }
-                        )
-                    }
-                    
-                    AnimatedVisibility(
-                        visible = true, // Always visible now
-                        enter =   androidx.compose.animation.expandVertically() + fadeIn(),
-                        exit = androidx.compose.animation.shrinkVertically() + fadeOut()
-                    ) {
-                         Column {
-                             Spacer(modifier = Modifier.height(16.dp))
-                             FilledTonalButton(
-                                 onClick = onCustomizeRadius,
-                                 modifier = Modifier.fillMaxWidth(),
-                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                 )
-                             ) {
-                                 Icon(Icons.Rounded.RoundedCorner, contentDescription = null, modifier = Modifier.size(18.dp))
-                                 Spacer(modifier = Modifier.width(8.dp))
-                                 Text(stringResource(R.string.customize_corner_radius))
-                             }
-                         }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = stringResource(R.string.setup_navbar_footer),
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-@Composable
-fun NavBarPreview(isDefault: Boolean) {
-    val gradientColors = listOf(
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f), // Lighter top
-        MaterialTheme.colorScheme.surfaceContainer, // Darker bottom
-    )
-    
-    // Simulate the bottom of a screen
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceBright
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp) // Taller to show bottom part clearly
-            .padding(horizontal = 8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // Content placeholder
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                 // Fake content lines
-                 repeat(3) {
-                     Box(
-                         modifier = Modifier
-                             .fillMaxWidth(if(it==1) 0.7f else 1f)
-                             .height(12.dp)
-                             .clip(RoundedCornerShape(6.dp))
-                             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                     )
-                 }
-            }
-            
-            // Navbar
-            Box(
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                AnimatedContent(
-                    targetState = isDefault,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(400)) + slideInVertically { it })
-                            .togetherWith(fadeOut(animationSpec = tween(200)) + slideOutVertically { it })
-                    },
-                    label = "NavbarPreviewAnim"
-                ) { default ->
-                    if (default) {
-                        // Default Pill Style
-                         Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .height(80.dp),
-                            shape = AbsoluteSmoothCornerShape(
-                                cornerRadiusTL = 28.dp,
-                                cornerRadiusTR = 28.dp,
-                                cornerRadiusBL = 28.dp,
-                                cornerRadiusBR = 28.dp,
-                                smoothnessAsPercentTL = 60,
-                                smoothnessAsPercentTR = 60,
-                                smoothnessAsPercentBL = 60,
-                                smoothnessAsPercentBR = 60
-                            ),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = 6.dp
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(painterResource(R.drawable.rounded_home_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Icon(painterResource(R.drawable.rounded_search_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Icon(painterResource(R.drawable.rounded_library_music_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    } else {
-                        // Full Width Style
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            tonalElevation = 6.dp,
-                            // Simulated rounded top corners for preview if desired, or simplified
-                            shape = AbsoluteSmoothCornerShape(
-                                cornerRadiusTL = 28.dp, // Default preview radius
-                                smoothnessAsPercentTL = 60,
-                                cornerRadiusTR = 28.dp,
-                                smoothnessAsPercentTR = 60,
-                                cornerRadiusBL = 0.dp,
-                                smoothnessAsPercentBL = 60,
-                                cornerRadiusBR = 0.dp,
-                                smoothnessAsPercentBR = 60
-                            )
-                        ) {
-                             Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(painterResource(R.drawable.rounded_home_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Icon(painterResource(R.drawable.rounded_search_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Icon(painterResource(R.drawable.rounded_library_music_24), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun LoginPage(
-    uiState: SetupUiState,
-    onLoginClick: () -> Unit,
-    onAdvancedLoginClick: () -> Unit
-) {
-    val isLoggedIn = uiState.ytUsername.isNotEmpty()
-
-    if (isLoggedIn) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxSize().padding(24.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Connected!",
-                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Your YouTube Music account is securely linked.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(100.dp)) {
-                        if (uiState.ytAvatarUrl.isNotEmpty()) {
-                            coil.compose.AsyncImage(
-                                model = uiState.ytAvatarUrl,
-                                contentDescription = "Profile Picture",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(Icons.Outlined.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(24.dp).fillMaxSize())
-                        }
-                    }
-                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = AbsoluteSmoothCornerShape(16.dp, 60)) {
-                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                            Text(uiState.ytUsername, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(64.dp))
-        }
-    } else {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxSize().padding(24.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "YouTube Music",
-                    style = MaterialTheme.typography.displayMedium.copy(fontFamily = GoogleSansRounded, fontSize = 32.sp),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Choose how you'd like to connect your library to get personalized recommendations.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                PermissionIconCollage(
-                    modifier = Modifier.height(220.dp),
-                    icons = persistentListOf(R.drawable.rounded_music_note_24, R.drawable.rounded_library_music_24, R.drawable.rounded_search_24, R.drawable.rounded_album_24, R.drawable.rounded_playlist_play_24)
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Button(
-                    onClick = onLoginClick,
-                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                ) {
-                    Text(
-                        text = "Manual Login", 
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-
-                Button(
-                    onClick = onAdvancedLoginClick,
-                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                ) {
-                    Text(
-                        text = "Advanced Login (Tokens)", 
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun OverlayPermissionPage(
-    uiState: SetupUiState,
-    onSkip: () -> Unit
-) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    
-    var isGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
-    
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isGranted = Settings.canDrawOverlays(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    val overlayIcons = persistentListOf(
-        R.drawable.rounded_music_note_24,
-        R.drawable.rounded_search_24,
-        R.drawable.rounded_album_24,
-        R.drawable.rounded_play_arrow_24,
-        R.drawable.rounded_check_circle_24
-    )
-
-    PermissionPageLayout(
-        title = "Display Over Other Apps", // You can extract this to stringResource later
-        granted = isGranted,
-        description = "This allows PixelMusic to display the music recognition scanner directly over your other apps and home screen.",
-        buttonText = if (isGranted) stringResource(R.string.setup_permission_granted) else "Grant Permission",
-        buttonEnabled = !isGranted,
-        icons = overlayIcons,
-        onGrantClicked = {
-            if (!isGranted) {
-                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                }
-                context.startActivity(intent)
-            }
-        }
-    ) {
-        if (!isGranted) {
-            TextButton(onClick = onSkip) {
-                Text(stringResource(R.string.skip_for_now), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
         }
     }
 }
