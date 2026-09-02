@@ -37,7 +37,7 @@ import com.unshoo.pixelmusic.presentation.viewmodel.SettingsUiState
 @Composable
 fun ExpandableAccountCard(
     uiState: SettingsUiState,
-    isPro: Boolean,
+    isPro: Boolean, // Kept to avoid breaking the caller, but ignored internally
     onLoginNew: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
@@ -49,6 +49,9 @@ fun ExpandableAccountCard(
     val nameText = if (hasProfile) uiState.ytUsername else "Guest User"
     val handleText = if (hasProfile) uiState.ytHandle else "Sign in to sync"
     val avatarUrl = if (hasProfile) uiState.ytAvatarUrl else ""
+
+    // Fake Pro status: always true if the user is logged in
+    val showFakePro = hasProfile
 
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
 
@@ -85,7 +88,7 @@ fun ExpandableAccountCard(
                         modifier = Modifier
                             .size(68.dp) 
                             .then(
-                                if (isPro) Modifier.border(BorderStroke(2.5.dp, proGradient), CircleShape)
+                                if (showFakePro) Modifier.border(BorderStroke(2.5.dp, proGradient), CircleShape)
                                 else Modifier
                             )
                     ) {
@@ -116,7 +119,7 @@ fun ExpandableAccountCard(
                         }
                     }
                     
-                    if (isPro) {
+                    if (showFakePro) {
                         // Background-colored Surface to "punch out" the ring behind the badge
                         Surface(
                             shape = RoundedCornerShape(50),
