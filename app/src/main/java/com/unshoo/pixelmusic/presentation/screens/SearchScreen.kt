@@ -2,7 +2,6 @@ package com.unshoo.pixelmusic.presentation.screens
 
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
-
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
@@ -65,7 +64,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -88,10 +86,8 @@ import com.unshoo.pixelmusic.presentation.components.SmartImage
 import com.unshoo.pixelmusic.presentation.components.SmartImageListTargetSize
 import com.unshoo.pixelmusic.presentation.components.SongInfoBottomSheet
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
-import android.util.Log
 import com.unshoo.pixelmusic.ui.theme.LocalPixelMusicDarkTheme
 import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
@@ -106,14 +102,12 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import com.unshoo.pixelmusic.R
-import com.unshoo.pixelmusic.data.repository.MusicRepository
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
 import com.unshoo.pixelmusic.presentation.components.PlaylistBottomSheet
 import com.unshoo.pixelmusic.presentation.components.PlaylistCover
@@ -124,12 +118,10 @@ import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistViewModel
 import com.unshoo.pixelmusic.utils.formatSongCount
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import timber.log.Timber
 import com.unshoo.pixelmusic.presentation.components.subcomps.EnhancedSongListItem
@@ -151,14 +143,12 @@ fun SearchScreen(
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
-    // Always reset search query to empty on every visit so the screen starts
-    // at the Moods & Genres section (as requested by the user).
     var searchQuery by remember { mutableStateOf("") }
     val statusBarTopInset = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
     val bottomBarHeightDp = resolveNavBarOccupiedHeight(systemNavBarInset, navBarCompactMode)
-    val bottomGradientHeight = resolveMainScreenBottomGradientHeight(navBarCompactMode)
+    
     var showPlaylistBottomSheet by remember { mutableStateOf(false) }
     var playlistSheetSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val searchUiState by remember(playerViewModel) {
@@ -173,7 +163,6 @@ fun SearchScreen(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = SearchUiSlice())
     val currentFilter = searchUiState.selectedSearchFilter
-    val genres by playerViewModel.genres.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -182,15 +171,12 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchInputFocusRequester = remember { FocusRequester() }
 
-    // On every visit to the search screen, clear the query + results so we
-    // always land on the Moods & Genres browse page.
     LaunchedEffect(Unit) {
         onSearchBarActiveChange(false)
         searchQuery = ""
         playerViewModel.performSearch("")
         playerViewModel.loadSearchHistory()
     }
-
 
     LaunchedEffect(playerViewModel, keyboardController) {
         playerViewModel.searchNavDoubleTapEvents.collect {
@@ -200,10 +186,10 @@ fun SearchScreen(
         }
     }
 
-    // Search debouncing is centralized in SearchStateHolder.
     LaunchedEffect(searchQuery, currentFilter) {
         playerViewModel.performSearch(searchQuery)
     }
+    
     val searchResults = searchUiState.searchResults
     val handleSongMoreOptionsClick: (Song) -> Unit = { song ->
         playerViewModel.selectSongForInfo(song)
@@ -211,35 +197,8 @@ fun SearchScreen(
     }
 
     val searchbarCornerRadius = 28.dp
-
     val dm = LocalPixelMusicDarkTheme.current
-
-    val gradientColorsDark = listOf(
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        Color.Transparent
-    ).toImmutableList()
-
-    val gradientColorsLight = listOf(
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
-        Color.Transparent
-    ).toImmutableList()
-
-    val gradientColors = if (dm) gradientColorsDark else gradientColorsLight
-
-    val gradientBrush = remember(gradientColors) {
-        Brush.verticalGradient(colors = gradientColors)
-    }
     val colorScheme = MaterialTheme.colorScheme
-    val bottomGradientBrush = remember(colorScheme.surfaceContainerLowest) {
-        Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.0f to Color.Transparent,
-                0.2f to Color.Transparent,
-                0.8f to colorScheme.surfaceContainerLowest,
-                1.0f to colorScheme.surfaceContainerLowest
-            )
-        )
-    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -252,7 +211,6 @@ fun SearchScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -506,9 +464,7 @@ fun SearchScreen(
             }
         }.value ?: false
         val removeFromListTrigger = remember(currentSong) {
-            {
-                searchQuery = "$searchQuery "
-            }
+            { searchQuery = "$searchQuery " }
         }
 
         if (currentSong != null) {
@@ -562,19 +518,7 @@ fun SearchScreen(
                 onNavigateToGenre = {},
                 onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                     playerViewModel.editSongMetadata(
-                        currentSong,
-                        newTitle,
-                        newArtist,
-                        newAlbum,
-                        newAlbumArtist,
-                        newComposer,
-                        newGenre,
-                        newLyrics,
-                        newTrackNumber,
-                        newDiscNumber,
-                        replayGainTrackGainDb,
-                        replayGainAlbumGainDb,
-                        coverArtUpdate
+                        currentSong, newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate
                     )
                 },
                 generateAiMetadata = { fields ->
@@ -615,7 +559,6 @@ fun SearchHistoryList(
     onHistoryDelete: (String) -> Unit,
     onClearAllHistory: () -> Unit
 ) {
-    val localDensity = LocalDensity.current
     Column {
         Row(
             modifier = Modifier
@@ -693,7 +636,6 @@ fun SearchHistoryListItem(
     }
 }
 
-
 @Composable
 fun EmptySearchResults(searchQuery: String, colorScheme: ColorScheme) {
     Column(
@@ -712,11 +654,7 @@ fun EmptySearchResults(searchQuery: String, colorScheme: ColorScheme) {
         )
 
         Text(
-            text = if (searchQuery.isNotBlank()) {
-                stringResource(R.string.search_no_results_for_query, searchQuery)
-            } else {
-                stringResource(R.string.search_nothing_found)
-            },
+            text = if (searchQuery.isNotBlank()) stringResource(R.string.search_no_results_for_query, searchQuery) else stringResource(R.string.search_nothing_found),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold
@@ -733,7 +671,6 @@ fun EmptySearchResults(searchQuery: String, colorScheme: ColorScheme) {
     }
 }
 
-
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun SearchResultsList(
@@ -747,9 +684,6 @@ fun SearchResultsList(
     onSongMoreOptionsClick: (Song) -> Unit,
     navController: NavHostController
 ) {
-    val localDensity = LocalDensity.current
-    val playerStableState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
-
     if (results.isEmpty()) {
         Box(
             modifier = Modifier
@@ -772,46 +706,27 @@ fun SearchResultsList(
             }
         }
     }
-    val songResultsQueue = remember(groupedResults, currentFilter) {
-        buildList {
-            val key = if (currentFilter == SearchFilterType.VIDEOS) SearchFilterType.VIDEOS else SearchFilterType.SONGS
-            groupedResults[key]
-                ?.forEach { item ->
-                    val song = (item as? SearchResultItem.SongItem)?.song ?: return@forEach
-                    add(song)
-                }
-        }
-    }
+    
     val searchQueueName = remember(searchQuery) {
-        searchQuery.trim()
-            .takeIf { it.isNotEmpty() }
-            ?.let { "Search: $it" }
-            ?: "Search Results"
+        searchQuery.trim().takeIf { it.isNotEmpty() }?.let { "Search: $it" } ?: "Search Results"
     }
     val onSongResultClick = remember(playerViewModel, onItemSelected, searchQueueName) {
         { song: Song ->
-            // INSTANT PLAYBACK FIX: Always play the song immediately via showAndPlaySong.
-            // This gives instant response on tap without waiting for a network call.
             playerViewModel.showAndPlaySong(song, listOf(song), searchQueueName)
             onItemSelected()
         }
     }
 
-
     val sectionOrder = remember(currentFilter) {
         if (currentFilter == SearchFilterType.VIDEOS) {
             listOf(SearchFilterType.VIDEOS)
         } else {
-            listOf(
-                SearchFilterType.SONGS,
-                SearchFilterType.ALBUMS,
-                SearchFilterType.ARTISTS,
-                SearchFilterType.PLAYLISTS
-            )
+            listOf(SearchFilterType.SONGS, SearchFilterType.ALBUMS, SearchFilterType.ARTISTS, SearchFilterType.PLAYLISTS)
         }
     }
 
     val lazyListState = rememberLazyListState()
+    val localDensity = LocalDensity.current
 
     LaunchedEffect(lazyListState) {
         snapshotFlow {
@@ -909,16 +824,12 @@ fun SearchResultsList(
                             is SearchResultItem.AlbumItem -> {
                                 val onPlayClick = remember(item.album, playerViewModel, onItemSelected) {
                                     {
-                                        Timber.tag("SearchScreen")
-                                            .d("Album clicked: ${item.album.title}")
+                                        Timber.tag("SearchScreen").d("Album clicked: ${item.album.title}")
                                         playerViewModel.playAlbum(item.album)
                                         onItemSelected()
                                     }
                                 }
-                                val onOpenClick = remember(
-                                    item.album,
-                                    playerViewModel, onItemSelected
-                                ) {
+                                val onOpenClick = remember(item.album, playerViewModel, onItemSelected) {
                                     {
                                         navController.navigateSafelyReplacing(
                                             route = Screen.AlbumDetail.createRoute(item.album.id),
@@ -937,16 +848,12 @@ fun SearchResultsList(
                             is SearchResultItem.ArtistItem -> {
                                 val onPlayClick = remember(item.artist, playerViewModel, onItemSelected) {
                                     {
-                                        Timber.tag("SearchScreen")
-                                            .d("Artist clicked: ${item.artist.name}")
+                                        Timber.tag("SearchScreen").d("Artist clicked: ${item.artist.name}")
                                         playerViewModel.playArtist(item.artist)
                                         onItemSelected()
                                     }
                                 }
-                                val onOpenClick = remember(
-                                    item.artist,
-                                    playerViewModel, onItemSelected
-                                ) {
+                                val onOpenClick = remember(item.artist, playerViewModel, onItemSelected) {
                                     {
                                         val targetId = item.artist.channelId ?: item.artist.id.toString()
                                         navController.navigateSafelyReplacing(
@@ -989,7 +896,6 @@ fun SearchResultsList(
                                                     if (playerStableState.isShuffleEnabled) playerViewModel.toggleShuffle()
                                                     onItemSelected()
 
-                                                    // Fetch remaining tracks progressively in the background
                                                     coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                                                         var continuation = ytPlaylistPage.songsContinuation ?: ytPlaylistPage.continuation
                                                         var pages = 0
@@ -1022,11 +928,7 @@ fun SearchResultsList(
                                         } else {
                                             val songs = playerViewModel.getSongs(item.playlist.songIds)
                                             if (songs.isNotEmpty()) {
-                                                playerViewModel.playSongs(
-                                                    songs,
-                                                    songs.first(),
-                                                    item.playlist.name
-                                                )
+                                                playerViewModel.playSongs(songs, songs.first(), item.playlist.name)
                                                 if (playerStableState.isShuffleEnabled) playerViewModel.toggleShuffle()
                                             } else {
                                                 playerViewModel.sendToast("Empty playlist")
@@ -1035,10 +937,7 @@ fun SearchResultsList(
                                         }
                                     }
                                 }
-                                val onOpenClick = remember(
-                                    item.playlist,
-                                    playerViewModel, onItemSelected
-                                ) {
+                                val onOpenClick = remember(item.playlist, playerViewModel, onItemSelected) {
                                     {
                                         navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.playlist.id))
                                         onItemSelected()
@@ -1068,38 +967,28 @@ fun SearchResultAlbumItem(
 ) {
     val itemShape = remember {
         AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 26.dp,
-            smoothnessAsPercentTR = 60,
-            cornerRadiusTR = 26.dp,
-            smoothnessAsPercentBR = 60,
-            cornerRadiusBR = 26.dp,
-            smoothnessAsPercentBL = 60,
-            cornerRadiusBL = 26.dp,
-            smoothnessAsPercentTL = 60
+            cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+            cornerRadiusTR = 26.dp, smoothnessAsPercentBR = 60,
+            cornerRadiusBR = 26.dp, smoothnessAsPercentBL = 60,
+            cornerRadiusBL = 26.dp, smoothnessAsPercentTL = 60
         )
     }
 
     Card(
         onClick = onOpenClick,
         shape = itemShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SmartImage(
                 model = album.albumArtUriString,
                 contentDescription = "Album Art: ${album.title}",
                 targetSize = SmartImageListTargetSize,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(itemShape)
+                modifier = Modifier.size(56.dp).clip(itemShape)
             )
             Spacer(Modifier.width(12.dp))
             Column(
@@ -1145,29 +1034,21 @@ fun SearchResultArtistItem(
 ) {
     val itemShape = remember {
         AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 26.dp,
-            smoothnessAsPercentTR = 60,
-            cornerRadiusTR = 26.dp,
-            smoothnessAsPercentBR = 60,
-            cornerRadiusBR = 26.dp,
-            smoothnessAsPercentBL = 60,
-            cornerRadiusBL = 26.dp,
-            smoothnessAsPercentTL = 60
+            cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+            cornerRadiusTR = 26.dp, smoothnessAsPercentBR = 60,
+            cornerRadiusBR = 26.dp, smoothnessAsPercentBL = 60,
+            cornerRadiusBL = 26.dp, smoothnessAsPercentTL = 60
         )
     }
 
     Card(
         onClick = onOpenClick,
         shape = itemShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!artist.effectiveImageUrl.isNullOrBlank()) {
@@ -1175,9 +1056,7 @@ fun SearchResultArtistItem(
                     model = artist.effectiveImageUrl,
                     contentDescription = "Artist: ${artist.name}",
                     targetSize = SmartImageListTargetSize,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
+                    modifier = Modifier.size(56.dp).clip(CircleShape)
                 )
             } else {
                 Icon(
@@ -1230,29 +1109,21 @@ fun SearchResultPlaylistItem(
 ) {
     val itemShape = remember {
         AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 26.dp,
-            smoothnessAsPercentTR = 60,
-            cornerRadiusTR = 26.dp,
-            smoothnessAsPercentBR = 60,
-            cornerRadiusBR = 26.dp,
-            smoothnessAsPercentBL = 60,
-            cornerRadiusBL = 26.dp,
-            smoothnessAsPercentTL = 60
+            cornerRadiusTL = 26.dp, smoothnessAsPercentTR = 60,
+            cornerRadiusTR = 26.dp, smoothnessAsPercentBR = 60,
+            cornerRadiusBR = 26.dp, smoothnessAsPercentBL = 60,
+            cornerRadiusBL = 26.dp, smoothnessAsPercentTL = 60
         )
     }
 
     Card(
         onClick = onOpenClick,
         shape = itemShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlaylistCover(
@@ -1269,8 +1140,16 @@ fun SearchResultPlaylistItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                
+                // --> FIXED: Don't show "0 Song" for online playlists
+                val subtitleText = if (playlist.source == "YOUTUBE" && playlist.songIds.isEmpty()) {
+                    "YouTube Playlist"
+                } else {
+                    formatSongCount(playlist.songIds.size)
+                }
+                
                 Text(
-                    text = formatSongCount(playlist.songIds.size),
+                    text = subtitleText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1306,10 +1185,7 @@ fun SearchFilterChip(
         label = { Text(filterType.name.lowercase().replaceFirstChar { it.titlecase() }) },
         modifier = modifier,
         shape = CircleShape,
-        border = BorderStroke(
-            width = 0.dp,
-            color = Color.Transparent
-        ),
+        border = BorderStroke(width = 0.dp, color = Color.Transparent),
         colors = FilterChipDefaults.filterChipColors(
             containerColor =  MaterialTheme.colorScheme.secondaryContainer,
             labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1326,9 +1202,7 @@ fun SearchFilterChip(
                      modifier = Modifier.size(FilterChipDefaults.IconSize)
                  )
              }
-         } else {
-             null
-         }
+         } else null
     )
 }
 
@@ -1350,55 +1224,31 @@ fun SwipeActionWrapper(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 when {
-                    dragOffset.value > 0 -> Color(0xFF2E7D32) // Soft Green
-                    dragOffset.value < 0 -> Color(0xFF1565C0) // Soft Blue
+                    dragOffset.value > 0 -> Color(0xFF2E7D32)
+                    dragOffset.value < 0 -> Color(0xFF1565C0)
                     else -> Color.Transparent
                 }
             )
     ) {
         if (dragOffset.value > 0) {
             Row(
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.matchParentSize().padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = "Play Next",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play Next", tint = Color.White, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Play Next",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Play Next", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             }
         } else if (dragOffset.value < 0) {
             Row(
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.matchParentSize().padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                Text(
-                    text = "Add to Queue",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Add to Queue", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.PlaylistPlay,
-                    contentDescription = "Add to Queue",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = "Add to Queue", tint = Color.White, modifier = Modifier.size(28.dp))
             }
         }
 
@@ -1411,19 +1261,12 @@ fun SwipeActionWrapper(
                         onDragEnd = {
                             coroutineScope.launch {
                                 val finalOffset = dragOffset.value
-                                if (finalOffset > thresholdPx) {
-                                    onSwipeRight()
-                                } else if (finalOffset < -thresholdPx) {
-                                    onSwipeLeft()
-                                }
+                                if (finalOffset > thresholdPx) onSwipeRight()
+                                else if (finalOffset < -thresholdPx) onSwipeLeft()
                                 dragOffset.animateTo(0f)
                             }
                         },
-                        onDragCancel = {
-                            coroutineScope.launch {
-                                dragOffset.animateTo(0f)
-                            }
-                        },
+                        onDragCancel = { coroutineScope.launch { dragOffset.animateTo(0f) } },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             coroutineScope.launch {
@@ -1433,9 +1276,7 @@ fun SwipeActionWrapper(
                                     thresholdPx + (newOffset - thresholdPx) * 0.3f
                                 } else if (newOffset < -thresholdPx) {
                                     -thresholdPx + (newOffset + thresholdPx) * 0.3f
-                                } else {
-                                    newOffset
-                                }
+                                } else newOffset
                                 dragOffset.snapTo(dampenedOffset)
                             }
                         }
