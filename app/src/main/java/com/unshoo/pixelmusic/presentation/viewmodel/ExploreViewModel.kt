@@ -411,7 +411,6 @@ class ExploreViewModel @Inject constructor(
                             val updatedSections = (home?.sections ?: currentState.homePageSections).toMutableList()
 
                             if (personalPlaylists.isNotEmpty()) {
-                                updatedSections.removeAll { it.title.contains("trending", ignoreCase = true) }
                                 updatedSections.add(0, HomePage.Section(
                                     title = "Your Playlists",
                                     label = "From your YouTube Music Account",
@@ -420,7 +419,6 @@ class ExploreViewModel @Inject constructor(
                                     items = personalPlaylists
                                 ))
                             } else if (communityPlaylists.isNotEmpty()) {
-                                updatedSections.removeAll { it.title.contains("trending", ignoreCase = true) }
                                 updatedSections.add(HomePage.Section(
                                     title = "Community Playlists",
                                     label = "Based on your activity for $userActivityQuery",
