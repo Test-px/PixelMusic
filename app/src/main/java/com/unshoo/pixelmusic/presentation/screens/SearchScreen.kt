@@ -684,6 +684,9 @@ fun SearchResultsList(
     onSongMoreOptionsClick: (Song) -> Unit,
     navController: NavHostController
 ) {
+    // ---> FIX: Restored the missing playerStableState reference! <---
+    val playerStableState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+
     if (results.isEmpty()) {
         Box(
             modifier = Modifier
