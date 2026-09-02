@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.unshoo.pixelmusic.utils.InAppUpdater
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +86,7 @@ fun UpdateDownloadScreen(
                                     isPaused = state?.isPaused ?: false,
                                     versionName = state?.versionName ?: "",
                                     totalBytes = state?.totalBytes ?: 0L,
+                                    downloadedBytes = state?.downloadedBytes ?: 0L,
                                     onPauseResume = {
                                         if (state?.isPaused == true) {
                                             InAppUpdater.resumeDownload(context) 
@@ -205,7 +207,6 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     val dotColor = MaterialTheme.colorScheme.onSurface
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val currentTick = frameTime
         val prog = currentProgress
 
         val globalAlpha = when {
@@ -234,6 +235,7 @@ private fun DownloadingView(
     isPaused: Boolean,
     versionName: String,
     totalBytes: Long,
+    downloadedBytes: Long,
     onPauseResume: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -243,10 +245,11 @@ private fun DownloadingView(
         label = "progress"
     )
 
-    val sizeString = remember(totalBytes) {
+    val sizeString = remember(totalBytes, downloadedBytes) {
         if (totalBytes > 0) {
-            val sizeMb = totalBytes / (1024f * 1024f)
-            String.format(java.util.Locale.US, "%.1f MB", sizeMb)
+            val totalMb = totalBytes / (1024f * 1024f)
+            val downMb = downloadedBytes / (1024f * 1024f)
+            String.format(Locale.US, "%.1f / %.1f MB", downMb, totalMb)
         } else {
             "Calculating size..."
         }
