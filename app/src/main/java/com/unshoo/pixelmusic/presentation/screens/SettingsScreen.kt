@@ -1,7 +1,6 @@
 package com.unshoo.pixelmusic.presentation.screens
 
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
-
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
@@ -12,7 +11,6 @@ import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,8 +26,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.Image
@@ -37,16 +33,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Logout
-import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -75,70 +66,54 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.presentation.components.CollapsibleCommonTopBar
-import com.unshoo.pixelmusic.presentation.components.ExpressiveTopBarContent
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
 import com.unshoo.pixelmusic.presentation.model.SettingsCategory
 import com.unshoo.pixelmusic.presentation.navigation.Screen
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.SettingsViewModel
-import com.unshoo.pixelmusic.presentation.viewmodel.SettingsUiState
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
-import com.unshoo.pixelmusic.data.preferences.LaunchTab
-import androidx.compose.material.icons.rounded.Web
-import androidx.compose.material.icons.rounded.Code
 import com.unshoo.pixelmusic.presentation.screens.youtube.AuthViewModel
-import androidx.compose.material.icons.rounded.VpnKey
-import androidx.compose.foundation.layout.wrapContentHeight
-import com.unshoo.pixelmusic.presentation.screens.AdvancedTokenLoginDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
-
-
-
-
-
-// SettingsTopBar removed, replaced by CollapsibleCommonTopBar
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.outlined.Info
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-        navController: NavController,
-        playerViewModel: PlayerViewModel,
-        onNavigationIconClick: () -> Unit,
-        settingsViewModel: SettingsViewModel = hiltViewModel()
+    navController: NavController,
+    playerViewModel: PlayerViewModel,
+    onNavigationIconClick: () -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
         
-    // Animation effects
     val transitionState = remember { MutableTransitionState(false) }
     LaunchedEffect(true) { transitionState.targetState = true }
 
     val transition = rememberTransition(transitionState, label = "SettingsAppearTransition")
 
-    val contentAlpha by
-            transition.animateFloat(
-                    label = "ContentAlpha",
-                    transitionSpec = { tween(durationMillis = 500) }
-            ) { if (it) 1f else 0f }
+    val contentAlpha by transition.animateFloat(
+        label = "ContentAlpha",
+        transitionSpec = { tween(durationMillis = 500) }
+    ) { if (it) 1f else 0f }
 
-    val contentOffset by
-            transition.animateDp(
-                    label = "ContentOffset",
-                    transitionSpec = { tween(durationMillis = 400, easing = FastOutSlowInEasing) }
-            ) { if (it) 0.dp else 40.dp }
+    val contentOffset by transition.animateDp(
+        label = "ContentOffset",
+        transitionSpec = { tween(durationMillis = 400, easing = FastOutSlowInEasing) }
+    ) { if (it) 0.dp else 40.dp }
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -153,25 +128,16 @@ fun SettingsScreen(
 
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val isProUser = uiState.ytIsProUser
-    
     val audioSessionId by playerViewModel.activeAudioSessionId.collectAsStateWithLifecycle()
-    val launchTab = uiState.launchTab
-    val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
 
-    var showCornerRadiusOverlay by remember { mutableStateOf(false) }
     var showLoginOptionsDialog by remember { mutableStateOf(false) }
     var showTokenDialog by remember { mutableStateOf(false) }
-    
 
     val topBarHeight = remember { Animatable(maxTopBarHeightPx) }
     var collapseFraction by remember { mutableStateOf(0f) }
 
     LaunchedEffect(topBarHeight.value) {
-        collapseFraction =
-                1f -
-                        ((topBarHeight.value - minTopBarHeightPx) /
-                                        (maxTopBarHeightPx - minTopBarHeightPx))
-                                .coerceIn(0f, 1f)
+        collapseFraction = 1f - ((topBarHeight.value - minTopBarHeightPx) / (maxTopBarHeightPx - minTopBarHeightPx)).coerceIn(0f, 1f)
     }
 
     val nestedScrollConnection = remember {
@@ -180,16 +146,12 @@ fun SettingsScreen(
                 val delta = available.y
                 val isScrollingDown = delta < 0
 
-                if (!isScrollingDown &&
-                                (lazyListState.firstVisibleItemIndex > 0 ||
-                                        lazyListState.firstVisibleItemScrollOffset > 0)
-                ) {
+                if (!isScrollingDown && (lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 0)) {
                     return Offset.Zero
                 }
 
                 val previousHeight = topBarHeight.value
-                val newHeight =
-                        (previousHeight + delta).coerceIn(minTopBarHeightPx, maxTopBarHeightPx)
+                val newHeight = (previousHeight + delta).coerceIn(minTopBarHeightPx, maxTopBarHeightPx)
                 val consumed = newHeight - previousHeight
 
                 if (consumed.roundToInt() != 0) {
@@ -205,12 +167,9 @@ fun SettingsScreen(
     LaunchedEffect(lazyListState.isScrollInProgress) {
         if (!lazyListState.isScrollInProgress) {
             val shouldExpand = topBarHeight.value > (minTopBarHeightPx + maxTopBarHeightPx) / 2
-            val canExpand =
-                    lazyListState.firstVisibleItemIndex == 0 &&
-                            lazyListState.firstVisibleItemScrollOffset == 0
+            val canExpand = lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0
 
-            val targetValue =
-                    if (shouldExpand && canExpand) maxTopBarHeightPx else minTopBarHeightPx
+            val targetValue = if (shouldExpand && canExpand) maxTopBarHeightPx else minTopBarHeightPx
 
             if (topBarHeight.value != targetValue) {
                 coroutineScope.launch {
@@ -221,23 +180,22 @@ fun SettingsScreen(
     }
 
     Box(
-            modifier =
-                    Modifier.nestedScroll(nestedScrollConnection).fillMaxSize().graphicsLayer {
-                        alpha = contentAlpha
-                        translationY = contentOffset.toPx()
-                    }
+        modifier = Modifier.nestedScroll(nestedScrollConnection).fillMaxSize().graphicsLayer {
+            alpha = contentAlpha
+            translationY = contentOffset.toPx()
+        }
     ) {
         val currentTopBarHeightDp = with(density) { topBarHeight.value.toDp() }
         LazyColumn(
-                state = lazyListState,
-                contentPadding = PaddingValues(
-                    top = currentTopBarHeightDp + 8.dp,
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize()
+            state = lazyListState,
+            contentPadding = PaddingValues(
+                top = currentTopBarHeightDp + 8.dp,
+                start = 16.dp,
+                end = 16.dp,
+                bottom = MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
             item {
                 com.unshoo.pixelmusic.presentation.components.ExpandableAccountCard(
@@ -245,9 +203,8 @@ fun SettingsScreen(
                     isPro = isProUser,
                     onLoginNew = { showLoginOptionsDialog = true },
                     onLogout = { settingsViewModel.logoutYoutube() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 4.dp)
+                    onManageAccounts = { navController.navigateSafely(Screen.Accounts.route) },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
                 )
             }
             item {
@@ -259,7 +216,7 @@ fun SettingsScreen(
                         it != SettingsCategory.LASTFM
                     }
 
-                    val totalItems = mainCategories.size + 3 // Device + Accounts + About
+                    val totalItems = mainCategories.size + 2 // Only Device & About remain
                     fun shapeFor(index: Int) =
                         when {
                             totalItems == 1 -> RoundedCornerShape(24.dp)
@@ -281,7 +238,6 @@ fun SettingsScreen(
                                     val intent = android.content.Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
                                         putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
                                         putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
-                                        
                                         if (audioSessionId != 0) {
                                             putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
                                         }
@@ -314,19 +270,6 @@ fun SettingsScreen(
                     }
                     itemIndex++
 
-                    ExpressiveNavigationItem(
-                        title = stringResource(R.string.settings_accounts_row_title),
-                        subtitle = stringResource(R.string.settings_accounts_row_subtitle),
-                        icon = Icons.Rounded.AccountCircle,
-                        colors = getAccountsColors(isDark),
-                        onClick = { navController.navigateSafely(Screen.Accounts.route) },
-                        shape = shapeFor(itemIndex)
-                    )
-                    if (itemIndex < totalItems - 1) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                    }
-                    itemIndex++
-
                     ExpressiveCategoryItem(
                         category = SettingsCategory.ABOUT,
                         customColors = getCategoryColors(SettingsCategory.ABOUT, isDark),
@@ -334,19 +277,17 @@ fun SettingsScreen(
                         shape = shapeFor(itemIndex)
                     )
                 }
-
-                // for player active:
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+        
         CollapsibleCommonTopBar(
-                title = stringResource(R.string.settings_top_bar_title),
-                collapseFraction = collapseFraction,
-                headerHeight = currentTopBarHeightDp,
-                onBackClick = onNavigationIconClick
+            title = stringResource(R.string.settings_top_bar_title),
+            collapseFraction = collapseFraction,
+            headerHeight = currentTopBarHeightDp,
+            onBackClick = onNavigationIconClick
         )
 
-        // Block interaction during transition
         var isTransitioning by remember { mutableStateOf(true) }
         LaunchedEffect(Unit) {
             kotlinx.coroutines.delay(com.unshoo.pixelmusic.presentation.navigation.TRANSITION_DURATION.toLong())
@@ -366,7 +307,6 @@ fun SettingsScreen(
             )
         }
         
-        // 1. The Sign In Options Chooser (Premium Custom UI - Tall Container)
         if (showLoginOptionsDialog) {
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showLoginOptionsDialog = false },
@@ -375,7 +315,7 @@ fun SettingsScreen(
                 Surface(
                     modifier = Modifier
                         .width(320.dp)
-                        .height(460.dp), // Balanced portrait height
+                        .height(460.dp),
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 4.dp
@@ -384,7 +324,6 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // --- Hero Header Area ---
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -401,7 +340,7 @@ fun SettingsScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surface, // Neutral background
+                                color = MaterialTheme.colorScheme.surface, 
                                 modifier = Modifier.size(64.dp),
                                 shadowElevation = 6.dp
                             ) {
@@ -412,13 +351,12 @@ fun SettingsScreen(
                                     Image(
                                         painter = painterResource(id = R.drawable.ic_youtube),
                                         contentDescription = null,
-                                        modifier = Modifier.size(32.dp) // Beautifully sized logo
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
                             }
                         }
 
-                        // --- Titles ---
                         Column(
                             modifier = Modifier.padding(horizontal = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -440,14 +378,12 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // --- Option Cards ---
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Option 1: Web Login
                             Surface(
                                 onClick = {
                                     showLoginOptionsDialog = false
@@ -493,7 +429,6 @@ fun SettingsScreen(
                                 }
                             }
 
-                            // Option 2: Token Login
                             Surface(
                                 onClick = {
                                     showLoginOptionsDialog = false
@@ -542,7 +477,6 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // --- Cancel Button ---
                         TextButton(
                             onClick = { showLoginOptionsDialog = false },
                             modifier = Modifier
@@ -557,7 +491,6 @@ fun SettingsScreen(
             }
         }
 
-        // 2. The Token Input Dialog (Reusing the exact one from AccountsScreen!)
         if (showTokenDialog) {
             val authViewModel: AuthViewModel = hiltViewModel()
             val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
@@ -571,63 +504,6 @@ fun SettingsScreen(
                     android.widget.Toast.makeText(context, "Cookie saved! Syncing library...", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun ExpressiveNavigationItem(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    colors: Pair<Color, Color>,
-    onClick: () -> Unit,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(24.dp)
-) {
-    Surface(
-        onClick = onClick,
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().height(88.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp).fillMaxSize()
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(colors.first)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = colors.second,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
-                Text(
-                    text = subtitle,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                    maxLines = 2
-                )
-            }
         }
     }
 }
@@ -649,7 +525,6 @@ fun ExpressiveCategoryItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(16.dp).fillMaxSize()
         ) {
-            // Icon Container
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -693,33 +568,8 @@ fun ExpressiveCategoryItem(
                     maxLines = 2
                 )
             }
-            
             Spacer(modifier = Modifier.width(8.dp))
-            
-//            // Chevron or indicator
-//             Box(
-//                contentAlignment = Alignment.Center,
-//                modifier = Modifier
-//                    .size(36.dp)
-//                    .clip(CircleShape)
-//                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-//            ) {
-//                 Icon(
-//                    imageVector = Icons.Rounded.ChevronRight,
-//                    contentDescription = null,
-//                    tint = MaterialTheme.colorScheme.onSurface,
-//                    modifier = Modifier.size(20.dp)
-//                )
-//            }
         }
-    }
-}
-
-private fun getAccountsColors(isDark: Boolean): Pair<Color, Color> {
-    return if (isDark) {
-        Color(0xFF37474F) to Color(0xFFBBD9E8)
-    } else {
-        Color(0xFFD6EAF5) to Color(0xFF103548)
     }
 }
 
@@ -747,7 +597,7 @@ private fun getCategoryColors(category: SettingsCategory, isDark: Boolean): Pair
             SettingsCategory.BACKUP_RESTORE -> Color(0xFF3B4869) to Color(0xFFD9E2FF)
             SettingsCategory.DEVELOPER -> Color(0xFF324F34) to Color(0xFFCBEFD0) 
             SettingsCategory.EQUALIZER -> Color(0xFF6E4E13) to Color(0xFFFFDEAC) 
-            SettingsCategory.DEVICE_CAPABILITIES -> Color(0xFF004D61) to Color(0xFFACEFEE) // Custom teal/cyan mix
+            SettingsCategory.DEVICE_CAPABILITIES -> Color(0xFF004D61) to Color(0xFFACEFEE)
             SettingsCategory.ABOUT -> Color(0xFF3F474D) to Color(0xFFDEE3EB) 
             SettingsCategory.LASTFM -> Color(0xFF6E1B1B) to Color(0xFFFFDAD9)
         }
