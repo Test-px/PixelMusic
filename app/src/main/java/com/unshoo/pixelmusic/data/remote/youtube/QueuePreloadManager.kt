@@ -95,16 +95,23 @@ object QueuePreloadManager {
         watcherJob?.cancel()
         watcherJob = currentScope.launch(Dispatchers.Default) {
             while (isActive) {
-                val player = playerRef ?: break
-                val duration = player.duration
-                val position = player.currentPosition
-                val currentIndex = player.currentMediaItemIndex
+                // Safely read ExoPlayer state on the Main thread to prevent crashes
+                val playerState = withContext(Dispatchers.Main) {
+                    val player = playerRef
+                    if (player != null) {
+                        Triple(player.duration, player.currentPosition, player.currentMediaItemIndex)
+                    } else null
+                }
                 
-                // Trigger when 50% completed AND we haven't already preloaded for this index
+                if (playerState == null) break
+                
+                val (duration, position, currentIndex) = playerState
+                
+                // Trigger preloading when 50% completed AND we haven't processed this index yet
                 if (duration > 0 && position >= duration / 2 && currentIndex != lastPreloadedIndex) {
                     lastPreloadedIndex = currentIndex
                     triggerPreload()
-                    break // Wait for next track transition to restart watcher
+                    break // Stop watching until the next track transition restarts it
                 }
                 delay(1000)
             }
