@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.PersonAdd
@@ -25,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,9 +36,10 @@ import com.unshoo.pixelmusic.presentation.viewmodel.SettingsUiState
 @Composable
 fun ExpandableAccountCard(
     uiState: SettingsUiState,
-    isPro: Boolean, // Kept to avoid breaking the caller, but ignored internally
+    isPro: Boolean,
     onLoginNew: () -> Unit,
     onLogout: () -> Unit,
+    onManageAccounts: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -166,7 +167,7 @@ fun ExpandableAccountCard(
                             onLoginNew() 
                         },
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.Transparent,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -189,6 +190,42 @@ fun ExpandableAccountCard(
                         }
                     }
 
+                    Surface(
+                        onClick = { 
+                            expanded = false
+                            onManageAccounts() 
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AccountCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Manage cloud account",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Youtube , Last.fm......",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     if (hasProfile) {
                         Surface(
                             onClick = { 
@@ -196,7 +233,7 @@ fun ExpandableAccountCard(
                                 onLogout() 
                             },
                             shape = RoundedCornerShape(16.dp),
-                            color = Color.Transparent,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
