@@ -1095,12 +1095,11 @@ fun SettingsCategoryScreen(
                                         label = stringResource(R.string.setcat_preload_queue_size_title),
                                         description = stringResource(R.string.setcat_preload_queue_size_desc),
                                         options = mapOf(
+                                            "1" to "1 song",
+                                            "2" to "2 songs",
+                                            "3" to "3 songs",
                                             "5" to "5 songs",
-                                            "10" to "10 songs",
-                                            "15" to "15 songs",
-                                            "20" to "20 songs",
-                                            "25" to "25 songs",
-                                            "30" to "30 songs"
+                                            "10" to "10 songs"
                                         ),
                                         selectedKey = uiState.preloadQueueSize.toString(),
                                         onSelectionChanged = { key ->
