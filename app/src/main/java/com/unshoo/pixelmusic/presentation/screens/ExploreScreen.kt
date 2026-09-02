@@ -108,6 +108,9 @@ import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+
 
 @UnstableApi
 @Composable
@@ -131,6 +134,22 @@ fun ExploreScreen(
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
         }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { 
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            
+            // Evaluates to true when you are 3 rows away from the bottom
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }.distinctUntilChanged()
+         .collect { nearEnd ->
+             if (nearEnd) {
+                 exploreViewModel.loadMore()
+             }
+         }
     }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
