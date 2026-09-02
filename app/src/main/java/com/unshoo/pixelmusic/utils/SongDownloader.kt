@@ -3,9 +3,11 @@ package com.unshoo.pixelmusic.utils
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -15,11 +17,11 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
@@ -36,11 +38,54 @@ object SongDownloader {
     private const val CHANNEL_ID = "pixelmusic_song_download_channel"
     private const val CHUNK_SIZE = 5 * 1024 * 1024L // 5MB chunks
 
+    // Global state controls for Pause/Cancel from notifications
+    @Volatile var isPaused = false
+    @Volatile var isCancelled = false
+    private var isReceiverRegistered = false
+
+    private const val ACTION_PAUSE = "com.unshoo.pixelmusic.DOWNLOAD_PAUSE"
+    private const val ACTION_RESUME = "com.unshoo.pixelmusic.DOWNLOAD_RESUME"
+    private const val ACTION_CANCEL = "com.unshoo.pixelmusic.DOWNLOAD_CANCEL"
+
+    private val controlReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_PAUSE -> isPaused = true
+                ACTION_RESUME -> isPaused = false
+                ACTION_CANCEL -> {
+                    isCancelled = true
+                    isPaused = false // unblock loop if paused
+                }
+            }
+        }
+    }
+
+    private fun ensureReceiverRegistered(context: Context) {
+        if (!isReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(ACTION_PAUSE)
+                addAction(ACTION_RESUME)
+                addAction(ACTION_CANCEL)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.applicationContext.registerReceiver(controlReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.applicationContext.registerReceiver(controlReceiver, filter)
+            }
+            isReceiverRegistered = true
+        }
+    }
+
     suspend fun downloadAndTagSong(
         context: Context,
         song: Song,
-        lyricsText: String? = null
+        lyricsText: String? = null,
+        playlistProgress: String? = null // New parameter to show "Playlist: 5/200"
     ): Boolean = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        
+        ensureReceiverRegistered(context)
+        isCancelled = false
+
         var tempAudioFile: File? = null
         var tempRemuxedFile: File? = null
         var tempImageFile: File? = null
@@ -51,19 +96,15 @@ object SongDownloader {
         createNotificationChannel(notificationManager)
 
         val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download) 
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Downloading: ${song.title}")
-            .setContentText("Connecting...")
+            .setContentText(playlistProgress ?: "Connecting...")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setProgress(100, 0, true)
 
         try {
-            updateNotification(notificationManager, notificationId, notificationBuilder)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Downloading ${song.title}...", Toast.LENGTH_SHORT).show()
-            }
+            updateLiveProgress(context, notificationManager, notificationId, notificationBuilder, 0L, 0L, playlistProgress)
 
             val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
                 youtubeId = song.youtubeId ?: song.id.removePrefix("youtube_"),
@@ -104,14 +145,26 @@ object SongDownloader {
                 }
             }
 
-            var startByte = 0L
+            // Support exact byte resumption
+            var startByte = if (tempAudioFile!!.exists()) tempAudioFile!!.length() else 0L
             var totalBytes = parseTotalBytesFromUrl(streamUrl)
-            var totalDownloaded = 0L
+            var totalDownloaded = startByte
             var isFinished = false
             var lastNotificationUpdateTime = 0L
 
-            FileOutputStream(tempAudioFile).use { output ->
+            // Use 'true' to append to file in case we paused/resumed
+            FileOutputStream(tempAudioFile, true).use { output ->
                 while (!isFinished) {
+                    if (isCancelled) throw Exception("Cancelled by user")
+
+                    // Suspend the loop gracefully if paused
+                    while (isPaused) {
+                        if (isCancelled) throw Exception("Cancelled by user")
+                        notificationBuilder.setContentText("${playlistProgress?.let { "$it - " } ?: ""}Paused")
+                        updateLiveProgress(context, notificationManager, notificationId, notificationBuilder, totalDownloaded, totalBytes, playlistProgress)
+                        delay(1000)
+                    }
+
                     val endByte = startByte + CHUNK_SIZE - 1
                     val connection = (URL(streamUrl).openConnection() as HttpURLConnection).apply {
                         connectTimeout = 15000
@@ -147,27 +200,33 @@ object SongDownloader {
                         var chunkReadTotal = 0L
 
                         while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            if (isCancelled || isPaused) {
+                                break // Drop connection instantly to pause or cancel
+                            }
+
                             output.write(buffer, 0, bytesRead)
                             chunkReadTotal += bytesRead
                             totalDownloaded += bytesRead
+                            startByte += bytesRead // Precisely track bytes for seamless resume
 
                             val now = System.currentTimeMillis()
-                            if (now - lastNotificationUpdateTime > 300L) {
+                            if (now - lastNotificationUpdateTime > 500L) {
                                 lastNotificationUpdateTime = now
                                 updateLiveProgress(
+                                    context,
                                     notificationManager,
                                     notificationId,
                                     notificationBuilder,
                                     totalDownloaded,
-                                    totalBytes
+                                    totalBytes,
+                                    playlistProgress
                                 )
                             }
                         }
 
-                        if (chunkReadTotal < CHUNK_SIZE) {
+                        if (!isCancelled && !isPaused && chunkReadTotal < CHUNK_SIZE) {
                             isFinished = true
                         }
-                        startByte += chunkReadTotal
                         inputStream.close()
                     } finally {
                         connection.disconnect()
@@ -176,17 +235,12 @@ object SongDownloader {
                 output.flush()
             }
 
-            updateLiveProgress(
-                notificationManager,
-                notificationId,
-                notificationBuilder,
-                totalDownloaded,
-                if (totalBytes > 0) totalBytes else totalDownloaded
-            )
+            if (isCancelled) throw Exception("Cancelled by user")
 
             notificationBuilder
                 .setContentText("Processing audio file...")
                 .setProgress(100, 100, true)
+                .clearActions()
             updateNotification(notificationManager, notificationId, notificationBuilder)
 
             val extractor = MediaExtractor().apply {
@@ -303,29 +357,25 @@ object SongDownloader {
                 .setProgress(0, 0, false)
                 .setOngoing(false)
                 .setAutoCancel(true)
+                .clearActions()
                 .setContentIntent(pendingIntent)
             updateNotification(notificationManager, notificationId, notificationBuilder)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Saved to Music/PixelMusic!", Toast.LENGTH_LONG).show()
-            }
 
             return@withContext true
 
         } catch (e: Exception) {
-            e.printStackTrace()
-
-            notificationBuilder
-                .setContentTitle("Download failed")
-                .setContentText(e.message ?: "Unknown error")
-                .setSmallIcon(android.R.drawable.stat_notify_error)
-                .setProgress(0, 0, false)
-                .setOngoing(false)
-                .setAutoCancel(true)
-            updateNotification(notificationManager, notificationId, notificationBuilder)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+            if (e.message == "Cancelled by user") {
+                notificationManager.cancel(notificationId)
+            } else {
+                notificationBuilder
+                    .setContentTitle("Download failed")
+                    .setContentText(e.message ?: "Unknown error")
+                    .setSmallIcon(android.R.drawable.stat_notify_error)
+                    .setProgress(0, 0, false)
+                    .setOngoing(false)
+                    .setAutoCancel(true)
+                    .clearActions()
+                updateNotification(notificationManager, notificationId, notificationBuilder)
             }
             return@withContext false
         } finally {
@@ -342,30 +392,51 @@ object SongDownloader {
                 "Song Downloads",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows live download progress for songs"
+                description = "Shows live download progress and controls"
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
+    private fun getActionPendingIntent(context: Context, action: String): PendingIntent {
+        val intent = Intent(action).apply { setPackage(context.packageName) }
+        return PendingIntent.getBroadcast(context, action.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     private fun updateLiveProgress(
+        context: Context,
         notificationManager: NotificationManager,
         notificationId: Int,
         builder: NotificationCompat.Builder,
         currentBytes: Long,
-        totalBytes: Long
+        totalBytes: Long,
+        playlistProgress: String?
     ) {
+        builder.clearActions()
+        
+        if (isPaused) {
+            builder.addAction(android.R.drawable.ic_media_play, "Resume", getActionPendingIntent(context, ACTION_RESUME))
+        } else {
+            builder.addAction(android.R.drawable.ic_media_pause, "Pause", getActionPendingIntent(context, ACTION_PAUSE))
+        }
+        builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", getActionPendingIntent(context, ACTION_CANCEL))
+
+        val prefix = playlistProgress?.let { "$it - " } ?: ""
+
         if (totalBytes > 0) {
             val progressPercent = ((currentBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
             val currentMb = formatMb(currentBytes)
             val totalMb = formatMb(totalBytes)
+            val statusText = if (isPaused) "Paused" else "$currentMb / $totalMb ($progressPercent%)"
+            
             builder
-                .setContentText("$currentMb / $totalMb ($progressPercent%)")
+                .setContentText(prefix + statusText)
                 .setProgress(100, progressPercent, false)
         } else {
+            val statusText = if (isPaused) "Paused" else "${formatMb(currentBytes)} downloaded"
             builder
-                .setContentText("${formatMb(currentBytes)} downloaded")
+                .setContentText(prefix + statusText)
                 .setProgress(0, 0, true)
         }
         updateNotification(notificationManager, notificationId, builder)
