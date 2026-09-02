@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import com.unshoo.pixelmusic.utils.InAppUpdater
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import java.util.Locale
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,17 +157,21 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
         var y: Float,
         val radius: Float,
         val speed: Float,
+        val drift: Float,
+        var driftOffset: Float,
         val baseAlpha: Float
     )
 
     val particles = remember {
-        List(35) {
+        List(40) {
             Particle(
                 x = Math.random().toFloat(),
                 y = 1.0f + Math.random().toFloat(),
-                radius = 2f + (Math.random().toFloat() * 5f),
-                speed = 0.05f + (Math.random().toFloat() * 0.10f),
-                baseAlpha = 0.2f + (Math.random().toFloat() * 0.5f)
+                radius = 2f + (Math.random().toFloat() * 6f),
+                speed = 0.08f + (Math.random().toFloat() * 0.15f), // Independent vertical speeds
+                drift = (Math.random().toFloat() - 0.5f) * 0.05f,   // Smooth horizontal sway
+                driftOffset = Math.random().toFloat() * 100f,
+                baseAlpha = 0.2f + (Math.random().toFloat() * 0.6f)
             )
         }
     }
@@ -184,15 +189,13 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
 
                 val prog = currentProgress
                 
-                if (prog > 0f && prog < 0.97f) {
-                    val speedMultiplier = when {
-                        prog < 0.70f -> 1f
-                        prog < 0.96f -> 1f - ((prog - 0.70f) / 0.26f).coerceIn(0f, 1f)
-                        else -> 0f
-                    }
-
+                // Stop calculating math once we fade out entirely at 95%
+                if (prog > 0f && prog < 0.95f) {
                     for (p in particles) {
-                        p.y -= (p.speed * deltaSeconds * speedMultiplier)
+                        p.y -= (p.speed * deltaSeconds)
+                        p.driftOffset += deltaSeconds
+                        p.x += (sin(p.driftOffset) * p.drift * deltaSeconds)
+                        
                         if (p.y < -0.1f) {
                             p.y = 1.1f + Math.random().toFloat() * 0.2f
                             p.x = Math.random().toFloat()
@@ -207,13 +210,15 @@ private fun FloatingParticlesBackground(progress: Float, isPaused: Boolean) {
     val dotColor = MaterialTheme.colorScheme.onSurface
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+        val currentTick = frameTime // Force recomposition
         val prog = currentProgress
 
+        // Fade out perfectly between 90% and 95%
         val globalAlpha = when {
             prog <= 0.01f -> 0f
             prog < 0.05f -> (prog - 0.01f) / 0.04f
-            prog < 0.80f -> 1f
-            prog < 0.96f -> 1f - ((prog - 0.80f) / 0.16f).coerceIn(0f, 1f)
+            prog < 0.90f -> 1f
+            prog <= 0.95f -> 1f - ((prog - 0.90f) / 0.05f).coerceIn(0f, 1f)
             else -> 0f
         }
 
