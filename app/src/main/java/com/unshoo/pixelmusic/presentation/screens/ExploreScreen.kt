@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -45,6 +47,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -54,19 +57,28 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.lerp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
@@ -107,10 +119,68 @@ import unshoo.ianshulyadav.pixelmusic.innertube.models.YTItem
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+// -----------------------------------------------------------------------------------------
+// DYNAMIC VIEWPORT ANIMATION HELPER (Dynamic Morphing Corners + Scale + Alpha)
+// -----------------------------------------------------------------------------------------
+
+data class DynamicAnimState(
+    val modifier: Modifier,
+    val cornerRadius: Dp,
+    val factor: Float
+)
+
+@Composable
+fun rememberDynamicEffect(
+    baseCornerRadius: Dp = 20.dp,
+    squishCornerRadius: Dp = 54.dp,
+    minScale: Float = 0.92f,
+    minAlpha: Float = 0.65f
+): DynamicAnimState {
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    var visibilityFactor by remember { mutableFloatStateOf(1f) }
+
+    val animModifier = Modifier
+        .onGloballyPositioned { coordinates ->
+            val bounds = coordinates.boundsInWindow()
+            val cardCenterX = bounds.center.x
+            val cardCenterY = bounds.center.y
+
+            val hMargin = screenWidthPx * 0.18f
+            val hFactor = when {
+                cardCenterX < hMargin -> (cardCenterX / hMargin).coerceIn(0f, 1f)
+                cardCenterX > (screenWidthPx - hMargin) -> ((screenWidthPx - cardCenterX) / hMargin).coerceIn(0f, 1f)
+                else -> 1f
+            }
+
+            val vMargin = screenHeightPx * 0.15f
+            val vFactor = when {
+                cardCenterY < vMargin -> (cardCenterY / vMargin).coerceIn(0f, 1f)
+                cardCenterY > (screenHeightPx - vMargin) -> ((screenHeightPx - cardCenterY) / vMargin).coerceIn(0f, 1f)
+                else -> 1f
+            }
+
+            visibilityFactor = (hFactor * vFactor).coerceIn(0f, 1f)
+        }
+        .graphicsLayer {
+            val scale = minScale + ((1f - minScale) * visibilityFactor)
+            scaleX = scale
+            scaleY = scale
+            alpha = minAlpha + ((1f - minAlpha) * visibilityFactor)
+        }
+
+    val dynamicCorner = lerp(baseCornerRadius, squishCornerRadius, 1f - visibilityFactor)
+    return DynamicAnimState(animModifier, dynamicCorner, visibilityFactor)
+}
+
+// -----------------------------------------------------------------------------------------
+// MAIN EXPLORE SCREEN
+// -----------------------------------------------------------------------------------------
 
 @UnstableApi
 @Composable
@@ -136,13 +206,12 @@ fun ExploreScreen(
         }
     }
 
+    // Infinite scroll trigger
     LaunchedEffect(listState) {
         snapshotFlow { 
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
             val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            
-            // Evaluates to true when you are 3 rows away from the bottom
             totalItems > 0 && lastVisibleItem >= totalItems - 3
         }.distinctUntilChanged()
          .collect { nearEnd ->
@@ -169,12 +238,8 @@ fun ExploreScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             ExploreTopBar(
-                onSettingsClick = {
-                    navController.navigateSafely(Screen.Settings.route)
-                },
-                onCreateClick = {
-                    navController.navigateSafely(Screen.SmartMix.route)
-                },
+                onSettingsClick = { navController.navigateSafely(Screen.Settings.route) },
+                onCreateClick = { navController.navigateSafely(Screen.SmartMix.route) },
                 isScrolled = isScrolled
             )
         }
@@ -237,8 +302,7 @@ fun ExploreScreen(
                             !it.title.contains("quick", ignoreCase = true)
                         }
                     }
-                    val bottomPadding = if (currentSongId != null) MiniPlayerHeight else 0.dp
-                    
+
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -275,7 +339,7 @@ fun ExploreScreen(
                             }
                         }
 
-                        // 1) Detailed Charts at the very top
+                        // 1) Charts
                         if (uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()) {
                             uiState.chartsPage!!.sections.forEachIndexed { index, chartSection ->
                                 item(key = "chart_${chartSection.title}_${index}_header") {
@@ -313,30 +377,9 @@ fun ExploreScreen(
                                         ) {
                                             items(chartSection.items) { item ->
                                                 when (item) {
-                                                    is AlbumItem -> {
-                                                        AlbumCarouselItem(
-                                                            album = item,
-                                                            onClick = {
-                                                                navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
-                                                            }
-                                                        )
-                                                    }
-                                                    is ArtistItem -> {
-                                                        ArtistCardItem(
-                                                            artist = item,
-                                                            onClick = {
-                                                                navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id))
-                                                            }
-                                                        )
-                                                    }
-                                                    is PlaylistItem -> {
-                                                        PlaylistCardItem(
-                                                            playlist = item,
-                                                            onClick = {
-                                                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
-                                                            }
-                                                        )
-                                                    }
+                                                    is AlbumItem -> AlbumCarouselItem(album = item, onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId)) })
+                                                    is ArtistItem -> ArtistCardItem(artist = item, onClick = { navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id)) })
+                                                    is PlaylistItem -> PlaylistCardItem(playlist = item, onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id)) })
                                                     else -> {}
                                                 }
                                             }
@@ -361,35 +404,29 @@ fun ExploreScreen(
                                     items(uiState.newReleaseAlbums) { album ->
                                         AlbumCarouselItem(
                                             album = album,
-                                            onClick = {
-                                                navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId))
-                                            }
+                                            onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId)) }
                                         )
                                     }
                                 }
                             }
                         }
 
-                        // 3) Quick Picks homepage style grid
+                        // 3) Quick Picks
                         if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
                             quickPicks.isNotEmpty()
                         ) {
                             item(key = "quick_picks_section") {
                                 QuickPicksSection(
                                     songs = quickPicks,
-                                    onSongClick = { song ->
-                                        playerViewModel.showAndPlaySong(song, quickPicks, "Quick Picks")
-                                    },
-                                    onSeeAllClick = {
-                                        navController.navigateSafely(Screen.QuickPicksAll.route)
-                                    },
+                                    onSongClick = { song -> playerViewModel.showAndPlaySong(song, quickPicks, "Quick Picks") },
+                                    onSeeAllClick = { navController.navigateSafely(Screen.QuickPicksAll.route) },
                                     currentSongId = currentSongId,
                                     displayMode = quickPicksDisplayMode
                                 )
                             }
                         }
 
-                        // 3.5) Recent Mixes (last.fm) Section
+                        // 3.5) Recent Mixes (last.fm)
                         if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
                             uiState.recentMixes.isNotEmpty()
                         ) {
@@ -405,99 +442,398 @@ fun ExploreScreen(
                                         RecentMixCardItem(
                                             playlist = playlist,
                                             playerViewModel = playerViewModel,
-                                            onClick = {
-                                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
-                                            }
+                                            onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id)) }
                                         )
                                     }
                                 }
                             }
                         }
 
-                         // 4) Homepage "For You" sections
+                        // 4) Dynamic Personalized YouTube Sections with Animated Dynamic Shapes
                         if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
-
                             homeSectionsFiltered.forEachIndexed { index, section ->
                                 item(key = "home_section_${section.title}_${index}_header") {
-                                    val isSectionQuickPicks = section.title.contains("quick picks", ignoreCase = true)
-                                    val quickPicksSongs = remember(section.items) {
-                                        section.items.filterIsInstance<SongItem>().map { it.toNativeSong() }
-                                    }
-                                    SectionHeader(
-                                        title = section.title,
-                                        onActionClick = if (isSectionQuickPicks && quickPicksSongs.isNotEmpty()) {
-                                            {
-                                                playerViewModel.playSongs(
-                                                    quickPicksSongs,
-                                                    quickPicksSongs.first(),
-                                                    section.title
-                                                )
-                                            }
-                                        } else null,
-                                        actionLabel = if (isSectionQuickPicks && quickPicksSongs.isNotEmpty()) "Play All" else null
-                                    )
+                                    SectionHeader(title = section.title)
                                 }
+                                
                                 item(key = "home_section_${section.title}_${index}_carousel") {
-                                    if (section.title.startsWith("Similar to", ignoreCase = true) || section.title.contains("Fans also like", ignoreCase = true)) {
-                                        SimilarArtistsCarousel(
-                                            artists = section.items.filterIsInstance<ArtistItem>(),
-                                            navController = navController
-                                        )
-                                    } else {
-                                        YTItemCarousel(
-                                            items = section.items,
-                                            navController = navController,
-                                            playerViewModel = playerViewModel,
-                                            sectionTitle = section.title
-                                        )
-                                    }
-                                }
-                            }
+                                    val titleLower = section.title.lowercase()
+                                    val songItems = remember(section.items) { section.items.filterIsInstance<SongItem>() }
+                                    val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
 
-                            // Load More Continuation Trigger
-                            if (uiState.homePageContinuation != null) {
-                                item(key = "load_more_trigger") {
-                                    LaunchedEffect(Unit) {
-                                        exploreViewModel.loadMore()
-                                    }
-                                    if (uiState.isContinuationLoading) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    when {
+                                        // Shape Style 1: Similar Artists
+                                        titleLower.startsWith("similar to") || titleLower.contains("fans also like") -> {
+                                            SimilarArtistsCarousel(
+                                                artists = section.items.filterIsInstance<ArtistItem>(),
+                                                navController = navController
+                                            )
+                                        }
+
+                                        // Shape Style 2: Trending / Covers / Remixes / Hits -> 2-Row Capsule Pills with animated corners
+                                        isAllSongs && (titleLower.contains("trending") || titleLower.contains("covers") || titleLower.contains("remix") || titleLower.contains("hits")) -> {
+                                            SongPillsCarousel(
+                                                songs = songItems,
+                                                playerViewModel = playerViewModel,
+                                                sectionTitle = section.title
+                                            )
+                                        }
+
+                                        // Shape Style 3: Videos / Long Listens / Multi-Track -> Big Box Containers with dynamic corners
+                                        isAllSongs && (titleLower.contains("video") || titleLower.contains("long listen") || titleLower.contains("for you") || titleLower.contains("commented") || songItems.size >= 6) -> {
+                                            SongBigBoxCarousel(
+                                                songs = songItems,
+                                                playerViewModel = playerViewModel,
+                                                sectionTitle = section.title
+                                            )
+                                        }
+
+                                        // Shape Style 4: Mixed for you / Daily discover -> Station Cards with dynamic corners
+                                        titleLower.contains("mixed for you") || titleLower.contains("daily discover") -> {
+                                            MixedStationCarousel(
+                                                items = section.items,
+                                                navController = navController,
+                                                playerViewModel = playerViewModel
+                                            )
+                                        }
+
+                                        // Shape Style 5: Default Carousels with animated items
+                                        else -> {
+                                            YTItemCarousel(
+                                                items = section.items,
+                                                navController = navController,
+                                                playerViewModel = playerViewModel,
+                                                sectionTitle = section.title
+                                            )
                                         }
                                     }
                                 }
                             }
+
+                            if (uiState.isContinuationLoading) {
+                                item(key = "loading_indicator") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                    }
+                                }
+                            }
                         }
-                    } // <-- LAZYCOLUMN SAFELY CLOSES HERE
-                    
-                    // ---> BOTTOM GRADIENT BOX PLACED SAFELY OUTSIDE THE LAZYCOLUMN <---
-                    androidx.compose.foundation.layout.Box(
+                    }
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
                             .height(paddingValuesParent.calculateBottomPadding() + 160.dp)
                             .background(
-                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                brush = Brush.verticalGradient(
                                     colorStops = arrayOf(
-                                        0.0f to androidx.compose.ui.graphics.Color.Transparent,
-                                        0.2f to androidx.compose.ui.graphics.Color.Transparent,
-                                        0.8f to androidx.compose.material3.MaterialTheme.colorScheme.background,
-                                        1.0f to androidx.compose.material3.MaterialTheme.colorScheme.background
+                                        0.0f to Color.Transparent,
+                                        0.2f to Color.Transparent,
+                                        0.8f to MaterialTheme.colorScheme.background,
+                                        1.0f to MaterialTheme.colorScheme.background
                                     )
                                 )
                             )
                     )
-
                 }
             }
         }
     }
 }
+
+// -----------------------------------------------------------------------------------------
+// ANIMATED SHAPE COMPONENTS
+// -----------------------------------------------------------------------------------------
+
+/**
+ * 1. Pill-Shaped Song Grid (2 Horizontal Rows with dynamic corners & scale)
+ */
+@Composable
+fun SongPillsCarousel(
+    songs: List<SongItem>,
+    playerViewModel: PlayerViewModel,
+    sectionTitle: String
+) {
+    val nativeSongs = remember(songs) { songs.map { it.toNativeSong() } }
+    val rows = remember(nativeSongs) {
+        val row1 = mutableListOf<Song>()
+        val row2 = mutableListOf<Song>()
+        nativeSongs.forEachIndexed { i, s ->
+            if (i % 2 == 0) row1.add(s) else row2.add(s)
+        }
+        listOf(row1, row2)
+    }
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scrollState)
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        rows.forEach { rowSongs ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                rowSongs.forEach { song ->
+                    val anim = rememberDynamicEffect(
+                        baseCornerRadius = 28.dp,
+                        squishCornerRadius = 14.dp,
+                        minScale = 0.93f,
+                        minAlpha = 0.65f
+                    )
+                    Surface(
+                        onClick = {
+                            playerViewModel.showAndPlaySong(
+                                song = song,
+                                contextSongs = nativeSongs,
+                                queueName = sectionTitle
+                            )
+                        },
+                        shape = RoundedCornerShape(anim.cornerRadius),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier
+                            .width(220.dp)
+                            .height(56.dp)
+                            .then(anim.modifier)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            SmartImage(
+                                model = song.albumArtUriString,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                shape = CircleShape,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = song.title,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = song.artist,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 2. Big Box Container with 3 Stacked Songs (Multi-Track Box with dynamic corners & scale)
+ */
+@Composable
+fun SongBigBoxCarousel(
+    songs: List<SongItem>,
+    playerViewModel: PlayerViewModel,
+    sectionTitle: String
+) {
+    val nativeSongs = remember(songs) { songs.map { it.toNativeSong() } }
+    val chunks = remember(nativeSongs) { nativeSongs.chunked(3) }
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(chunks) { chunk ->
+            val anim = rememberDynamicEffect(
+                baseCornerRadius = 24.dp,
+                squishCornerRadius = 54.dp,
+                minScale = 0.94f,
+                minAlpha = 0.7f
+            )
+            Card(
+                shape = RoundedCornerShape(anim.cornerRadius),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier
+                    .width(300.dp)
+                    .wrapContentHeight()
+                    .then(anim.modifier)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    chunk.forEach { song ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    playerViewModel.showAndPlaySong(
+                                        song = song,
+                                        contextSongs = nativeSongs,
+                                        queueName = sectionTitle
+                                    )
+                                }
+                                .padding(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            SmartImage(
+                                model = song.albumArtUriString,
+                                contentDescription = song.title,
+                                contentScale = ContentScale.Crop,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(46.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = song.title,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = song.artist,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3. Featured Station Cards (Dynamic Corners, Image Morphing & Scale)
+ */
+@Composable
+fun MixedStationCarousel(
+    items: List<YTItem>,
+    navController: NavController,
+    playerViewModel: PlayerViewModel
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(items) { item ->
+            val anim = rememberDynamicEffect(
+                baseCornerRadius = 24.dp,
+                squishCornerRadius = 56.dp,
+                minScale = 0.92f,
+                minAlpha = 0.65f
+            )
+            val dynamicImageCorner = lerp(16.dp, 48.dp, 1f - anim.factor)
+
+            Card(
+                onClick = {
+                    when (item) {
+                        is PlaylistItem -> navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
+                        is AlbumItem -> navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
+                        is SongItem -> playerViewModel.showAndPlaySong(item.toNativeSong())
+                        else -> {}
+                    }
+                },
+                shape = RoundedCornerShape(anim.cornerRadius),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier = Modifier
+                    .width(190.dp)
+                    .wrapContentHeight()
+                    .then(anim.modifier)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Box(modifier = Modifier.size(170.dp)) {
+                        SmartImage(
+                            model = when (item) {
+                                is PlaylistItem -> item.thumbnail
+                                is AlbumItem -> item.thumbnail
+                                is SongItem -> item.thumbnail
+                                else -> null
+                            },
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(dynamicImageCorner)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when (item) {
+                            is PlaylistItem -> item.title
+                            is AlbumItem -> item.title
+                            is SongItem -> item.title
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = when (item) {
+                            is PlaylistItem -> item.author?.name ?: "Mix Station"
+                            is AlbumItem -> item.artists?.firstOrNull()?.name ?: "Album"
+                            is SongItem -> item.artists?.firstOrNull()?.name ?: "Song"
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------------
+// STANDARD CAROUSEL COMPONENTS WITH ANIMATED DYNAMICS
+// -----------------------------------------------------------------------------------------
 
 @Composable
 fun YTItemCarousel(
@@ -528,25 +864,19 @@ fun YTItemCarousel(
                 is AlbumItem -> {
                     AlbumCarouselItem(
                         album = item,
-                        onClick = {
-                            navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
-                        }
+                        onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId)) }
                     )
                 }
                 is PlaylistItem -> {
                     PlaylistCardItem(
                         playlist = item,
-                        onClick = {
-                            navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
-                        }
+                        onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id)) }
                     )
                 }
                 is ArtistItem -> {
                     ArtistCardItem(
                         artist = item,
-                        onClick = {
-                            navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id))
-                        }
+                        onClick = { navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id)) }
                     )
                 }
             }
@@ -559,18 +889,20 @@ fun SongCardItem(
     song: Song,
     onClick: () -> Unit
 ) {
-    val shape = remember { AbsoluteSmoothCornerShape(20.dp, 60) }
+    val anim = rememberDynamicEffect(baseCornerRadius = 20.dp, squishCornerRadius = 50.dp)
+
     Column(
         modifier = Modifier
             .width(140.dp)
             .clickable(onClick = onClick)
+            .then(anim.modifier)
     ) {
         SmartImage(
             model = song.albumArtUriString,
             contentDescription = song.title,
             modifier = Modifier
                 .size(140.dp)
-                .clip(shape),
+                .clip(RoundedCornerShape(anim.cornerRadius)),
             contentScale = ContentScale.Crop
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -619,22 +951,16 @@ fun AnimatedSparklesIconButton(
     )
 
     val colors = MaterialTheme.colorScheme
-    // Exciting gradient background for the button
     val gradientBrush = remember(colors) {
         Brush.linearGradient(
-            colors = listOf(
-                colors.primary,
-                colors.tertiary
-            )
+            colors = listOf(colors.primary, colors.tertiary)
         )
     }
 
     Box(
-        modifier = modifier
-            .size(48.dp),
+        modifier = modifier.size(48.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Exciting premium icon button with gradient and micro-animation
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -664,10 +990,8 @@ fun RecentMixCardItem(
     playerViewModel: PlayerViewModel,
     onClick: () -> Unit
 ) {
-    val shape = remember { AbsoluteSmoothCornerShape(20.dp, 60) }
-    val previewSongIds = remember(playlist.songIds) {
-        playlist.songIds.take(4)
-    }
+    val anim = rememberDynamicEffect(baseCornerRadius = 20.dp, squishCornerRadius = 50.dp)
+    val previewSongIds = remember(playlist.songIds) { playlist.songIds.take(4) }
     var playlistSongs by remember(previewSongIds) {
         mutableStateOf<List<Song>?>(if (previewSongIds.isEmpty()) emptyList() else null)
     }
@@ -681,13 +1005,14 @@ fun RecentMixCardItem(
         modifier = Modifier
             .width(140.dp)
             .clickable(onClick = onClick)
+            .then(anim.modifier)
     ) {
         PlaylistCover(
             playlist = playlist,
             playlistSongs = playlistSongs ?: emptyList(),
             modifier = Modifier
                 .size(140.dp)
-                .clip(shape),
+                .clip(RoundedCornerShape(anim.cornerRadius)),
             size = 140.dp
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -808,30 +1133,20 @@ fun AlbumCarouselItem(
     album: AlbumItem,
     onClick: () -> Unit
 ) {
-    val shape = remember {
-        AbsoluteSmoothCornerShape(
-            cornerRadiusTL = 24.dp,
-            cornerRadiusTR = 24.dp,
-            cornerRadiusBR = 24.dp,
-            cornerRadiusBL = 24.dp,
-            smoothnessAsPercentTL = 60,
-            smoothnessAsPercentTR = 60,
-            smoothnessAsPercentBR = 60,
-            smoothnessAsPercentBL = 60
-        )
-    }
+    val anim = rememberDynamicEffect(baseCornerRadius = 24.dp, squishCornerRadius = 54.dp)
 
     Column(
         modifier = Modifier
             .width(140.dp)
             .clickable(onClick = onClick)
+            .then(anim.modifier)
     ) {
         SmartImage(
             model = album.thumbnail,
             contentDescription = album.title,
             modifier = Modifier
                 .size(140.dp)
-                .clip(shape),
+                .clip(RoundedCornerShape(anim.cornerRadius)),
             contentScale = ContentScale.Crop
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -859,11 +1174,14 @@ fun ArtistCardItem(
     artist: ArtistItem,
     onClick: () -> Unit
 ) {
+    val anim = rememberDynamicEffect(minScale = 0.91f, minAlpha = 0.65f)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(120.dp)
             .clickable(onClick = onClick)
+            .then(anim.modifier)
     ) {
         SmartImage(
             model = artist.thumbnail,
@@ -891,9 +1209,7 @@ fun ArtistCardItem(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = "Artist",
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Medium
-            ),
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -910,18 +1226,20 @@ fun PlaylistCardItem(
     playlist: PlaylistItem,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val anim = rememberDynamicEffect(baseCornerRadius = 18.dp, squishCornerRadius = 48.dp)
+
     Column(
         modifier = Modifier
             .width(140.dp)
             .clickable(onClick = onClick)
+            .then(anim.modifier)
     ) {
         SmartImage(
             model = playlist.thumbnail,
             contentDescription = playlist.title,
             modifier = Modifier
                 .size(140.dp)
-            .clip(shape),
+                .clip(RoundedCornerShape(anim.cornerRadius)),
             contentScale = ContentScale.Crop
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -956,9 +1274,7 @@ fun SimilarArtistsCarousel(
         items(artists) { artist ->
             SimilarArtistCardItem(
                 artist = artist,
-                onClick = {
-                    navController.navigateSafely(Screen.ArtistDetail.createRoute(artist.id))
-                }
+                onClick = { navController.navigateSafely(Screen.ArtistDetail.createRoute(artist.id)) }
             )
         }
     }
@@ -969,13 +1285,15 @@ fun SimilarArtistCardItem(
     artist: ArtistItem,
     onClick: () -> Unit
 ) {
-    val shape = remember { AbsoluteSmoothCornerShape(20.dp, 60) }
+    val anim = rememberDynamicEffect(baseCornerRadius = 22.dp, squishCornerRadius = 54.dp)
     val primaryColor = MaterialTheme.colorScheme.primary
+
     Card(
         modifier = Modifier
             .width(140.dp)
-            .clickable(onClick = onClick),
-        shape = shape,
+            .clickable(onClick = onClick)
+            .then(anim.modifier),
+        shape = RoundedCornerShape(anim.cornerRadius),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
         )
@@ -1019,9 +1337,7 @@ fun SimilarArtistCardItem(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "Similar Artist",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Medium
-                ),
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                 color = primaryColor.copy(alpha = 0.8f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
