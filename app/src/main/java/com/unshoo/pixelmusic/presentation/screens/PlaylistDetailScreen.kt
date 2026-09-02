@@ -181,9 +181,18 @@ fun PlaylistDetailScreen(
     val sortSheetTitle = stringResource(R.string.presentation_batch_b_sort_songs)
     val toastAddedToQueue = stringResource(R.string.toast_added_to_queue)
     val toastPlayingNext = stringResource(R.string.toast_playing_next)
+    
     val currentPlaylist = uiState.currentPlaylistDetails
     val isFolderPlaylist = currentPlaylist?.id?.startsWith(FOLDER_PLAYLIST_PREFIX) == true
     val songsInPlaylist = uiState.currentPlaylistSongs
+
+    // Determine if this playlist actually exists in the local database
+    val isSavedLocally by remember(uiState.playlists, currentPlaylist) {
+        derivedStateOf {
+            uiState.playlists.any { it.id == currentPlaylist?.id }
+        }
+    }
+
     val isPlaylistFullyDownloaded by remember(songsInPlaylist) {
         derivedStateOf {
             songsInPlaylist.isNotEmpty() && songsInPlaylist.all { it.path.isNotBlank() }
@@ -224,7 +233,7 @@ fun PlaylistDetailScreen(
     var showExportSheet by remember { mutableStateOf(false) }
 
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
-    val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() // Reintroducir favoriteIds aquí
+    val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle() 
     val stableOnMoreOptionsClick: (Song) -> Unit = remember {
         { song ->
             playerViewModel.selectSongForInfo(song)
@@ -376,7 +385,6 @@ fun PlaylistDetailScreen(
                     Button(
                         onClick = {
                             if (localReorderableSongs.isNotEmpty()) {
-                                // Always prefer playing the actual songs in the playlist
                                 playerViewModel.playSongs(
                                     localReorderableSongs,
                                     localReorderableSongs.first(),
@@ -385,7 +393,6 @@ fun PlaylistDetailScreen(
                                 )
                                 if (playerStableState.isShuffleEnabled) playerViewModel.toggleShuffle()
                             } else if (currentPlaylist.source == "YOUTUBE") {
-                                // Fallback: no songs loaded yet, start radio from the YouTube playlist
                                 playerViewModel.playRadio(
                                     unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(playlistId = currentPlaylist.id),
                                     currentPlaylist.name
@@ -460,112 +467,116 @@ fun PlaylistDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val reorderCornerRadius by animateDpAsState(
-                            targetValue = if (isReorderModeEnabled) 24.dp else 12.dp,
-                            label = "reorderCornerRadius"
-                        )
-                        val reorderButtonColor by animateColorAsState(
-                            targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            label = "reorderButtonColor"
-                        )
-                        val reorderIconColor by animateColorAsState(
-                            targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
-                            label = "reorderIconColor"
-                        )
-
-                        val removeCornerRadius by animateDpAsState(
-                            targetValue = if (isRemoveModeEnabled) 24.dp else 12.dp,
-                            label = "removeCornerRadius"
-                        )
-                        val removeButtonColor by animateColorAsState(
-                            targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            label = "removeButtonColor"
-                        )
-                        val removeIconColor by animateColorAsState(
-                            targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
-                            label = "removeIconColor"
-                        )
-
-                        Button(
-                            onClick = { showAddSongsSheet = true },
-                            shape = CircleShape,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            ),
-                            modifier = Modifier
-                                .height(actionButtonsHeight)
-                                .animateContentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = addSongsCd,
-                                modifier = Modifier.size(20.dp)
+                        // Only show local editing options if the playlist is saved in the library
+                        if (isSavedLocally) {
+                            val reorderCornerRadius by animateDpAsState(
+                                targetValue = if (isReorderModeEnabled) 24.dp else 12.dp,
+                                label = "reorderCornerRadius"
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = addLabel,
-                                style = MaterialTheme.typography.labelLarge
+                            val reorderButtonColor by animateColorAsState(
+                                targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                label = "reorderButtonColor"
                             )
+                            val reorderIconColor by animateColorAsState(
+                                targetValue = if (isReorderModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
+                                label = "reorderIconColor"
+                            )
+
+                            val removeCornerRadius by animateDpAsState(
+                                targetValue = if (isRemoveModeEnabled) 24.dp else 12.dp,
+                                label = "removeCornerRadius"
+                            )
+                            val removeButtonColor by animateColorAsState(
+                                targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                label = "removeButtonColor"
+                            )
+                            val removeIconColor by animateColorAsState(
+                                targetValue = if (isRemoveModeEnabled) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurface,
+                                label = "removeIconColor"
+                            )
+
+                            Button(
+                                onClick = { showAddSongsSheet = true },
+                                shape = CircleShape,
+                                contentPadding = PaddingValues(horizontal = 12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                ),
+                                modifier = Modifier
+                                    .height(actionButtonsHeight)
+                                    .animateContentSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = addSongsCd,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = addLabel,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+
+                            Button(
+                                onClick = { isRemoveModeEnabled = !isRemoveModeEnabled },
+                                shape = RoundedCornerShape(removeCornerRadius),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = removeButtonColor,
+                                    contentColor = removeIconColor
+                                ),
+                                modifier = Modifier
+                                    .height(actionButtonsHeight)
+                                    .animateContentSize()
+                                    .clip(RoundedCornerShape(removeCornerRadius))
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(18.dp),
+                                    imageVector = Icons.Default.RemoveCircleOutline,
+                                    contentDescription = removeSongsCd,
+                                    tint = removeIconColor
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    modifier = Modifier.padding(end = 4.dp),
+                                    text = removeLabel,
+                                    color = removeIconColor,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+
+                            Button(
+                                onClick = { isReorderModeEnabled = !isReorderModeEnabled },
+                                shape = RoundedCornerShape(reorderCornerRadius),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = reorderButtonColor,
+                                    contentColor = reorderIconColor
+                                ),
+                                modifier = Modifier
+                                    .height(actionButtonsHeight)
+                                    .animateContentSize()
+                                    .clip(RoundedCornerShape(reorderCornerRadius))
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(22.dp),
+                                    painter = painterResource(R.drawable.drag_order_icon),
+                                    contentDescription = reorderSongsCd,
+                                    tint = reorderIconColor
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    modifier = Modifier.padding(end = 4.dp),
+                                    text = reorderLabel,
+                                    color = reorderIconColor,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         }
 
-                        Button(
-                            onClick = { isRemoveModeEnabled = !isRemoveModeEnabled },
-                            shape = RoundedCornerShape(removeCornerRadius),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = removeButtonColor,
-                                contentColor = removeIconColor
-                            ),
-                            modifier = Modifier
-                                .height(actionButtonsHeight)
-                                .animateContentSize()
-                                .clip(RoundedCornerShape(removeCornerRadius))
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(18.dp),
-                                imageVector = Icons.Default.RemoveCircleOutline,
-                                contentDescription = removeSongsCd,
-                                tint = removeIconColor
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                modifier = Modifier.padding(end = 4.dp),
-                                text = removeLabel,
-                                color = removeIconColor,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-
-                        Button(
-                            onClick = { isReorderModeEnabled = !isReorderModeEnabled },
-                            shape = RoundedCornerShape(reorderCornerRadius),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = reorderButtonColor,
-                                contentColor = reorderIconColor
-                            ),
-                            modifier = Modifier
-                                .height(actionButtonsHeight)
-                                .animateContentSize()
-                                .clip(RoundedCornerShape(reorderCornerRadius))
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(22.dp),
-                                painter = painterResource(R.drawable.drag_order_icon),
-                                contentDescription = reorderSongsCd,
-                                tint = reorderIconColor
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                modifier = Modifier.padding(end = 4.dp),
-                                text = reorderLabel,
-                                color = reorderIconColor,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                        // Download All Button
+                        // Download All Button is always visible
                         Button(
                             onClick = {
                                 if (!isPlaylistFullyDownloaded) {
@@ -613,7 +624,6 @@ fun PlaylistDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .weight(1f)
-                            //.padding(horizontal = 10.dp)
                     ) {
                         LazyColumn(
                             state = listState,
@@ -728,7 +738,7 @@ fun PlaylistDetailScreen(
                                 .padding(
                                     bottom = if (playerStableState.currentSong != null) MiniPlayerHeight + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 20.dp else WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
                                     end = 14.dp,
-                                    top = 18.dp // Increased to 16.dp as requested
+                                    top = 18.dp 
                                 )
                         )
                     }
@@ -737,7 +747,7 @@ fun PlaylistDetailScreen(
         }
     }
 
-    if (showAddSongsSheet && currentPlaylist != null && !isFolderPlaylist) {
+    if (showAddSongsSheet && currentPlaylist != null && !isFolderPlaylist && isSavedLocally) {
         SongPickerBottomSheet(
             initiallySelectedSongIds = currentPlaylist.songIds.toSet(),
             onDismiss = { showAddSongsSheet = false },
@@ -747,6 +757,7 @@ fun PlaylistDetailScreen(
             }
         )
     }
+    
     if (showPlaylistOptionsSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -788,49 +799,56 @@ fun PlaylistDetailScreen(
                         playerViewModel.addSongsToQueue(localReorderableSongs)
                     }
                 )
-                currentPlaylist?.let { playlist ->
+                
+                // Only show local editing options if the playlist is saved in the local database
+                if (isSavedLocally && currentPlaylist != null) {
                     PlaylistActionItem(
                         icon = rememberVectorPainter(Icons.Rounded.PushPin),
-                        label = if (playlist.isPinned) "Unpin Playlist" else "Pin Playlist",
+                        label = if (currentPlaylist.isPinned) "Unpin Playlist" else "Pin Playlist",
                         onClick = {
                             showPlaylistOptionsSheet = false
-                            playlistViewModel.togglePinPlaylist(playlist.id)
+                            playlistViewModel.togglePinPlaylist(currentPlaylist.id)
                         }
                     )
-                }
-                if (!isFolderPlaylist) {
-                    PlaylistActionItem(
-                        icon = painterResource(R.drawable.rounded_edit_24),
-                        label = editPlaylistLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            showEditPlaylistDialog = true
-                        }
-                    )
-                    PlaylistActionItem(
-                        icon = painterResource(R.drawable.rounded_delete_24),
-                        label = deletePlaylistLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            showDeleteConfirmation = true
-                        }
-                    )
-                    PlaylistActionItem(
-                        icon = painterResource(R.drawable.outline_graph_1_24),
-                        label = setDefaultTransitionLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            navController.navigateSafely(Screen.EditTransition.createRoute(playlistId))
-                        }
-                    )
-                    PlaylistActionItem(
-                        icon = painterResource(R.drawable.rounded_attach_file_24),
-                        label = exportPlaylistLabel,
-                        onClick = {
-                            showPlaylistOptionsSheet = false
-                            showExportSheet = true
-                        }
-                    )
+                    
+                    if (!isFolderPlaylist) {
+                        PlaylistActionItem(
+                            icon = painterResource(R.drawable.rounded_edit_24),
+                            label = editPlaylistLabel,
+                            onClick = {
+                                showPlaylistOptionsSheet = false
+                                showEditPlaylistDialog = true
+                            }
+                        )
+                        
+                        // Clarify delete label for synced YouTube playlists
+                        val actualDeleteLabel = if (currentPlaylist.source == "YOUTUBE") "Remove from Library" else deletePlaylistLabel
+                        
+                        PlaylistActionItem(
+                            icon = painterResource(R.drawable.rounded_delete_24),
+                            label = actualDeleteLabel,
+                            onClick = {
+                                showPlaylistOptionsSheet = false
+                                showDeleteConfirmation = true
+                            }
+                        )
+                        PlaylistActionItem(
+                            icon = painterResource(R.drawable.outline_graph_1_24),
+                            label = setDefaultTransitionLabel,
+                            onClick = {
+                                showPlaylistOptionsSheet = false
+                                navController.navigateSafely(Screen.EditTransition.createRoute(playlistId))
+                            }
+                        )
+                        PlaylistActionItem(
+                            icon = painterResource(R.drawable.rounded_attach_file_24),
+                            label = exportPlaylistLabel,
+                            onClick = {
+                                showPlaylistOptionsSheet = false
+                                showExportSheet = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -929,7 +947,7 @@ fun PlaylistDetailScreen(
                     showSongInfoBottomSheet = false
                 },
                 onAddToQueue = {
-                    playerViewModel.addSongToQueue(currentSong) // Assumes such a method exists or will be added
+                    playerViewModel.addSongToQueue(currentSong) 
                     showSongInfoBottomSheet = false
                     playerViewModel.sendToast(toastAddedToQueue)
                 },
@@ -1011,10 +1029,8 @@ fun PlaylistDetailScreen(
     val isSortSheetVisible by playerViewModel.isSortingSheetVisible.collectAsStateWithLifecycle()
 
     if (isSortSheetVisible) {
-        // Check if playlist is in Manual mode (which corresponds to Default Order)
         val isManualMode = uiState.playlistSongsOrderMode is PlaylistSongsOrderMode.Manual
         val rawOption = uiState.currentPlaylistSongsSortOption
-        // If in Manual mode, show SongDefaultOrder as selected; otherwise use the stored sort option
         val currentSortOption = if (isManualMode) {
             SortOption.SongDefaultOrder
         } else if (currentPlaylist != null) {
@@ -1023,7 +1039,6 @@ fun PlaylistDetailScreen(
             SortOption.SongTitleAZ
         }
 
-        // Build options list inline to avoid potential static initialization issues
         val songSortOptions = listOf(
             SortOption.SongDefaultOrder,
             SortOption.SongTitleAZ,
@@ -1046,7 +1061,6 @@ fun PlaylistDetailScreen(
             onOptionSelected = { option ->
                  playlistViewModel.sortPlaylistSongs(option)
                  playerViewModel.hideSortingSheet()
-                 // Auto-scroll to first item after sorting (delay to allow list to update)
                  scope.launch {
                      kotlinx.coroutines.delay(100)
                      listState.animateScrollToItem(0)
@@ -1128,7 +1142,6 @@ private fun PlaylistActionItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// SongPickerBottomSheet moved to com.unshoo.pixelmusic.presentation.components
 fun RenamePlaylistDialog(currentName: String, onDismiss: () -> Unit, onRename: (String) -> Unit) {
     var newName by remember { mutableStateOf(TextFieldValue(currentName)) }
     val renameTitle = stringResource(R.string.presentation_batch_b_rename_playlist_dialog_title)
@@ -1167,7 +1180,6 @@ private fun ExportPlaylistSheet(
     onShareM3u: () -> Unit,
     onShareCsv: () -> Unit,
 ) {
-    // false = CSV selected, true = M3U selected  (CSV is default like ArchiveTune)
     var selectedCsv by remember { mutableStateOf(true) }
 
     val exportPlaylistTitle = stringResource(R.string.presentation_batch_b_export_playlist)
@@ -1194,7 +1206,6 @@ private fun ExportPlaylistSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Title
             Text(
                 text = exportPlaylistTitle,
                 style = MaterialTheme.typography.headlineSmall,
@@ -1203,7 +1214,6 @@ private fun ExportPlaylistSheet(
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
             )
 
-            // Format tiles
             @Composable
             fun FormatTile(
                 icon: androidx.compose.ui.graphics.painter.Painter,
@@ -1266,7 +1276,6 @@ private fun ExportPlaylistSheet(
                 }
             }
 
-            // CSV option (default selected)
             FormatTile(
                 icon = painterResource(R.drawable.rounded_attach_file_24),
                 label = exportAsCsvLabel,
@@ -1275,7 +1284,6 @@ private fun ExportPlaylistSheet(
                 onClick = { selectedCsv = true }
             )
 
-            // M3U option
             FormatTile(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Rounded.QueueMusic),
                 label = exportAsM3uLabel,
@@ -1286,7 +1294,6 @@ private fun ExportPlaylistSheet(
 
             Spacer(Modifier.height(4.dp))
 
-            // Action buttons row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
