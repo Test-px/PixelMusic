@@ -399,7 +399,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         if (!isColdLaunchSweepPlayed) {
             isColdLaunchSweepPlayed = true
-            delay(350L)
+            delay(370L)
             triggerColdLaunchSweep = true
         }
     }
