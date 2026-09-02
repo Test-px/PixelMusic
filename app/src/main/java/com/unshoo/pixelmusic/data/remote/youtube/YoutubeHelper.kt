@@ -120,24 +120,30 @@ object YoutubeHelper {
         return upgradeThumbnailUrlToHighQuality(url)
     }
 
-    private fun upgradeThumbnailUrlToHighQuality(url: String): String {
+    private fun upgradeThumbnailUrlToHighQuality(url: String, quality: Int = 400): String {
         if (url.isBlank()) return url
         val resizeRegex = Regex("=w\\d+-h\\d+.*")
         if (resizeRegex.containsMatchIn(url)) {
-            return url.replace(resizeRegex, "=w1000-h1000")
+            return url.replace(resizeRegex, "=w$quality-h$quality")
         }
         val sRegex = Regex("=s\\d+.*")
         if (sRegex.containsMatchIn(url)) {
-            return url.replace(sRegex, "=s1000")
+            return url.replace(sRegex, "=s$quality")
         }
         if (url.contains("googleusercontent.com")) {
             return if (url.contains("=")) {
-                url.substringBeforeLast("=") + "=w1000-h1000"
+                url.substringBeforeLast("=") + "=w$quality-h$quality"
             } else {
-                "$url=w1000-h1000"
+                "$url=w$quality-h$quality"
             }
         }
         return url
+    }
+
+    // Public method for Now Playing/Lockscreen/Notification to get the HQ art
+    fun getHighResThumbnailUrl(url: String?): String? {
+        if (url.isNullOrBlank()) return url
+        return upgradeThumbnailUrlToHighQuality(url, 1000)
     }
 
     fun getSongInfo(songMap: JsonElement, songInfoIndex: SongInfoType): String {
