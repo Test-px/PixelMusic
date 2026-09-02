@@ -2083,33 +2083,47 @@ class PlaylistViewModel @Inject constructor(
 
     fun downloadPlaylist(context: Context, playlistId: String, songs: List<Song>) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Reset state before starting
+            com.unshoo.pixelmusic.utils.SongDownloader.isCancelled = false
+            com.unshoo.pixelmusic.utils.SongDownloader.isPaused = false
+
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Downloading playlist...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Starting playlist download...", Toast.LENGTH_SHORT).show()
             }
             
             var downloadedCount = 0
+            val totalSongs = songs.size
             val musicDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
             
-            for (song in songs) {
-                // Check if already downloaded
+            for ((index, song) in songs.withIndex()) {
+                if (com.unshoo.pixelmusic.utils.SongDownloader.isCancelled) {
+                    break
+                }
+
                 val cleanTitle = song.title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 val cleanArtist = song.displayArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 val targetFile = java.io.File(musicDir, "PixelMusic/$cleanTitle - $cleanArtist.m4a")
                 
                 if (!targetFile.exists()) {
-                    // Download sequentially using the engine we built in Phase 3
+                    val progressStr = "Song ${index + 1}/$totalSongs"
+                    
                     val success = com.unshoo.pixelmusic.utils.SongDownloader.downloadAndTagSong(
                         context = context,
                         song = song,
-                        lyricsText = null 
+                        lyricsText = null,
+                        playlistProgress = progressStr
                     )
                     if (success) downloadedCount++
                 }
             }
             
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Playlist download complete! ($downloadedCount new songs)", Toast.LENGTH_LONG).show()
+                if (com.unshoo.pixelmusic.utils.SongDownloader.isCancelled) {
+                    Toast.makeText(context, "Playlist download cancelled.", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Playlist download complete! ($downloadedCount new songs)", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
-}
+    
