@@ -160,6 +160,7 @@ fun ExpandableAccountCard(
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
 
+                    // 1. Add Account / Add Another Account Button
                     Surface(
                         onClick = { 
                             expanded = false
@@ -181,7 +182,7 @@ fun ExpandableAccountCard(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = "Add another account",
+                                text = if (hasProfile) "Add another account" else "Add account",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -189,6 +190,7 @@ fun ExpandableAccountCard(
                         }
                     }
 
+                    // 2. Manage Cloud Accounts
                     Surface(
                         onClick = { 
                             expanded = false
@@ -209,15 +211,18 @@ fun ExpandableAccountCard(
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
-                            Text(
-                                text = "Manage accounts ",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Column {
+                                Text(
+                                    text = "Manage accounts",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
 
+                    // 3. Log Out Button (Only shown when logged in)
                     if (hasProfile) {
                         Surface(
                             onClick = { 
