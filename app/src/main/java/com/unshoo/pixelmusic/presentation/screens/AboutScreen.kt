@@ -844,7 +844,7 @@ private fun CreditsCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.instagram), // Make sure you have an instagram icon in drawable or use an vector
+                            painter = painterResource(R.drawable.ic_instagram),
                             contentDescription = "Instagram",
                             tint = androidx.compose.ui.graphics.Color.White,
                             modifier = Modifier.size(16.dp)
