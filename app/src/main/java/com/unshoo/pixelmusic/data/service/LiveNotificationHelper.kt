@@ -14,8 +14,7 @@ import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.ui.glancewidget.PlayerActions
 
 object LiveNotificationHelper {
-    // Bumped channel ID to ensure the system registers the new IMPORTANCE_DEFAULT setting
-    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v3"
+    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v5"
     private const val LIVE_NOTIFICATION_ID = 1002
 
     fun createNotificationChannel(context: Context) {
@@ -25,7 +24,7 @@ object LiveNotificationHelper {
             val channel = NotificationChannel(
                 LIVE_CHANNEL_ID,
                 "Live Progress Tracker",
-                NotificationManager.IMPORTANCE_DEFAULT // Required for the expanded card to show properly
+                NotificationManager.IMPORTANCE_DEFAULT 
             ).apply {
                 description = "Drives the dynamic island progress pill"
                 setShowBadge(false)
@@ -39,7 +38,6 @@ object LiveNotificationHelper {
         context: Context,
         title: String,
         artist: String,
-        liveText: String,
         positionMs: Long,
         durationMs: Long,
         isPlaying: Boolean,
@@ -68,14 +66,13 @@ object LiveNotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setRequestPromotedOngoing(true) 
-            .setShortCriticalText(liveText)
+            .setShortCriticalText("♪") // Replaced time with Music Note to save battery
 
-        // Enable the Android 16 interactive Progress Style expansion card
         if (Build.VERSION.SDK_INT >= 36) {
             val progressPercent = if (durationMs > 0) ((positionMs.toFloat() / durationMs) * 100).toInt().coerceIn(0, 100) else 0
             
             val segment = NotificationCompat.ProgressStyle.Segment(100)
-            segment.setColor(0xFFE91E63.toInt()) // Red progress bar color (can be dynamically extracted later)
+            segment.setColor(0xFFE91E63.toInt()) // Red progress bar color
 
             val progressStyle = NotificationCompat.ProgressStyle()
                 .setProgressSegments(arrayListOf(segment))
@@ -87,21 +84,26 @@ object LiveNotificationHelper {
             builder.setProgress(durationMs.toInt(), positionMs.toInt(), false)
         }
 
-        builder.addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
+        // Android 16 ProgressStyle forces action buttons to be text-based. 
+        // We use emojis as the title string to simulate icons!
+        val playPauseIcon = if (isPlaying) "⏸" else "▶"
+        builder.addAction(android.R.drawable.ic_media_previous, "⏮", prevIntent)
             .addAction(
                 if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                if (isPlaying) "Pause" else "Play",
+                playPauseIcon,
                 playPauseIntent
             )
-            .addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
+            .addAction(android.R.drawable.ic_media_next, "⏭", nextIntent)
 
-        // Inject the album art into the capsule pill
+        // Inject the album art into the capsule pill safely
         if (artworkData != null) {
-            val bitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            builder.setLargeIcon(bitmap)
+            val rawBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            builder.setLargeIcon(rawBitmap)
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                builder.setSmallIcon(IconCompat.createWithBitmap(bitmap))
+                // Scale down for the status bar pill to prevent crashes
+                val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(rawBitmap, 150, 150, true)
+                builder.setSmallIcon(IconCompat.createWithBitmap(scaledBitmap))
             } else {
                 builder.setSmallIcon(R.drawable.monochrome_player)
             }
