@@ -59,8 +59,7 @@ object LiveNotificationHelper {
         val playPauseIntent = PendingIntent.getService(context, 2, Intent(context, MusicService::class.java).apply { action = PlayerActions.PLAY_PAUSE }, PendingIntent.FLAG_IMMUTABLE)
         val nextIntent = PendingIntent.getService(context, 3, Intent(context, MusicService::class.java).apply { action = PlayerActions.NEXT }, PendingIntent.FLAG_IMMUTABLE)
 
-        // 3. Build the Tracker Disguise
-        val builder = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
+val builder = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
             .setOngoing(isPlaying)
             .setOnlyAlertOnce(true)
             .setSmallIcon(R.drawable.monochrome_player)
@@ -68,10 +67,10 @@ object LiveNotificationHelper {
             .setContentText(artist)
             .setContentIntent(pendingAppIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            // Critical: CATEGORY_PROGRESS tricks OriginOS into rendering the tracker capsule
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS) 
-            // Adds the progress bar to the expanded view
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setProgress(durationMs.toInt(), positionMs.toInt(), false)
+            .setRequestPromotedOngoing(true) // Call directly
+            .setShortCriticalText(liveText)
             
             // Add Media Buttons
             .addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
