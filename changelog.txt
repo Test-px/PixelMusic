@@ -1,3 +1,9 @@
+**Sub release 3.6** 
+
+*Fixed Home screen shuffle button position.
+
+**Final Release 3.5**
+
 **Pixel Music Beta-3**
 
 * ⚡ **The Core Breakthrough — High-Performance Direct Streaming Engine:** We completely rebuilt stream playback from the ground up! Pixel Music now features a resilient Direct Streaming architecture. Audio streams are resolved directly to clean, unencrypted GoogleVideo CDN links (Opus & M4A), bypassing YouTube tracking, slashing UI overhead, and ending 403 playback errors for good.
