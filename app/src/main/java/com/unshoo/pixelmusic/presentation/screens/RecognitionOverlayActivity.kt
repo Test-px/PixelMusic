@@ -28,6 +28,8 @@ import java.net.URL
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 import javax.inject.Inject
+import androidx.compose.runtime.getValue
+
 
 @AndroidEntryPoint
 class RecognitionOverlayActivity : ComponentActivity() {
