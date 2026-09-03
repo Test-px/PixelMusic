@@ -74,13 +74,13 @@ object LiveNotificationHelper {
             .setProgress(durationMs.toInt(), positionMs.toInt(), false)
             
             // Add Media Buttons
-            .addAction(androidx.media3.session.R.drawable.media3_notification_skip_to_previous, "Previous", prevIntent)
+            .addAction(android.R.drawable.ic_media_previous, "Previous", prevIntent)
             .addAction(
-                if (isPlaying) androidx.media3.session.R.drawable.media3_notification_pause else androidx.media3.session.R.drawable.media3_notification_play,
+                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
                 if (isPlaying) "Pause" else "Play",
                 playPauseIntent
             )
-            .addAction(androidx.media3.session.R.drawable.media3_notification_skip_to_next, "Next", nextIntent)
+            .addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
 
         // 4. Attach Album Art so it shows up in the UI
         if (artworkData != null) {
