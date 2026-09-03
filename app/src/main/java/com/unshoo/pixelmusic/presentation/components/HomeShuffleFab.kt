@@ -55,9 +55,9 @@ fun HomeShuffleFab(
 
     // Manage the height of the button when the Mini-Player is CLOSED
     val inactiveHeight = when (navState) {
-        2 -> 64.dp    // <-- Player CLOSED & 3-Button Nav
+        2 -> 55.dp    // <-- Player CLOSED & 3-Button Nav
         1 -> 24.dp    // <-- Player CLOSED & Gesture Nav
-        else -> 0.dp  // <-- Player CLOSED & Nav Hidden
+        else -> 5.dp  // <-- Player CLOSED & Nav Hidden
     }
     
     // =========================================================================================
