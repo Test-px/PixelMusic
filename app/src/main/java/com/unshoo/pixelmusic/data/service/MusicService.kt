@@ -3581,13 +3581,26 @@ class MusicService : MediaLibraryService() {
                     val title = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "PixelMusic"
                     val artist = player.currentMediaItem?.mediaMetadata?.artist?.toString() ?: "Playing"
                     val liveText = "${formatTimeMs(positionMs)} / ${formatTimeMs(durationMs)}"
+                    
+                    // Grab the raw image bytes to pass to our fake player
+                    val artworkData = player.currentMediaItem?.mediaMetadata?.artworkData
 
-                    LiveNotificationHelper.updateLiveNotification(this@MusicService, title, artist, liveText)
+                    // Push everything to the disguise tracker
+                    LiveNotificationHelper.updateLiveNotification(
+                        context = this@MusicService,
+                        title = title,
+                        artist = artist,
+                        liveText = liveText,
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                        isPlaying = player.isPlaying,
+                        artworkData = artworkData
+                    )
                 } else {
                     stopLiveProgressTracker()
                     break
                 }
-                delay(1000L) 
+                delay(1000L) // UI refresh rate
             }
         }
     }
