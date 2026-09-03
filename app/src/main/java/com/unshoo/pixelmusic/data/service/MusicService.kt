@@ -3554,59 +3554,40 @@ class MusicService : MediaLibraryService() {
     }
 
 // --- LIVE PROGRESS TRACKER FOR DYNAMIC ISLAND ---
-    private var liveProgressUpdateJob: Job? = null
-
-    private fun formatTimeMs(timeMs: Long): String {
-        if (timeMs < 0) return "0:00"
-        val totalSeconds = timeMs / 1000
-        val minutes = totalSeconds / 60
-        val seconds = totalSeconds % 60
-        return String.format("%d:%02d", minutes, seconds)
-    }
-
-    private fun startLiveProgressTracker() {
+    
+    private fun triggerLiveProgressTrackerUpdate() {
         LiveNotificationHelper.createNotificationChannel(this)
-        liveProgressUpdateJob?.cancel()
-        liveProgressUpdateJob = serviceScope.launch {
-            while (true) {
-                val player = engine.masterPlayer
-                if (player.isPlaying) {
-                    val positionMs = player.currentPosition.coerceAtLeast(0L)
-                    val durationMs = if (player.duration != androidx.media3.common.C.TIME_UNSET && player.duration > 0) {
-                        player.duration
-                    } else {
-                        player.currentMediaItem?.mediaMetadata?.extras?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_DURATION, 0L) ?: 0L
-                    }
-                    
-                    val title = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "PixelMusic"
-                    val artist = player.currentMediaItem?.mediaMetadata?.artist?.toString() ?: "Playing"
-                    val liveText = "${formatTimeMs(positionMs)} / ${formatTimeMs(durationMs)}"
-                    
-                    // Grab the raw image bytes to pass to our fake player
-                    val artworkData = player.currentMediaItem?.mediaMetadata?.artworkData
-
-                    // Push everything to the disguise tracker
-                    LiveNotificationHelper.updateLiveNotification(
-                        context = this@MusicService,
-                        title = title,
-                        artist = artist,
-                        liveText = liveText,
-                        positionMs = positionMs,
-                        durationMs = durationMs,
-                        isPlaying = player.isPlaying,
-                        artworkData = artworkData
-                    )
-                } else {
-                    stopLiveProgressTracker()
-                    break
-                }
-                delay(1000L) // UI refresh rate
+        
+        val player = engine.masterPlayer
+        if (player.isPlaying || player.playbackState == Player.STATE_READY) {
+            val positionMs = player.currentPosition.coerceAtLeast(0L)
+            val durationMs = if (player.duration != androidx.media3.common.C.TIME_UNSET && player.duration > 0) {
+                player.duration
+            } else {
+                player.currentMediaItem?.mediaMetadata?.extras?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_DURATION, 0L) ?: 0L
             }
+            
+            val title = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "PixelMusic"
+            val artist = player.currentMediaItem?.mediaMetadata?.artist?.toString() ?: "Playing"
+            
+            // We safely grab the exact same cached album art bytes the widgets use!
+            val artworkData = lastWidgetPlayerInfo?.albumArtBitmapData
+
+            LiveNotificationHelper.updateLiveNotification(
+                context = this@MusicService,
+                title = title,
+                artist = artist,
+                positionMs = positionMs,
+                durationMs = durationMs,
+                isPlaying = player.isPlaying,
+                artworkData = artworkData
+            )
+        } else if (player.playbackState == Player.STATE_ENDED || player.playbackState == Player.STATE_IDLE) {
+            stopLiveProgressTracker()
         }
     }
 
     private fun stopLiveProgressTracker() {
-        liveProgressUpdateJob?.cancel()
         LiveNotificationHelper.dismissLiveNotification(this)
     }
 }
