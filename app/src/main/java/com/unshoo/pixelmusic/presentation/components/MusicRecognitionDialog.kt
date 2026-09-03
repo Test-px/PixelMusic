@@ -56,7 +56,7 @@ fun MusicRecognitionDialog(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp[cite: 12]
+    val screenHeight = configuration.screenHeightDp.dp
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
