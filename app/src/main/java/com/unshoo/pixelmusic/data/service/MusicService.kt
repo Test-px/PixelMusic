@@ -1173,10 +1173,12 @@ class MusicService : MediaLibraryService() {
             if (isPlaying) {
                 reportNavidromePlayback("playing")
                 startNavidromePlaybackReporting()
+                startLiveProgressTracker()
             } else {
                 val state = if (player.playbackState == Player.STATE_ENDED) "stopped" else "paused"
                 reportNavidromePlayback(state)
                 stopNavidromePlaybackReporting()
+                stopLiveProgressTracker()
             }
 
             // Re-apply the last known RG volume immediately when resuming playback.
@@ -1224,6 +1226,7 @@ class MusicService : MediaLibraryService() {
                 endOfTrackTimerSongId = null
                 reportNavidromePlayback("stopped")
                 stopNavidromePlaybackReporting()
+                stopLiveProgressTracker()
                 
                 scrobbleManager?.onPlayerStateChanged(false, mediaItem, 0)
             } else {
@@ -1891,6 +1894,7 @@ class MusicService : MediaLibraryService() {
         listeningStatsTracker.finalizeCurrentSession(forceSynchronousPersistence = true)
         reportNavidromePlayback("stopped")
         stopNavidromePlaybackReporting()
+        stopLiveProgressTracker()
         playbackSnapshotPersistJob?.cancel()
         mediaSessionButtonRefreshJob?.cancel()
         followUpMediaSessionUiRefreshJob?.cancel()
@@ -3062,6 +3066,7 @@ class MusicService : MediaLibraryService() {
         clearHeadsetReconnectResume()
         cancelDurationSleepTimerInternal()
         endOfTrackTimerSongId = null
+        stopLiveProgressTracker()
 
         if (preservePlaybackSnapshot) {
             persistPlaybackSnapshotBlocking()
@@ -3546,5 +3551,49 @@ class MusicService : MediaLibraryService() {
             putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
         }
         sendBroadcast(intent)
+    }
+
+// --- LIVE PROGRESS TRACKER FOR DYNAMIC ISLAND ---
+    private var liveProgressUpdateJob: Job? = null
+
+    private fun formatTimeMs(timeMs: Long): String {
+        if (timeMs < 0) return "0:00"
+        val totalSeconds = timeMs / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%d:%02d", minutes, seconds)
+    }
+
+    private fun startLiveProgressTracker() {
+        LiveNotificationHelper.createNotificationChannel(this)
+        liveProgressUpdateJob?.cancel()
+        liveProgressUpdateJob = serviceScope.launch {
+            while (true) {
+                val player = engine.masterPlayer
+                if (player.isPlaying) {
+                    val positionMs = player.currentPosition.coerceAtLeast(0L)
+                    val durationMs = if (player.duration != androidx.media3.common.C.TIME_UNSET && player.duration > 0) {
+                        player.duration
+                    } else {
+                        player.currentMediaItem?.mediaMetadata?.extras?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_DURATION, 0L) ?: 0L
+                    }
+                    
+                    val title = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "PixelMusic"
+                    val artist = player.currentMediaItem?.mediaMetadata?.artist?.toString() ?: "Playing"
+                    val liveText = "${formatTimeMs(positionMs)} / ${formatTimeMs(durationMs)}"
+
+                    LiveNotificationHelper.updateLiveNotification(this@MusicService, title, artist, liveText)
+                } else {
+                    stopLiveProgressTracker()
+                    break
+                }
+                delay(1000L) 
+            }
+        }
+    }
+
+    private fun stopLiveProgressTracker() {
+        liveProgressUpdateJob?.cancel()
+        LiveNotificationHelper.dismissLiveNotification(this)
     }
 }
