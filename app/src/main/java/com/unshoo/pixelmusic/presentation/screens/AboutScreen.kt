@@ -549,83 +549,130 @@ private fun AboutHeroCard(
 }
 @Composable
 private fun SocialLinksRow() {
-    // 1. Swap LocalUriHandler for LocalContext
     val context = LocalContext.current
     
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Telegram button
-        Surface(
-            modifier = Modifier
-                .weight(1f)
-                .clickable {
-                    // 2. Force a native Android intent to bypass any Compose URI overrides
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Saurav124x"))
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        // Handle case where no browser is installed
-                    }
-                },
-            shape = AbsoluteSmoothCornerShape(16.dp, 60),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
+            // Telegram 1: Main Developer (Saurav)
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .weight(1f)
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Saurav124x"))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try { context.startActivity(intent) } catch (e: ActivityNotFoundException) {}
+                    },
+                shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                    modifier = Modifier.size(30.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Icon(
-                            painter = painterResource(R.drawable.telegram),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(17.dp),
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                painter = painterResource(R.drawable.telegram),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Main Developer",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "@Saurav124x",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                Column {
-                    Text(
-                        text = "Telegram",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = "t.me/Saurav124x",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            }
+
+            // Telegram 2: UI Makeover (Xyg901)
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/Xyg901"))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try { context.startActivity(intent) } catch (e: ActivityNotFoundException) {}
+                    },
+                shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                painter = painterResource(R.drawable.telegram),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "UI Makeover",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "@Xyg901",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
 
-        // GitHub button
         Surface(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .clickable {
                     val pkgUri = android.net.Uri.parse("https://github.com/Saurav-02/PixelMusic")
                     val intent = Intent(Intent.ACTION_VIEW, pkgUri).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                    }
+                    try { context.startActivity(intent) } catch (e: ActivityNotFoundException) {}
                 },
             shape = AbsoluteSmoothCornerShape(16.dp, 60),
             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
