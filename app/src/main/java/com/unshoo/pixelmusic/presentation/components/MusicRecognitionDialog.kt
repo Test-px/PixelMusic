@@ -66,7 +66,6 @@ fun MusicRecognitionDialog(
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
-    // Dynamically retrieve physical display corner radius on Android 12+
     val screenCornerRadius = remember(view) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val insets = view.rootWindowInsets
@@ -136,16 +135,11 @@ fun MusicRecognitionDialog(
     val isListening = status is RecognitionStatus.Listening
     val isSuccess = status is RecognitionStatus.Success
 
-    // Background full-screen ripple modifier (Listening state ONLY)
-    val backgroundRippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Modifier.recognitionRippleEffect(isTriggered = isListening)
-    } else {
+    // Both listening ripple and success sweep applied to root full-screen container
+    val rootShaderModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Modifier
-    }
-
-    // Card surface sweep modifier (Recognized state ONLY)
-    val cardSweepModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Modifier.successSweepEffect(isTriggered = isSuccess)
+            .recognitionRippleEffect(isTriggered = isListening)
+            .successSweepEffect(isTriggered = isSuccess)
     } else {
         Modifier
     }
@@ -155,7 +149,6 @@ fun MusicRecognitionDialog(
         val textColor = Color.White
         val subTextColor = Color.White.copy(alpha = 0.70f)
 
-        // Drop from above the top edge of the screen
         val offscreenStartY = with(density) { -(screenHeight.toPx() + 450.dp.toPx()) }
         val cardDropOffsetY = remember { Animatable(offscreenStartY) }
 
@@ -175,9 +168,9 @@ fun MusicRecognitionDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .then(rootShaderModifier)
                 .clip(RoundedCornerShape(screenCornerRadius))
                 .background(overlayBackground)
-                .then(backgroundRippleModifier)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -198,21 +191,19 @@ fun MusicRecognitionDialog(
                 )
             }
 
-            // Mutually exclusive states: Listening button completely disappears on Success
             when (val currentStatus = status) {
                 is RecognitionStatus.Success -> {
                     val song = currentStatus.result
                     Surface(
                         modifier = Modifier
                             .offset { IntOffset(0, cardDropOffsetY.value.roundToInt()) }
-                            .width(320.dp)
+                            .width(330.dp)
                             .heightIn(min = 520.dp)
                             .padding(horizontal = 16.dp)
-                            .then(cardSweepModifier)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = {} // Prevents clicking the card from dismissing overlay
+                                onClick = {}
                             ),
                         shape = AbsoluteSmoothCornerShape(32.dp, 60),
                         color = Color(0xFF1E1E1E),
@@ -224,9 +215,8 @@ fun MusicRecognitionDialog(
                             verticalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(24.dp)
+                                .padding(20.dp)
                         ) {
-                            // Tall Portrait Album Frame
                             AsyncImage(
                                 model = song.coverArtHqUrl ?: song.coverArtUrl,
                                 contentDescription = "Album Art",
@@ -245,7 +235,7 @@ fun MusicRecognitionDialog(
                             ) {
                                 Text(
                                     text = song.title,
-                                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                                     fontFamily = GoogleSansRounded,
                                     fontWeight = FontWeight.Bold,
                                     color = textColor,
@@ -266,14 +256,15 @@ fun MusicRecognitionDialog(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(26.dp))
+                            Spacer(modifier = Modifier.height(22.dp))
 
                             Button(
                                 onClick = { onPlayMusic(song) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(54.dp),
+                                    .height(52.dp),
                                 shape = CircleShape,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -282,13 +273,16 @@ fun MusicRecognitionDialog(
                                 Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Play on PixelMusic",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -357,7 +351,7 @@ fun MusicRecognitionDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(backgroundRippleModifier)
+                    .then(rootShaderModifier)
                     .background(Color.Black.copy(alpha = 0.70f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -372,7 +366,6 @@ fun MusicRecognitionDialog(
                         .fillMaxWidth()
                         .wrapContentHeight()
                         .padding(horizontal = 20.dp)
-                        .then(cardSweepModifier)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -405,7 +398,7 @@ fun MusicRecognitionDialog(
                                     verticalArrangement = Arrangement.SpaceBetween,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(24.dp)
+                                        .padding(20.dp)
                                 ) {
                                     Text(
                                         text = "Match found!",
@@ -416,7 +409,7 @@ fun MusicRecognitionDialog(
                                         textAlign = TextAlign.Center
                                     )
 
-                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Spacer(modifier = Modifier.height(18.dp))
 
                                     AsyncImage(
                                         model = song.coverArtHqUrl ?: song.coverArtUrl,
@@ -432,7 +425,7 @@ fun MusicRecognitionDialog(
 
                                     Text(
                                         text = song.title,
-                                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                                         fontFamily = GoogleSansRounded,
                                         fontWeight = FontWeight.Bold,
                                         color = textColor,
@@ -452,14 +445,15 @@ fun MusicRecognitionDialog(
                                         overflow = TextOverflow.Ellipsis
                                     )
 
-                                    Spacer(modifier = Modifier.height(26.dp))
+                                    Spacer(modifier = Modifier.height(22.dp))
 
                                     Button(
                                         onClick = { onPlayMusic(song) },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(54.dp),
+                                            .height(52.dp),
                                         shape = CircleShape,
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -468,13 +462,16 @@ fun MusicRecognitionDialog(
                                         Icon(
                                             imageVector = Icons.Rounded.PlayArrow,
                                             contentDescription = null,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = "Play on PixelMusic",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
+                                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
