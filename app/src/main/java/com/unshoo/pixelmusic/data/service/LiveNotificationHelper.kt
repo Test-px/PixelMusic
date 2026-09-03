@@ -86,7 +86,7 @@ object LiveNotificationHelper {
 
         // Android 16 ProgressStyle forces action buttons to be text-based. 
         // We use emojis as the title string to simulate icons!
-        val playPauseIcon = if (isPlaying) "⏸" else "▶"
+        val playPauseIcon = if (isPlaying) "|।|" else "▶"
         builder.addAction(android.R.drawable.ic_media_previous, "⏮", prevIntent)
             .addAction(
                 if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
