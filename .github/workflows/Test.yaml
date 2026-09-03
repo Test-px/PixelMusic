@@ -34,7 +34,7 @@ jobs:
       - name: Patch App for Testing
         run: |
           # 1. Change the InAppUpdater URL to the Test-px repo
-          sed -i 's|https://api.github.com/repos/atappu805/PixelMusic/releases/latest|https://api.github.com/repos/Test-px/PixelMusic/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
+          sed -i 's|https://api.github.com/repos/Saurav-02/PixelMusic/releases/latest|https://api.github.com/repos/Test-px/PixelMusic/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
 
           # 2. Change the Application ID in build.gradle.kts
           sed -i 's/applicationId = "com.unshoo.pixelmusic"/applicationId = "com.unshoo.pixelmusic.test"/g' app/build.gradle.kts
