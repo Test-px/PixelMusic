@@ -38,6 +38,15 @@ android {
     namespace = "com.unshoo.pixelmusic"
     compileSdk = 37
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
+        }
+    }
+
     sourceSets {
         getByName("androidTest") {
             assets.directories.add(file("$projectDir/schemas").path)
