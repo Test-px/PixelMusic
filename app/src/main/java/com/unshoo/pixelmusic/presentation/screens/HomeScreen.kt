@@ -210,6 +210,7 @@ fun HomeScreen(
     val playbackHistory by playerViewModel.playbackHistory.collectAsStateWithLifecycle()
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val isTestBuild = context.packageName.endsWith(".test")
 
     val usesFallbackHomeMix = remember(curatedYourMixSongs, dailyMixSongs) {
         curatedYourMixSongs.isEmpty() && dailyMixSongs.isEmpty()
@@ -714,11 +715,19 @@ fun HomeScreen(
             isUpdateAvailable = isUpdateAvailableState,
             versionName = sheetVersionName,
             changelog = sheetChangelog,
+            isTestBuild = isTestBuild,
             onDismiss = { showUpdateSheet = false },
             onConfirmClick = {
                 if (isUpdateAvailableState) {
                     navController.navigateSafely("about")
                 }
+            },
+            onMigrateClick = {
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://github.com/Saurav-02/PixelMusic/releases/latest")
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                try { context.startActivity(intent) } catch (e: android.content.ActivityNotFoundException) {}
             },
             onSnoozeClick = {
                 scope.launch {
