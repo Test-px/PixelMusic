@@ -1,10 +1,10 @@
-name: 🚀 Auto Release Build (Cross-Repo)
+name: 🚀 Auto Release Build (Dual-Repo)
 
 on:
   workflow_dispatch: 
 
 env:
-  # 🎯 REPLACE THIS with your exact GitHub username and target repository
+  # 🎯 The secondary public repository where APKs will also be published
   TARGET_REPO: 'Saurav-02/PixelMusic'
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Needed to commit the version bump back to the source repo
+      contents: write # Needed to commit the version bump and create local releases
 
     steps:
       - name: 📥 Checkout repository
@@ -76,7 +76,6 @@ jobs:
         run: ./gradlew :app:assembleRelease
 
       - name: 💾 Commit & Push Version Bump (To Source Repo)
-        # This commits BOTH the new Code and the new Name (+0.5) so it's ready for the next run
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
@@ -96,19 +95,39 @@ jobs:
           echo -e "\n\n---\n*📦 Current Version Code: ${{ env.NEW_CODE }}*" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: 🧹 Delete Previous Releases and Tags (From Target Repo)
+      - name: 🧹 Delete Previous Releases and Tags (From SOURCE Repo)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --limit 100 --json tagName -q ".[].tagName" | while read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "💥 Wiping out old release and tag from source: $tag"
+              gh release delete "$tag" --cleanup-tag -y
+            fi
+          done
+
+      - name: 🧹 Delete Previous Releases and Tags (From TARGET Repo)
         env:
           GH_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
         run: |
-          # Grabs all releases from the TARGET repo and wipes them out along with their tags
           gh release list -R ${{ env.TARGET_REPO }} --limit 100 --json tagName -q ".[].tagName" | while read -r tag; do
             if [ -n "$tag" ]; then
-              echo "💥 Wiping out old release and tag: $tag"
+              echo "💥 Wiping out old release and tag from target: $tag"
               gh release delete "$tag" -R ${{ env.TARGET_REPO }} --cleanup-tag -y
             fi
           done
 
-      - name: 🚀 Create GitHub Release & Upload APK (To Target Repo)
+      - name: 🚀 Create GitHub Release & Upload APK (To SOURCE Repo)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: 🌟 Release ${{ env.TAG_NAME }}
+          body: ${{ env.RELEASE_BODY }}
+          files: app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🚀 Create GitHub Release & Upload APK (To TARGET Repo)
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ env.TARGET_REPO }}
