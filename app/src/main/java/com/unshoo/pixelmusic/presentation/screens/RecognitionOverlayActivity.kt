@@ -71,9 +71,9 @@ class RecognitionOverlayActivity : ComponentActivity() {
         }
 
         setContent {
-            val colorPalette by themePreferencesRepository.colorPalettePreferenceFlow.collectAsStateWithLifecycle(initialValue = "SAGE")[cite: 11]
-            val playerThemePreference by themePreferencesRepository.playerThemePreferenceFlow.collectAsStateWithLifecycle(initialValue = ThemePreference.ALBUM_ART)[cite: 11]
-            val dynamicColorEnabled = colorPalette == "DYNAMIC" || playerThemePreference == ThemePreference.DYNAMIC[cite: 11]
+            val colorPalette by themePreferencesRepository.colorPalettePreferenceFlow.collectAsStateWithLifecycle(initialValue = "SAGE")
+            val playerThemePreference by themePreferencesRepository.playerThemePreferenceFlow.collectAsStateWithLifecycle(initialValue = ThemePreference.ALBUM_ART)
+            val dynamicColorEnabled = colorPalette == "DYNAMIC" || playerThemePreference == ThemePreference.DYNAMIC
 
             // Force dark theme so the overlay is always deep and sleek
             PixelMusicTheme(
@@ -86,7 +86,7 @@ class RecognitionOverlayActivity : ComponentActivity() {
                     onDismiss = { finish() },
                     onPlayMusic = { result ->
                         lifecycleScope.launch {
-                            var videoId = result.youtubeVideoId[cite: 11]
+                            var videoId = result.youtubeVideoId
                             
                             if (videoId.isNullOrBlank()) {
                                 videoId = withContext(Dispatchers.IO) {
@@ -94,9 +94,9 @@ class RecognitionOverlayActivity : ComponentActivity() {
                                         return text.replace(Regex("\\(.*?\\)|\\[.*?\\]"), "")
                                             .replace(Regex("(?i)(feat\\.|ft\\.).*"), "")
                                             .trim()
-                                    }[cite: 11]
+                                    }
 
-                                    val queriesToTry = mutableListOf("${cleanText(result.title)} ${cleanText(result.artist)}")[cite: 11]
+                                    val queriesToTry = mutableListOf("${cleanText(result.title)} ${cleanText(result.artist)}")
 
                                     if (!result.isrc.isNullOrBlank()) {
                                         runCatching {
@@ -120,19 +120,19 @@ class RecognitionOverlayActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
-                                    }[cite: 11]
+                                    }
 
                                     var foundId: String? = null
                                     for (query in queriesToTry) {
                                         if (foundId != null) break
-                                        val atvSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() }.getOrNull()[cite: 11]
-                                        foundId = atvSearch?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.id[cite: 11]
+                                        val atvSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() }.getOrNull()
+                                        foundId = atvSearch?.items?.filterIsInstance<SongItem>()?.firstOrNull()?.id
 
                                         if (foundId == null) {
-                                            val videoSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull() }.getOrNull()[cite: 11]
+                                            val videoSearch = runCatching { YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull() }.getOrNull()
                                             foundId = videoSearch?.items?.firstOrNull()?.let { item ->
                                                 runCatching { item.javaClass.getMethod("getId").invoke(item) as? String }.getOrNull()
-                                            }[cite: 11]
+                                            }
                                         }
                                     }
                                     foundId
@@ -145,10 +145,10 @@ class RecognitionOverlayActivity : ComponentActivity() {
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, "https://youtube.com/watch?v=$videoId")
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                }[cite: 11]
-                                startActivity(playIntent)[cite: 11]
+                                }
+                                startActivity(playIntent)
                             }
-                            finish()[cite: 11]
+                            finish()
                         }
                     }
                 )
