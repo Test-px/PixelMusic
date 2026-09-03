@@ -1173,12 +1173,10 @@ class MusicService : MediaLibraryService() {
             if (isPlaying) {
                 reportNavidromePlayback("playing")
                 startNavidromePlaybackReporting()
-                startLiveProgressTracker()
             } else {
                 val state = if (player.playbackState == Player.STATE_ENDED) "stopped" else "paused"
                 reportNavidromePlayback(state)
                 stopNavidromePlaybackReporting()
-                stopLiveProgressTracker()
             }
 
             // Re-apply the last known RG volume immediately when resuming playback.
