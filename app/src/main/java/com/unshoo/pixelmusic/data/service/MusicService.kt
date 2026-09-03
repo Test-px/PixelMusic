@@ -2430,6 +2430,7 @@ class MusicService : MediaLibraryService() {
 
         if (shouldUpdateWidgets) {
             updateGlanceWidgets(playerInfo)
+            triggerLiveProgressTrackerUpdate()
         }
     }
 
