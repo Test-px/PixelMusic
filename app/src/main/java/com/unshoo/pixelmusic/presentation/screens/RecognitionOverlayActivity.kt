@@ -8,15 +8,12 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.unshoo.pixelmusic.MainActivity
-import com.unshoo.pixelmusic.data.preferences.AppThemeMode
 import com.unshoo.pixelmusic.data.preferences.ThemePreference
 import com.unshoo.pixelmusic.data.preferences.ThemePreferencesRepository
 import com.unshoo.pixelmusic.presentation.components.MusicRecognitionDialog
@@ -41,7 +38,7 @@ class RecognitionOverlayActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Disable system slide-in animation so the window opens silently
+        // Disable window slide-in animation
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
@@ -50,7 +47,11 @@ class RecognitionOverlayActivity : ComponentActivity() {
             overridePendingTransition(0, 0)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        // Extend completely into camera cutouts
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
@@ -69,23 +70,16 @@ class RecognitionOverlayActivity : ComponentActivity() {
         }
 
         setContent {
-            val systemDarkTheme = isSystemInDarkTheme()
-            val appThemeMode by themePreferencesRepository.appThemeModeFlow.collectAsStateWithLifecycle(initialValue = AppThemeMode.FOLLOW_SYSTEM)
-            val useDarkTheme = when (appThemeMode) {
-                AppThemeMode.DARK -> true
-                AppThemeMode.LIGHT -> false
-                else -> systemDarkTheme
-            }
             val colorPalette by themePreferencesRepository.colorPalettePreferenceFlow.collectAsStateWithLifecycle(initialValue = "SAGE")
             val playerThemePreference by themePreferencesRepository.playerThemePreferenceFlow.collectAsStateWithLifecycle(initialValue = ThemePreference.ALBUM_ART)
-            val isAmoledBlackEnabled by themePreferencesRepository.amoledBlackModeFlow.collectAsStateWithLifecycle(initialValue = false)
             val dynamicColorEnabled = colorPalette == "DYNAMIC" || playerThemePreference == ThemePreference.DYNAMIC
 
+            // Force dark theme so the overlay is always deep and sleek
             PixelMusicTheme(
-                darkTheme = useDarkTheme,
+                darkTheme = true,
                 dynamicColor = dynamicColorEnabled,
                 colorPalette = colorPalette,
-                isAmoledBlack = isAmoledBlackEnabled
+                isAmoledBlack = true
             ) {
                 MusicRecognitionDialog(
                     onDismiss = { finish() },
@@ -164,7 +158,6 @@ class RecognitionOverlayActivity : ComponentActivity() {
 
     override fun finish() {
         super.finish()
-        // Disable exit animation so the window closes instantly without sliding
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
         } else {
