@@ -42,9 +42,6 @@ jobs:
           # 3. Change App Name to strictly "Test"
           sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Test<\/string>/g' app/src/main/res/values/strings.xml
 
-          # 4. Inject prominent warning into the changelog
-          sed -i '1s/^/⚠️ **NOTICE: This is a testing version of the app. It has many bugs. Please use the release version from Saurav-02\/PixelMusic.**\n\n/' changelog.txt
-
       - name: Calculate Sequential Version
         run: |
           # Fetch the latest successful release tag from the Test-px repository
