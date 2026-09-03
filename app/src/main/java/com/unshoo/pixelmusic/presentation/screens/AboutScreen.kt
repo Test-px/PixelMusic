@@ -795,7 +795,7 @@ private fun CreditsCard(
         ) {
             // 1. Background Image
             Image(
-                painter = painterResource(R.drawable.saurav_profile), // Change to your drawable asset name
+                painter = painterResource(R.drawable.saurav_profile),
                 contentDescription = "Saurav",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
