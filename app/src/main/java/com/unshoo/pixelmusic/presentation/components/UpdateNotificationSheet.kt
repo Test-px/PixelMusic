@@ -152,7 +152,7 @@ fun UpdateNotificationSheet(
                     shape = AbsoluteSmoothCornerShape(20.dp, 60)
                 ) {
                     Text(
-                        text = if (isUpdateAvailable) "Update Now" else "Got it",
+                        text = if (isUpdateAvailable) "Update Now" else "Awesome",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
