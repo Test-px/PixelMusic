@@ -33,14 +33,17 @@ jobs:
 
       - name: Patch App for Testing
         run: |
-          # 1. Change the InAppUpdater URL to the Test-px repo
-          sed -i 's|https://api.github.com/repos/Saurav-02/PixelMusic/releases/latest|https://api.github.com/repos/Test-px/PixelMusic/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
+          # 1. Change the InAppUpdater URL (wildcard catch to prevent mismatch errors)
+          sed -i 's|repos/[^/]*/PixelMusic/releases/latest|repos/Test-px/PixelMusic/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
 
-          # 2. Change the Application ID in build.gradle.kts
-          sed -i 's/applicationId = "com.unshoo.pixelmusic"/applicationId = "com.unshoo.pixelmusic.test"/g' app/build.gradle.kts
+          # 2. Change the Application ID (handles any spacing formatting)
+          sed -i 's/applicationId.*=.*/applicationId = "com.unshoo.pixelmusic.test"/g' app/build.gradle.kts
           
           # 3. Change App Name to strictly "Test"
           sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Test<\/string>/g' app/src/main/res/values/strings.xml
+
+          # 4. Inject prominent warning into the changelog
+          sed -i '1s/^/⚠️ **NOTICE: This is a testing version of the app. It has many bugs. Please use the release version from Saurav-02\/PixelMusic.**\n\n/' changelog.txt
 
       - name: Calculate Sequential Version
         run: |
