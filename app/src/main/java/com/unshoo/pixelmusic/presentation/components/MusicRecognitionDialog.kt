@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -29,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,9 +62,20 @@ fun MusicRecognitionDialog(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val density = LocalDensity.current
+    val view = LocalView.current
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
-    val screenHeightPx = with(density) { screenHeight.toPx() }
+
+    // Dynamically retrieve physical display corner radius on Android 12+
+    val screenCornerRadius = remember(view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val insets = view.rootWindowInsets
+            val radiusPx = insets?.getRoundedCorner(android.view.RoundedCorner.POSITION_TOP_LEFT)?.radius ?: 0
+            if (radiusPx > 0) (radiusPx / view.resources.displayMetrics.density).dp else 36.dp
+        } else {
+            36.dp
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -123,21 +136,27 @@ fun MusicRecognitionDialog(
     val isListening = status is RecognitionStatus.Listening
     val isSuccess = status is RecognitionStatus.Success
 
-    // Fullscreen AGSL Shader Effect (Android 13+)
-    val rippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    // Background full-screen ripple modifier (Listening state ONLY)
+    val backgroundRippleModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.recognitionRippleEffect(isTriggered = isListening)
+    } else {
         Modifier
-            .recognitionRippleEffect(isTriggered = isListening)
-            .successSweepEffect(isTriggered = isSuccess)
+    }
+
+    // Card surface sweep modifier (Recognized state ONLY)
+    val cardSweepModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Modifier.successSweepEffect(isTriggered = isSuccess)
     } else {
         Modifier
     }
 
     if (isTransparentOverlay) {
-        val overlayBackground = MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
-        val textColor = MaterialTheme.colorScheme.onSurface
-        val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+        val overlayBackground = Color.Black.copy(alpha = 0.78f)
+        val textColor = Color.White
+        val subTextColor = Color.White.copy(alpha = 0.70f)
 
-        val offscreenStartY = with(density) { -(screenHeight.toPx() + 400.dp.toPx()) }
+        // Drop from above the top edge of the screen
+        val offscreenStartY = with(density) { -(screenHeight.toPx() + 450.dp.toPx()) }
         val cardDropOffsetY = remember { Animatable(offscreenStartY) }
 
         LaunchedEffect(status) {
@@ -146,8 +165,8 @@ fun MusicRecognitionDialog(
                 cardDropOffsetY.animateTo(
                     targetValue = 0f,
                     animationSpec = spring(
-                        dampingRatio = 0.68f,
-                        stiffness = 320f
+                        dampingRatio = 0.70f,
+                        stiffness = 340f
                     )
                 )
             }
@@ -156,8 +175,9 @@ fun MusicRecognitionDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(rippleModifier)
+                .clip(RoundedCornerShape(screenCornerRadius))
                 .background(overlayBackground)
+                .then(backgroundRippleModifier)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -169,7 +189,7 @@ fun MusicRecognitionDialog(
                 onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 16.dp, top = 40.dp)
+                    .padding(start = 16.dp, top = 44.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
@@ -178,38 +198,104 @@ fun MusicRecognitionDialog(
                 )
             }
 
-            AnimatedVisibility(
-                visible = status !is RecognitionStatus.Success && status !is RecognitionStatus.Error,
-                enter = fadeIn(tween(300)),
-                exit = fadeOut(tween(180))
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
-                ) {
-                    ScannerButton(
-                        isListening = status is RecognitionStatus.Listening,
-                        onClick = onScannerClick
-                    )
-                    Spacer(modifier = Modifier.height(36.dp))
-                    Text(
-                        text = if (status is RecognitionStatus.Listening) "Listening for music…" else "Tap to recognize",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontFamily = GoogleSansRounded,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            // Mutually exclusive states: Listening button completely disappears on Success
+            when (val currentStatus = status) {
+                is RecognitionStatus.Success -> {
+                    val song = currentStatus.result
+                    Surface(
+                        modifier = Modifier
+                            .offset { IntOffset(0, cardDropOffsetY.value.roundToInt()) }
+                            .width(320.dp)
+                            .heightIn(min = 520.dp)
+                            .padding(horizontal = 16.dp)
+                            .then(cardSweepModifier)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {} // Prevents clicking the card from dismissing overlay
+                            ),
+                        shape = AbsoluteSmoothCornerShape(32.dp, 60),
+                        color = Color(0xFF1E1E1E),
+                        tonalElevation = 8.dp,
+                        shadowElevation = 18.dp
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                        ) {
+                            // Tall Portrait Album Frame
+                            AsyncImage(
+                                model = song.coverArtHqUrl ?: song.coverArtUrl,
+                                contentDescription = "Album Art",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(width = 210.dp, height = 265.dp)
+                                    .clip(AbsoluteSmoothCornerShape(22.dp, 60))
+                                    .background(Color(0xFF2C2C2C))
+                            )
 
-            AnimatedVisibility(
-                visible = status is RecognitionStatus.Error,
-                enter = fadeIn(tween(300)),
-                exit = fadeOut(tween(180))
-            ) {
-                if (status is RecognitionStatus.Error) {
-                    val currentError = status as RecognitionStatus.Error
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = song.title,
+                                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                                    fontFamily = GoogleSansRounded,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = song.artist,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = subTextColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(26.dp))
+
+                            Button(
+                                onClick = { onPlayMusic(song) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp),
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Play on PixelMusic",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                is RecognitionStatus.Error -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(32.dp)
@@ -222,7 +308,7 @@ fun MusicRecognitionDialog(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = currentError.message,
+                            text = currentStatus.message,
                             style = MaterialTheme.typography.titleMedium,
                             color = textColor,
                             textAlign = TextAlign.Center
@@ -230,102 +316,32 @@ fun MusicRecognitionDialog(
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
                             onClick = onScannerClick,
+                            shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Try Again")
                         }
                     }
                 }
-            }
 
-            if (status is RecognitionStatus.Success) {
-                val song = (status as RecognitionStatus.Success).result
-                Surface(
-                    modifier = Modifier
-                        .offset { IntOffset(0, cardDropOffsetY.value.roundToInt()) }
-                        .width(320.dp)
-                        .heightIn(min = 530.dp)
-                        .padding(horizontal = 16.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {}
-                        ),
-                    shape = AbsoluteSmoothCornerShape(32.dp, 60),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 16.dp
-                ) {
+                else -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
+                        modifier = Modifier.padding(32.dp)
                     ) {
-                        AsyncImage(
-                            model = song.coverArtHqUrl ?: song.coverArtUrl,
-                            contentDescription = "Album Art",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 210.dp, height = 265.dp)
-                                .clip(AbsoluteSmoothCornerShape(22.dp, 60))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ScannerButton(
+                            isListening = currentStatus is RecognitionStatus.Listening,
+                            onClick = onScannerClick
                         )
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = song.title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
-                                fontFamily = GoogleSansRounded,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            Text(
-                                text = song.artist,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = subTextColor,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(26.dp))
-
-                        Button(
-                            onClick = { onPlayMusic(song) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Play on PixelMusic",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(36.dp))
+                        Text(
+                            text = if (currentStatus is RecognitionStatus.Listening) "Listening for music…" else "Tap to recognize",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontFamily = GoogleSansRounded,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
@@ -341,8 +357,8 @@ fun MusicRecognitionDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(rippleModifier)
-                    .background(Color.Black.copy(alpha = 0.65f))
+                    .then(backgroundRippleModifier)
+                    .background(Color.Black.copy(alpha = 0.70f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -356,6 +372,7 @@ fun MusicRecognitionDialog(
                         .fillMaxWidth()
                         .wrapContentHeight()
                         .padding(horizontal = 20.dp)
+                        .then(cardSweepModifier)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -380,147 +397,139 @@ fun MusicRecognitionDialog(
                             )
                         }
 
-                        AnimatedContent(
-                            targetState = status,
-                            transitionSpec = {
-                                (fadeIn(tween(350)) + scaleIn(initialScale = 0.92f))
-                                    .togetherWith(fadeOut(tween(200)))
-                            },
-                            label = "in_app_dialog_content"
-                        ) { currentStatus ->
-                            when (currentStatus) {
-                                is RecognitionStatus.Success -> {
-                                    val song = currentStatus.result
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.SpaceBetween,
+                        when (val currentStatus = status) {
+                            is RecognitionStatus.Success -> {
+                                val song = currentStatus.result
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp)
+                                ) {
+                                    Text(
+                                        text = "Match found!",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Spacer(modifier = Modifier.height(20.dp))
+
+                                    AsyncImage(
+                                        model = song.coverArtHqUrl ?: song.coverArtUrl,
+                                        contentDescription = "Album Art",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(width = 210.dp, height = 265.dp)
+                                            .clip(AbsoluteSmoothCornerShape(22.dp, 60))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    )
+
+                                    Spacer(modifier = Modifier.height(18.dp))
+
+                                    Text(
+                                        text = song.title,
+                                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Text(
+                                        text = song.artist,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = subTextColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(26.dp))
+
+                                    Button(
+                                        onClick = { onPlayMusic(song) },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(24.dp)
-                                    ) {
-                                        Text(
-                                            text = "Match found!",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontFamily = GoogleSansRounded,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
-                                            textAlign = TextAlign.Center
+                                            .height(54.dp),
+                                        shape = CircleShape,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
                                         )
-
-                                        Spacer(modifier = Modifier.height(20.dp))
-
-                                        AsyncImage(
-                                            model = song.coverArtHqUrl ?: song.coverArtUrl,
-                                            contentDescription = "Album Art",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .size(width = 210.dp, height = 265.dp)
-                                                .clip(AbsoluteSmoothCornerShape(22.dp, 60))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        )
-
-                                        Spacer(modifier = Modifier.height(18.dp))
-
-                                        Text(
-                                            text = song.title,
-                                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
-                                            fontFamily = GoogleSansRounded,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        Spacer(modifier = Modifier.height(6.dp))
-
-                                        Text(
-                                            text = song.artist,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = subTextColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        Spacer(modifier = Modifier.height(26.dp))
-
-                                        Button(
-                                            onClick = { onPlayMusic(song) },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(54.dp),
-                                            shape = CircleShape,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary
-                                            )
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.PlayArrow,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = "Play on PixelMusic",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-
-                                is RecognitionStatus.Error -> {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(32.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Search,
-                                            contentDescription = "Error",
-                                            modifier = Modifier.size(64.dp),
-                                            tint = MaterialTheme.colorScheme.error
+                                            imageVector = Icons.Rounded.PlayArrow,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = currentStatus.message,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = subTextColor,
-                                            textAlign = TextAlign.Center
+                                            text = "Play on PixelMusic",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
                                         )
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        Button(
-                                            onClick = onScannerClick,
-                                            shape = CircleShape,
-                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                        ) {
-                                            Text("Try Again")
-                                        }
                                     }
                                 }
+                            }
 
-                                else -> {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 40.dp, bottom = 32.dp, start = 24.dp, end = 24.dp)
+                            is RecognitionStatus.Error -> {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Search,
+                                        contentDescription = "Error",
+                                        modifier = Modifier.size(64.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = currentStatus.message,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = subTextColor,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Button(
+                                        onClick = onScannerClick,
+                                        shape = CircleShape,
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                     ) {
-                                        Text(
-                                            text = if (currentStatus is RecognitionStatus.Listening) "Listening..." else "Tap to recognize 𝄞",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            fontFamily = GoogleSansRounded,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor
-                                        )
-
-                                        Spacer(modifier = Modifier.height(36.dp))
-
-                                        ScannerButton(
-                                            isListening = currentStatus is RecognitionStatus.Listening,
-                                            onClick = onScannerClick
-                                        )
+                                        Text("Try Again")
                                     }
+                                }
+                            }
+
+                            else -> {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 40.dp, bottom = 32.dp, start = 24.dp, end = 24.dp)
+                                ) {
+                                    Text(
+                                        text = if (currentStatus is RecognitionStatus.Listening) "Listening..." else "Tap to recognize 𝄞",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontFamily = GoogleSansRounded,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor
+                                    )
+
+                                    Spacer(modifier = Modifier.height(36.dp))
+
+                                    ScannerButton(
+                                        isListening = currentStatus is RecognitionStatus.Listening,
+                                        onClick = onScannerClick
+                                    )
                                 }
                             }
                         }
