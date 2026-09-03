@@ -25,8 +25,10 @@ fun UpdateNotificationSheet(
     isUpdateAvailable: Boolean,
     versionName: String,
     changelog: String?,
+    isTestBuild: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmClick: () -> Unit,
+    onMigrateClick: () -> Unit = {},
     onSnoozeClick: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -141,6 +143,35 @@ fun UpdateNotificationSheet(
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (isTestBuild) {
+                    Text(
+                        text = "⚠️ This is a testing version of the app. It may contain bugs and unstable features. Please use the release version for the best experience.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth()
+                    )
+                    
+                    Button(
+                        onClick = {
+                            onMigrateClick()
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 8.dp),
+                        shape = AbsoluteSmoothCornerShape(20.dp, 60)
+                    ) {
+                        Text(
+                            text = "Migrate to Stable Release",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+                
                 Button(
                     onClick = {
                         onConfirmClick()
