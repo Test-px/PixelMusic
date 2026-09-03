@@ -594,7 +594,7 @@ private fun SocialLinksRow() {
                     }
                     Column {
                         Text(
-                            text = "Main Developer",
+                            text = "Main Dev.",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
