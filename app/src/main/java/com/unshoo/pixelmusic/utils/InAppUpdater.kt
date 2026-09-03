@@ -42,7 +42,7 @@ sealed class UpdateState {
 object InAppUpdater {
     private val client = OkHttpClient()
     private val gson = Gson()
-    private const val REPO_URL = "https://api.github.com/repos/atappu805/PixelMusic/releases/latest"
+    private const val REPO_URL = "https://api.github.com/repos/Saurav-02/PixelMusic/releases/latest"
 
     suspend fun checkForUpdate(currentVersion: String): UpdateState = withContext(Dispatchers.IO) {
         try {
