@@ -5,24 +5,25 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.unshoo.pixelmusic.MainActivity
 import com.unshoo.pixelmusic.R
+import com.unshoo.pixelmusic.ui.glancewidget.PlayerActions
 
 object LiveNotificationHelper {
     private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress"
-    // Distinct from Media3's NOTIFICATION_ID (101) so they don't overwrite each other
-    private const val LIVE_NOTIFICATION_ID = 1002 
+    private const val LIVE_NOTIFICATION_ID = 1002
 
     fun createNotificationChannel(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 LIVE_CHANNEL_ID,
                 "Live Progress Tracker",
-                NotificationManager.IMPORTANCE_LOW // Low importance so it doesn't vibrate/buzz
+                NotificationManager.IMPORTANCE_DEFAULT // Raised so the expanded layout shows properly
             ).apply {
                 description = "Drives the dynamic island progress pill"
                 setShowBadge(false)
@@ -36,32 +37,68 @@ object LiveNotificationHelper {
         context: Context,
         title: String,
         artist: String,
-        liveText: String
+        liveText: String,
+        positionMs: Long,
+        durationMs: Long,
+        isPlaying: Boolean,
+        artworkData: ByteArray?
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // 1. App Launch Intent
+        val appIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("ACTION_SHOW_PLAYER", true)
         }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val pendingAppIntent = PendingIntent.getActivity(
+            context, 0, appIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // 2. Disguised Media Control Intents (Routes directly to your existing widget actions!)
+        val prevIntent = PendingIntent.getService(context, 1, Intent(context, MusicService::class.java).apply { action = PlayerActions.PREVIOUS }, PendingIntent.FLAG_IMMUTABLE)
+        val playPauseIntent = PendingIntent.getService(context, 2, Intent(context, MusicService::class.java).apply { action = PlayerActions.PLAY_PAUSE }, PendingIntent.FLAG_IMMUTABLE)
+        val nextIntent = PendingIntent.getService(context, 3, Intent(context, MusicService::class.java).apply { action = PlayerActions.NEXT }, PendingIntent.FLAG_IMMUTABLE)
+
+        // 3. Build the Tracker Disguise
         val builder = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
-            .setOngoing(true)
+            .setOngoing(isPlaying)
             .setOnlyAlertOnce(true)
-            .setSmallIcon(R.drawable.monochrome_player) // The icon shown in the capsule
+            .setSmallIcon(R.drawable.monochrome_player)
             .setContentTitle(title)
             .setContentText(artist)
-            .setContentIntent(pendingIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_SECRET) // Hides it from the lock screen (Media3 handles that)
-            .setRequestPromotedOngoing(true) // Android 16+ Magic Flag to trigger dynamic island
-            .setShortCriticalText(liveText) // The dynamic timestamp!
+            .setContentIntent(pendingAppIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Critical: CATEGORY_PROGRESS tricks OriginOS into rendering the tracker capsule
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS) 
+            // Adds the progress bar to the expanded view
+            .setProgress(durationMs.toInt(), positionMs.toInt(), false)
+            
+            // Add Media Buttons
+            .addAction(androidx.media3.session.R.drawable.media3_notification_skip_to_previous, "Previous", prevIntent)
+            .addAction(
+                if (isPlaying) androidx.media3.session.R.drawable.media3_notification_pause else androidx.media3.session.R.drawable.media3_notification_play,
+                if (isPlaying) "Pause" else "Play",
+                playPauseIntent
+            )
+            .addAction(androidx.media3.session.R.drawable.media3_notification_skip_to_next, "Next", nextIntent)
+
+        // 4. Attach Album Art so it shows up in the UI
+        if (artworkData != null) {
+            val bitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            builder.setLargeIcon(bitmap)
+        }
+
+        // 5. Android 16 / OEM Island Elevation Flag (via Reflection)
+        try {
+            val setRequestPromotedMethod = builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.java)
+            setRequestPromotedMethod.invoke(builder, true)
+
+            // Feeds the dynamic text to the capsule
+            val setShortTextMethod = builder.javaClass.getMethod("setShortCriticalText", CharSequence::class.java)
+            setShortTextMethod.invoke(builder, liveText)
+        } catch (e: Exception) {
+            // Ignored on unsupported devices
+        }
 
         notificationManager.notify(LIVE_NOTIFICATION_ID, builder.build())
     }
