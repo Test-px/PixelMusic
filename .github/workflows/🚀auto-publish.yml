@@ -1,123 +1,126 @@
-name: 🚀 Auto Release Build
+name: 🚀 Auto Release Build (Cross-Repo)
 
 on:
   workflow_dispatch: 
 
+env:
+  # 🎯 REPLACE THIS with your exact GitHub username and target repository
+  TARGET_REPO: 'Saurav-02/PixelMusic'
+
 jobs:
   build:
-    name: Build Signed Release APK
+    name: 🛠️ Build Signed Release APK & Publish
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write 
+      contents: write # Needed to commit the version bump back to the source repo
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }} 
 
-      - name: Set up JDK 17
+      - name: ☕ Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
+      - name: 🔐 Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create Keystore properties
+      - name: 🔑 Create Keystore properties
         run: |
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > keystore.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
-      - name: Increment & Save Version Code (Local Only)
-        id: code
+      - name: 📈 Increment Version Code (+1) & Name (+0.5)
+        id: versioning
         run: |
+          # 1. Grab the current code and name from gradle.properties
           BASE_CODE=$(grep "^APP_VERSION_CODE=" gradle.properties | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
-          NEW_CODE=$((BASE_CODE + 1))
+          RAW_NAME=$(grep "^APP_VERSION_NAME=" gradle.properties | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
           
-          # Modify the file locally for the build, but DO NOT push yet!
-          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${NEW_CODE}/" gradle.properties
-          
-          echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_ENV
-
-      - name: Inject Dynamic Version Name & Set Tag
-        id: tag
-        run: |
-          BASE_VERSION=$(grep "^APP_VERSION_NAME=" gradle.properties | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
-          
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            FULL_VERSION=${TAG_NAME#v}
-          else
-            FULL_VERSION="${BASE_VERSION}.${{ github.run_number }}"
-            TAG_NAME="v${FULL_VERSION}"
+          # 2. Clean up messy versions (e.g., "2.0.0.8" becomes "2.0")
+          BASE_NAME=$(echo "$RAW_NAME" | grep -oE '^[0-9]+(\.[0-9]+)?')
+          if [[ ! "$BASE_NAME" == *.* ]]; then
+            BASE_NAME="${BASE_NAME}.0"
           fi
           
-          sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${FULL_VERSION}/" gradle.properties
+          # 3. Calculate new values (+1 Code, +0.5 Name)
+          NEW_CODE=$((BASE_CODE + 1))
+          NEW_NAME=$(awk "BEGIN {printf \"%.1f\", $BASE_NAME + 0.5}")
           
+          # 4. Set Tag Name
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            NEW_NAME=${TAG_NAME#v}
+          else
+            TAG_NAME="v${NEW_NAME}"
+          fi
+          
+          # 5. Update the gradle.properties file locally
+          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${NEW_CODE}/" gradle.properties
+          sed -i "s/^APP_VERSION_NAME=.*/APP_VERSION_NAME=${NEW_NAME}/" gradle.properties
+          
+          # 6. Save to environment variables for later steps
+          echo "NEW_CODE=${NEW_CODE}" >> $GITHUB_ENV
+          echo "NEW_NAME=${NEW_NAME}" >> $GITHUB_ENV
           echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
 
-      - name: Build Release APK
-        # If this step fails, the workflow stops here and NOTHING is pushed to GitHub!
+      - name: 🔨 Build Release APK
+        # If this step fails, the workflow stops here and NOTHING is pushed!
         run: ./gradlew :app:assembleRelease
 
-      - name: Commit & Push Version Code Bump
-        # This step is ONLY reached if the build above succeeds!
+      - name: 💾 Commit & Push Version Bump (To Source Repo)
+        # This commits BOTH the new Code and the new Name (+0.5) so it's ready for the next run
         run: |
-          # 1. Revert gradle.properties to its original state to discard the temporary APP_VERSION_NAME
-          git checkout gradle.properties 
-          
-          # 2. Re-apply ONLY the successful APP_VERSION_CODE bump
-          sed -i "s/^APP_VERSION_CODE=.*/APP_VERSION_CODE=${{ env.NEW_CODE }}/" gradle.properties
-          
-          # 3. Commit and push
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
           git add gradle.properties
-          git commit -m "chore: bump version code to ${{ env.NEW_CODE }} [skip ci]" || echo "No changes to commit"
+          git commit -m "chore: bump version to v${{ env.NEW_NAME }} (Code: ${{ env.NEW_CODE }}) [skip ci]" || echo "No changes to commit"
           git push
 
-      - name: Read Release Notes from File
+      - name: 📝 Read Release Notes from File
         run: |
           echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
           if [ -f changelog.txt ]; then
             cat changelog.txt >> $GITHUB_ENV
           else
-            echo "New update available. See repository for details." >> $GITHUB_ENV
+            echo "✨ New update available. See repository for details." >> $GITHUB_ENV
           fi
-          echo -e "\n\n---\n*Current Version Code: ${{ env.NEW_CODE }}*" >> $GITHUB_ENV
+          echo -e "\n\n---\n*📦 Current Version Code: ${{ env.NEW_CODE }}*" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Delete Previous Releases and Tags
+      - name: 🧹 Delete Previous Releases and Tags (From Target Repo)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
         run: |
-          gh release list --limit 100 --json tagName -q ".[].tagName" | grep -v "^${{ env.TAG_NAME }}$" | while read -r tag; do
+          # Grabs all releases from the TARGET repo and wipes them out along with their tags
+          gh release list -R ${{ env.TARGET_REPO }} --limit 100 --json tagName -q ".[].tagName" | while read -r tag; do
             if [ -n "$tag" ]; then
-              echo "Wiping out old release and tag: $tag"
-              gh release delete "$tag" --cleanup-tag -y
+              echo "💥 Wiping out old release and tag: $tag"
+              gh release delete "$tag" -R ${{ env.TARGET_REPO }} --cleanup-tag -y
             fi
           done
 
-      - name: Create GitHub Release & Upload APK
+      - name: 🚀 Create GitHub Release & Upload APK (To Target Repo)
         uses: softprops/action-gh-release@v2
         with:
+          repository: ${{ env.TARGET_REPO }}
+          token: ${{ secrets.TARGET_REPO_TOKEN }}
           tag_name: ${{ env.TAG_NAME }}
-          name: Release ${{ env.TAG_NAME }}
+          name: 🌟 Release ${{ env.TAG_NAME }}
           body: ${{ env.RELEASE_BODY }}
           files: app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Signed Release APK artifact
+      - name: 📦 Upload Signed Release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
+          name: 📱 app-release-signed
           path: app/build/outputs/apk/release/*.apk
           retention-days: 14
-          
