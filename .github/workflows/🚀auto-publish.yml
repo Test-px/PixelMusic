@@ -50,9 +50,12 @@ jobs:
             BASE_NAME="${BASE_NAME}.0"
           fi
           
-          # 3. Calculate new values (+1 Code, +0.5 Name)
+          # 3. Calculate new values (+1 Code, Round up to nearest 0.5 for Name)
           NEW_CODE=$((BASE_CODE + 1))
-          NEW_NAME=$(awk "BEGIN {printf \"%.1f\", $BASE_NAME + 0.5}")
+          
+          # This automatically rounds up to the next .5 or .0 milestone
+          # 3.0 -> 3.5 | 3.2 -> 3.5 | 3.5 -> 4.0 | 3.8 -> 4.0
+          NEW_NAME=$(awk "BEGIN {printf \"%.1f\", int($BASE_NAME * 2 + 1) / 2.0}")
           
           # 4. Set Tag Name
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
