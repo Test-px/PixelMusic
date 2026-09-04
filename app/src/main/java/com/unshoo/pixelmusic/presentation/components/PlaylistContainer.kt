@@ -109,6 +109,8 @@ import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistSelectionStateHolder
 import com.unshoo.pixelmusic.utils.formatSongCount
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import androidx.compose.foundation.combinedClickable
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
 
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -260,6 +262,7 @@ fun PlaylistItems(
 ) {
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val playlistFastScrollLabelProvider = remember(filteredPlaylists, currentSortOption) {
         { index: Int ->
             playlistFastScrollLabel(
@@ -297,7 +300,8 @@ fun PlaylistItems(
                         bottomStart = PlayerSheetCollapsedCornerRadius,
                         bottomEnd = PlayerSheetCollapsedCornerRadius
                     )
-                ),
+                )
+                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
