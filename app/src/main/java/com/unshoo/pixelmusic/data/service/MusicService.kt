@@ -162,6 +162,8 @@ class MusicService : MediaLibraryService() {
     // MediaId for which lastAppliedReplayGainVolume was computed.
     private var lastReplayGainMediaId: String? = null
     private var isDynamicIslandEnabled = true
+    private var dynamicIslandStyle = "ANIMATED_NOTES"
+    
 
     private var favoriteSongIds = emptySet<String>()
     private var mediaSession: MediaLibrarySession? = null
@@ -506,6 +508,12 @@ class MusicService : MediaLibraryService() {
                 isManualShuffleEnabled = userPreferencesRepository.isShuffleOnFlow.first()
                 mediaSession?.let { refreshMediaSessionUi(it) }
             }
+        }
+
+        serviceScope.launch {
+    userPreferencesRepository.dynamicIslandStyleFlow.collect { style ->
+        dynamicIslandStyle = style.name
+    }
         }
 
         serviceScope.launch {
