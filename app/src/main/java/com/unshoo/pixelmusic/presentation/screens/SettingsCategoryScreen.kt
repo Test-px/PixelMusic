@@ -191,6 +191,9 @@ import com.unshoo.pixelmusic.presentation.viewmodel.LyricsRefreshProgress
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.SettingsViewModel
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -403,6 +406,11 @@ fun SettingsCategoryScreen(
         LazyColumn(
             state = lazyListState,
             modifier = Modifier.fillMaxSize(),
+            .fillMaxSize()
+                .scrollMotionBlur(
+                    lazyListState = lazyListState, 
+                    enabled = uiState.isUiMotionBlurEnabled
+                ),
             contentPadding = PaddingValues(
                 top = currentTopBarHeightDp + 8.dp,
                 start = 16.dp,
