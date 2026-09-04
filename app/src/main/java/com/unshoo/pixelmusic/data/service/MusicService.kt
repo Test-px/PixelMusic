@@ -3646,7 +3646,8 @@ class MusicService : MediaLibraryService() {
                 artist = artist,
                 positionMs = positionMs,
                 durationMs = durationMs,
-                artworkData = artworkData
+                artworkData = artworkData,
+                style = dynamicIslandStyle
             )
         } else {
             stopLiveProgressTracker()
