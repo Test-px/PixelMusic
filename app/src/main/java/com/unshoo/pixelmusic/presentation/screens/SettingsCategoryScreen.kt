@@ -405,8 +405,8 @@ fun SettingsCategoryScreen(
         
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxSize(),
-            .fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .scrollMotionBlur(
                     lazyListState = lazyListState, 
                     enabled = uiState.isUiMotionBlurEnabled
