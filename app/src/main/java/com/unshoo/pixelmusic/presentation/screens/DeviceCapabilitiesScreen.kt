@@ -93,6 +93,9 @@ import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import kotlin.math.roundToInt
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -102,6 +105,7 @@ fun DeviceCapabilitiesScreen(
     playerViewModel: PlayerViewModel
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+        val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -178,6 +182,7 @@ fun DeviceCapabilitiesScreen(
                 lazyListState = lazyListState,
                 topPadding = currentTopBarHeightDp,
                 modifier = Modifier.fillMaxSize()
+                .scrollMotionBlur(lazyListState, enabled = isMotionBlurEnabled)
             )
         }
 
