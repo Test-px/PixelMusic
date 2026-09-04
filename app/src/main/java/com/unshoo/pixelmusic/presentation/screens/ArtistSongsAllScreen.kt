@@ -32,6 +32,9 @@ import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistViewModel
 import com.unshoo.pixelmusic.data.model.Song
 import kotlinx.coroutines.delay
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +49,7 @@ fun ArtistSongsAllScreen(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by viewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -147,6 +151,7 @@ fun ArtistSongsAllScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
+                    .scrollMotionBlur(listState, enabled = isMotionBlurEnabled)
                 ) {
                     item(key = "shuffle_header") {
                         Button(
