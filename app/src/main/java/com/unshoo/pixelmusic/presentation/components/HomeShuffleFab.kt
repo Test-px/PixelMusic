@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.unshoo.pixelmusic.R
 import kotlinx.coroutines.delay
+import androidx.compose.material3.FloatingActionButtonDefaults
 
 @Composable
 fun HomeShuffleFab(
@@ -96,6 +97,12 @@ fun HomeShuffleFab(
         containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
         shape = CircleShape,
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp
+        ),
         modifier = modifier
             .padding(bottom = animatedBottomOffset.coerceAtLeast(0.dp), end = dynamicEndPadding)
             .size(64.dp)
