@@ -1,10 +1,11 @@
 **Sub release 3.6** 
 
-*Motion blur.(Android 13+, in developement)
 
+*Dynamic Island support. (Origin os special,considering it's an incredibly big achievement because I've not seen anyone successfully accomplish this perfectly yet🤭)
+*Motion blur.(Android 13+, in developement)
 *Fixed Home screen shuffle button position.
 
-**Final Release 3.5**
+------Final Release 3.5-------
 
 **Pixel Music Beta-3**
 
