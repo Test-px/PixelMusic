@@ -72,6 +72,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.text.style.TextOverflow
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -96,6 +99,7 @@ fun LibraryAlbumsTab(
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val imageLoader = context.imageLoader
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
 
     val albumFastScrollLabelProvider = remember(albums, currentAlbumSortOption) {
         { index: Int ->
@@ -237,20 +241,20 @@ fun LibraryAlbumsTab(
         }
 
         shouldShowInitialLoading -> {
-            if (isListView) {
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = PlayerSheetCollapsedCornerRadius,
-                                bottomEnd = PlayerSheetCollapsedCornerRadius
-                            )
-                        )
-                        .fillMaxSize(),
-                    state = listState,
+                        if (isListView) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .padding(start = 14.dp, end = if (listState.canScrollForward || listState.canScrollBackward) 24.dp else 14.dp, bottom = 6.dp)
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = 16.dp,
+                                            topEnd = 16.dp,
+                                            bottomStart = PlayerSheetCollapsedCornerRadius,
+                                            bottomEnd = PlayerSheetCollapsedCornerRadius
+                                        )
+                                    )
+                                    .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
+                                state = listState,
                     contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -398,7 +402,8 @@ fun LibraryAlbumsTab(
                                             bottomStart = PlayerSheetCollapsedCornerRadius,
                                             bottomEnd = PlayerSheetCollapsedCornerRadius
                                         )
-                                    ),
+                                    )
+                                    .scrollMotionBlur(gridState, enabled = isMotionBlurEnabled),
                                 state = gridState,
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
