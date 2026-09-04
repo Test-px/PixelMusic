@@ -21,6 +21,10 @@ object LiveNotificationHelper {
     private var lastArtworkBytes: ByteArray? = null
     private var cachedArtworkBitmap: Bitmap? = null
 
+    // Animation state for the dynamic island
+    private val animatedNotes = arrayOf("♫", "♩", "♪", "𝅗𝅥", "𝅘𝅥𝅯", "𝅘𝅥𝅰", "𝅘𝅥𝅱", "𝅘𝅥𝅲", "𝄞")
+    private var noteIndex = 0
+
     fun createNotificationChannel(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -38,13 +42,22 @@ object LiveNotificationHelper {
         }
     }
 
+    // Helper to format milliseconds into m:ss format
+    private fun formatTimeMs(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format(java.util.Locale.US, "%d:%02d", minutes, seconds)
+    }
+
     fun updateLiveNotification(
         context: Context,
         title: String,
         artist: String,
         positionMs: Long,
         durationMs: Long,
-        artworkData: ByteArray?
+        artworkData: ByteArray?,
+        style: String // Controls what shows up in the right slot
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -72,6 +85,20 @@ object LiveNotificationHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val safeDuration = durationMs.coerceAtLeast(0L)
+
+        // Generate the text based on the user's preference
+        val criticalText = when (style) {
+            "ANIMATED_NOTES" -> {
+                val currentNote = animatedNotes[noteIndex]
+                noteIndex = (noteIndex + 1) % animatedNotes.size
+                currentNote
+            }
+            "PROGRESS_TIME" -> "${formatTimeMs(positionMs)}/${formatTimeMs(safeDuration)}"
+            "STATIC_ICON" -> "🎧"
+            else -> "🎧" // Default fallback
+        }
+
         val builder = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -81,10 +108,9 @@ object LiveNotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setRequestPromotedOngoing(true) 
-            .setShortCriticalText("♪")
+            .setShortCriticalText(criticalText) // Applying the dynamic text
             .setSmallIcon(R.drawable.monochrome_player)
 
-        val safeDuration = durationMs.coerceAtLeast(0L)
         val progressPercent = if (safeDuration > 0L) {
             ((positionMs.toFloat() / safeDuration) * 100).toInt().coerceIn(0, 100)
         } else 0
