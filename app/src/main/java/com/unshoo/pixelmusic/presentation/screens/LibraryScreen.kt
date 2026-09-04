@@ -3021,7 +3021,7 @@ fun LibraryFoldersTab(
     pendingLocatePath: String? = null,
     onClearPendingLocate: () -> Unit = {},
     onRequestCrossFolderLocate: (String) -> Unit = {},
-    folderArtworkPreference: String = "recently_added"
+    folderArtworkPreference: String = "recently_added",
     isMotionBlurEnabled: Boolean = true
 ) {
     AnimatedContent(
