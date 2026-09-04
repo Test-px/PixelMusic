@@ -99,6 +99,7 @@ data class SettingsUiState(
     val beta05CleanInstallDisclaimerDismissed: Boolean? = null,
     val fullPlayerLoadingTweaks: FullPlayerLoadingTweaks = FullPlayerLoadingTweaks(),
     val showPlayerFileInfo: Boolean = true,
+    val isUiMotionBlurEnabled: Boolean = true,
     // Developer Options
     val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
     val albumArtCacheLimitMb: Int = 200,
@@ -752,6 +753,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             themePreferencesRepository.amoledBlackModeFlow.collect { enabled ->
                 _uiState.update { it.copy(amoledBlackModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            userPreferencesRepository.uiMotionBlurEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(isUiMotionBlurEnabled = enabled) }
             }
         }
 
@@ -1636,6 +1643,12 @@ class SettingsViewModel @Inject constructor(
     fun setUseSmoothCorners(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setUseSmoothCorners(enabled)
+        }
+    }
+
+    fun setUiMotionBlurEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setUiMotionBlurEnabled(enabled)
         }
     }
 
