@@ -470,7 +470,10 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
-                    .scrollMotionBlur(listState),
+                    .scrollMotionBlur(
+                    lazyListState = listState, 
+                    enabled = settingsUiState.isUiMotionBlurEnabled
+                )
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding(),
                     bottom = paddingValuesParent.calculateBottomPadding()
