@@ -90,7 +90,7 @@ class ArtistDetailViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val artistImageRepository: ArtistImageRepository,
     val themeStateHolder: ThemeStateHolder,
-    private val userPreferencesRepository: UserPreferencesRepository,
+    val userPreferencesRepository: UserPreferencesRepository,
     private val savedStateHandle: SavedStateHandle,
     private val musicDao: com.unshoo.pixelmusic.data.database.MusicDao
 ) : ViewModel() {
