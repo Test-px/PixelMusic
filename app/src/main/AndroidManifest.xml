@@ -59,6 +59,7 @@
         android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="31">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -69,7 +70,6 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.APP_MUSIC" />
@@ -78,12 +78,10 @@
                 <action android:name="android.intent.action.MUSIC_PLAYER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            
             <intent-filter>
                 <action android:name="com.unshoo.pixelmusic.action.OPEN_PLAYER" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -97,7 +95,7 @@
                 <data android:mimeType="audio/mpegurl" />
                 <data android:mimeType="application/vnd.apple.mpegurl" />
             </intent-filter>
-                        <!-- Catch "Share -> PixelMusic" from the YT/YTM app -->
+            <!-- Catch "Share -> PixelMusic" from the YT/YTM app -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -126,7 +124,6 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                
                 <data android:scheme="https"
                       android:host="sauravbr.github.io"
                       android:pathPrefix="/PixelMusic" />
@@ -136,7 +133,6 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:host="youtube.com" />
@@ -145,35 +141,7 @@
                 <data android:host="youtu.be" />
                 <data android:host="music.youtube.com" />
             </intent-filter>
-            </activity>
-
-        <activity
-            android:name=".presentation.telegram.auth.TelegramLoginActivity"
-            android:exported="false"
-            android:label="Telegram Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".presentation.netease.auth.NeteaseLoginActivity"
-            android:exported="false"
-            android:label="Netease Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".presentation.gdrive.auth.GDriveLoginActivity"
-            android:exported="false"
-            android:label="Google Drive Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".presentation.qqmusic.auth.QqMusicLoginActivity"
-            android:exported="false"
-            android:label="QQ Music Login"
-            android:theme="@style/Theme.PixelMusic"
-            android:windowSoftInputMode="adjustResize" />
+        </activity>
 
         <activity
             android:name=".presentation.navidrome.auth.NavidromeLoginActivity"
@@ -189,7 +157,6 @@
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
 
-
         <activity
             android:name=".ExternalPlayerActivity"
             android:exported="true"
@@ -200,18 +167,14 @@
             android:grantUriPermissions="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
-
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-
                 <data android:mimeType="audio/*" />
                 <data android:scheme="content" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
-
                 <category android:name="android.intent.category.DEFAULT" />
-
                 <data android:mimeType="audio/*" />
             </intent-filter>
         </activity>
@@ -287,13 +250,12 @@
             </intent-filter>
         </receiver>
 
-        <!-- *** AÑADE ESTE BLOQUE PARA DESHABILITAR EL INICIALIZADOR POR DEFECTO *** -->
+        <!-- Disable default WorkManager initializer -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false"
             tools:node="merge">
-            <!-- Esto evita que el inicializador de WorkManager se ejecute automáticamente -->
             <meta-data
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
@@ -318,6 +280,7 @@
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
             android:value="com.unshoo.pixelmusic.data.service.cast.CastOptionsProvider" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -327,6 +290,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
         <provider
             android:name="com.unshoo.pixelmusic.data.provider.SnapFileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -336,6 +300,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
         <provider
             android:name=".data.provider.SharedArtworkContentProvider"
             android:authorities="${applicationId}.artwork"
@@ -343,7 +308,6 @@
             android:grantUriPermissions="true" />
 
         <!-- Quick Settings Tiles -->
-        <!-- The Transparent Overlay Activity -->
         <activity
             android:name=".presentation.screens.RecognitionOverlayActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -351,7 +315,6 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask" />
 
-        <!-- The Control Center Quick Settings Tile -->
         <service
             android:name=".data.service.tile.MusicRecognitionTileService"
             android:exported="true"
