@@ -161,6 +161,7 @@ class MusicService : MediaLibraryService() {
     private var lastAppliedReplayGainVolume: Float? = null
     // MediaId for which lastAppliedReplayGainVolume was computed.
     private var lastReplayGainMediaId: String? = null
+    private var isDynamicIslandEnabled = true
 
     private var favoriteSongIds = emptySet<String>()
     private var mediaSession: MediaLibrarySession? = null
@@ -504,6 +505,17 @@ class MusicService : MediaLibraryService() {
             if (persistent) {
                 isManualShuffleEnabled = userPreferencesRepository.isShuffleOnFlow.first()
                 mediaSession?.let { refreshMediaSessionUi(it) }
+            }
+        }
+
+        serviceScope.launch {
+            userPreferencesRepository.dynamicIslandEnabledFlow.collect { enabled ->
+                isDynamicIslandEnabled = enabled
+                if (!enabled) {
+                    stopLiveProgressTracker()
+                } else if (engine.masterPlayer.isPlaying) {
+                    startLiveProgressTracker()
+                }
             }
         }
 
@@ -1126,12 +1138,14 @@ class MusicService : MediaLibraryService() {
         val startCommandResult = super.onStartCommand(intent, flags, startId)
         if (needsTemporaryForeground) {
             val player = mediaSession?.player
+            val hasQueueItems = (player?.mediaItemCount ?: 0) > 0
             val isActivelyPlaying = player?.let {
                 it.playWhenReady &&
                     it.playbackState != Player.STATE_IDLE &&
                     it.playbackState != Player.STATE_ENDED
             } == true
-            if (!isActivelyPlaying) {
+            // Fix: Only remove foreground service if nothing is queued.
+            if (!isActivelyPlaying && !hasQueueItems) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelfResult(startId)
             }
@@ -3553,23 +3567,46 @@ class MusicService : MediaLibraryService() {
     }
 
 // --- LIVE PROGRESS TRACKER FOR DYNAMIC ISLAND ---
-    
+
+    private var liveProgressTickerJob: Job? = null
+
+    private fun startLiveProgressTracker() {
+        if (!isDynamicIslandEnabled) return
+        liveProgressTickerJob?.cancel()
+        liveProgressTickerJob = serviceScope.launch {
+            while (true) {
+                triggerLiveProgressTrackerUpdate()
+                delay(1000L) // Fixes the frozen progress bar
+            }
+        }
+    }
+
+    private fun stopLiveProgressTracker() {
+        liveProgressTickerJob?.cancel()
+        liveProgressTickerJob = null
+        LiveNotificationHelper.dismissLiveNotification(this)
+    }
+
     private fun triggerLiveProgressTrackerUpdate() {
-        LiveNotificationHelper.createNotificationChannel(this)
-        
-        val player = engine.masterPlayer
-        if (player.isPlaying || player.playbackState == Player.STATE_READY) {
+        if (!isDynamicIslandEnabled) {
+            stopLiveProgressTracker()
+            return
+        }
+
+        val player = mediaSession?.player ?: engine.masterPlayer
+
+        if (player.isPlaying) {
+            LiveNotificationHelper.createNotificationChannel(this)
+
             val positionMs = player.currentPosition.coerceAtLeast(0L)
             val durationMs = if (player.duration != androidx.media3.common.C.TIME_UNSET && player.duration > 0) {
                 player.duration
             } else {
                 player.currentMediaItem?.mediaMetadata?.extras?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_DURATION, 0L) ?: 0L
             }
-            
+
             val title = player.currentMediaItem?.mediaMetadata?.title?.toString() ?: "PixelMusic"
             val artist = player.currentMediaItem?.mediaMetadata?.artist?.toString() ?: "Playing"
-            
-            // We safely grab the exact same cached album art bytes the widgets use!
             val artworkData = lastWidgetPlayerInfo?.albumArtBitmapData
 
             LiveNotificationHelper.updateLiveNotification(
@@ -3578,15 +3615,10 @@ class MusicService : MediaLibraryService() {
                 artist = artist,
                 positionMs = positionMs,
                 durationMs = durationMs,
-                isPlaying = player.isPlaying,
                 artworkData = artworkData
             )
-        } else if (player.playbackState == Player.STATE_ENDED || player.playbackState == Player.STATE_IDLE) {
+        } else {
             stopLiveProgressTracker()
         }
-    }
-
-    private fun stopLiveProgressTracker() {
-        LiveNotificationHelper.dismissLiveNotification(this)
     }
 }
