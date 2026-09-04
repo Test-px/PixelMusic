@@ -67,6 +67,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextOverflow
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -89,6 +92,7 @@ fun LibraryFavoritesTab(
     hasCurrentSong: Boolean = false
 ) {
     val listState = rememberLazyListState()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
     val registerActionCallback by rememberUpdatedState(onRegisterLocateCurrentSongAction)
@@ -233,7 +237,8 @@ fun LibraryFavoritesTab(
                                     bottomStart = PlayerSheetCollapsedCornerRadius,
                                     bottomEnd = PlayerSheetCollapsedCornerRadius
                                 )
-                            ),
+                            )
+                            .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
@@ -304,6 +309,7 @@ fun LibrarySongsTabPaginated(
     onRefresh: () -> Unit
 ) {
     val listState = rememberLazyListState()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val pullToRefreshState = rememberPullToRefreshState()
 
     when {
@@ -415,7 +421,8 @@ fun LibrarySongsTabPaginated(
                                         bottomStart = PlayerSheetCollapsedCornerRadius,
                                         bottomEnd = PlayerSheetCollapsedCornerRadius
                                     )
-                                ),
+                                )
+                                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
