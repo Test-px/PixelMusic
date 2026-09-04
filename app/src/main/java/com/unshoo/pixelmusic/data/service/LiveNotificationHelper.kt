@@ -5,17 +5,21 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.graphics.drawable.IconCompat
 import com.unshoo.pixelmusic.MainActivity
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.ui.glancewidget.PlayerActions
+import java.util.Arrays
 
 object LiveNotificationHelper {
-    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v5"
+    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v6"
     private const val LIVE_NOTIFICATION_ID = 1002
+
+    private var lastArtworkBytes: ByteArray? = null
+    private var cachedArtworkBitmap: Bitmap? = null
 
     fun createNotificationChannel(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -40,25 +44,36 @@ object LiveNotificationHelper {
         artist: String,
         positionMs: Long,
         durationMs: Long,
-        isPlaying: Boolean,
         artworkData: ByteArray?
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val appIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("ACTION_SHOW_PLAYER", true)
         }
         val pendingAppIntent = PendingIntent.getActivity(
             context, 0, appIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val prevIntent = PendingIntent.getService(context, 1, Intent(context, MusicService::class.java).apply { action = PlayerActions.PREVIOUS }, PendingIntent.FLAG_IMMUTABLE)
-        val playPauseIntent = PendingIntent.getService(context, 2, Intent(context, MusicService::class.java).apply { action = PlayerActions.PLAY_PAUSE }, PendingIntent.FLAG_IMMUTABLE)
-        val nextIntent = PendingIntent.getService(context, 3, Intent(context, MusicService::class.java).apply { action = PlayerActions.NEXT }, PendingIntent.FLAG_IMMUTABLE)
+        val prevIntent = PendingIntent.getService(
+            context, 1,
+            Intent(context, MusicService::class.java).apply { action = PlayerActions.PREVIOUS },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val playPauseIntent = PendingIntent.getService(
+            context, 2,
+            Intent(context, MusicService::class.java).apply { action = PlayerActions.PLAY_PAUSE },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val nextIntent = PendingIntent.getService(
+            context, 3,
+            Intent(context, MusicService::class.java).apply { action = PlayerActions.NEXT },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         val builder = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
-            .setOngoing(isPlaying)
+            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentTitle(title)
             .setContentText(artist)
@@ -66,55 +81,70 @@ object LiveNotificationHelper {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setRequestPromotedOngoing(true) 
-            .setShortCriticalText("♪") // Replaced time with Music Note to save battery
+            .setShortCriticalText("♪")
+            .setSmallIcon(R.drawable.monochrome_player)
 
-        if (Build.VERSION.SDK_INT >= 36) {
-            val progressPercent = if (durationMs > 0) ((positionMs.toFloat() / durationMs) * 100).toInt().coerceIn(0, 100) else 0
-            
-            val segment = NotificationCompat.ProgressStyle.Segment(100)
-            segment.setColor(0xFFE91E63.toInt()) // Red progress bar color
+        val safeDuration = durationMs.coerceAtLeast(0L)
+        val progressPercent = if (safeDuration > 0L) {
+            ((positionMs.toFloat() / safeDuration) * 100).toInt().coerceIn(0, 100)
+        } else 0
 
-            val progressStyle = NotificationCompat.ProgressStyle()
-                .setProgressSegments(arrayListOf(segment))
-                .setStyledByProgress(true)
-                .setProgress(progressPercent)
-            
-            builder.setStyle(progressStyle)
-        } else {
-            builder.setProgress(durationMs.toInt(), positionMs.toInt(), false)
-        }
+        // Android 15 & Android 16 ProgressStyle
+        if (Build.VERSION.SDK_INT >= 35) {
+            try {
+                val segment = NotificationCompat.ProgressStyle.Segment(100)
+                segment.setColor(0xFFE91E63.toInt())
 
-        // Android 16 ProgressStyle forces action buttons to be text-based. 
-        // We use emojis as the title string to simulate icons!
-        val playPauseIcon = if (isPlaying) "|।|" else "▶"
-        builder.addAction(android.R.drawable.ic_media_previous, "⏮", prevIntent)
-            .addAction(
-                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                playPauseIcon,
-                playPauseIntent
-            )
-            .addAction(android.R.drawable.ic_media_next, "⏭", nextIntent)
+                val progressStyle = NotificationCompat.ProgressStyle()
+                    .setProgressSegments(arrayListOf(segment))
+                    .setStyledByProgress(true)
+                    .setProgress(progressPercent)
 
-        // Inject the album art into the capsule pill safely
-        if (artworkData != null) {
-            val rawBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            builder.setLargeIcon(rawBitmap)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // Scale down for the status bar pill to prevent crashes
-                val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(rawBitmap, 150, 150, true)
-                builder.setSmallIcon(IconCompat.createWithBitmap(scaledBitmap))
-            } else {
-                builder.setSmallIcon(R.drawable.monochrome_player)
+                builder.setStyle(progressStyle)
+            } catch (_: Throwable) {
+                builder.setProgress(100, progressPercent, safeDuration == 0L)
             }
         } else {
-            builder.setSmallIcon(R.drawable.monochrome_player)
+            builder.setProgress(100, progressPercent, safeDuration == 0L)
+        }
+
+        // Clean typography glyphs matching system controls without emoji boxes
+        builder.addAction(android.R.drawable.ic_media_previous, "⏮", prevIntent)
+            .addAction(android.R.drawable.ic_media_pause, "❚❚", playPauseIntent)
+            .addAction(android.R.drawable.ic_media_next, "⏭", nextIntent)
+
+        val bitmap = getOrDecodeArtwork(artworkData)
+        if (bitmap != null) {
+            builder.setLargeIcon(bitmap)
         }
 
         notificationManager.notify(LIVE_NOTIFICATION_ID, builder.build())
     }
 
+    private fun getOrDecodeArtwork(artworkData: ByteArray?): Bitmap? {
+        if (artworkData == null || artworkData.isEmpty()) {
+            lastArtworkBytes = null
+            cachedArtworkBitmap = null
+            return null
+        }
+
+        if (lastArtworkBytes != null && Arrays.equals(lastArtworkBytes, artworkData)) {
+            return cachedArtworkBitmap
+        }
+
+        return try {
+            val decoded = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            lastArtworkBytes = artworkData
+            cachedArtworkBitmap = decoded
+            decoded
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun dismissLiveNotification(context: Context) {
+        lastArtworkBytes = null
+        cachedArtworkBitmap = null
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(LIVE_NOTIFICATION_ID)
     }
