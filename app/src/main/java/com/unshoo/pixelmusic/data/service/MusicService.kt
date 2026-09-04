@@ -1187,10 +1187,18 @@ class MusicService : MediaLibraryService() {
             if (isPlaying) {
                 reportNavidromePlayback("playing")
                 startNavidromePlaybackReporting()
+                
+                // Start Island progress bar if enabled
+                if (isDynamicIslandEnabled) {
+                    startLiveProgressTracker()
+                }
             } else {
                 val state = if (player.playbackState == Player.STATE_ENDED) "stopped" else "paused"
                 reportNavidromePlayback(state)
                 stopNavidromePlaybackReporting()
+                
+                // Instantly dismiss Island pill on pause
+                stopLiveProgressTracker()
             }
 
             // Re-apply the last known RG volume immediately when resuming playback.
@@ -1278,6 +1286,11 @@ class MusicService : MediaLibraryService() {
             if (reason == Player.DISCONTINUITY_REASON_SEEK) {
                 val state = if (engine.masterPlayer.isPlaying) "playing" else "paused"
                 reportNavidromePlayback(state)
+                
+                // Instantly update progress bar when user seeks
+                if (engine.masterPlayer.isPlaying && isDynamicIslandEnabled) {
+                    triggerLiveProgressTrackerUpdate()
+                }
             }
 
             if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
@@ -1328,6 +1341,11 @@ class MusicService : MediaLibraryService() {
                 }
             } else {
                 stopNavidromePlaybackReporting()
+            }
+
+            // Immediately update Island with new song title/art
+            if (player.isPlaying && isDynamicIslandEnabled) {
+                triggerLiveProgressTrackerUpdate()
             }
 
             val eotTargetSongId = endOfTrackTimerSongId
