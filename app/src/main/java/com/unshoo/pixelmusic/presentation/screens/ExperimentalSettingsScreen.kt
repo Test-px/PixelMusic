@@ -80,6 +80,9 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.res.stringResource
 import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.preferences.AlbumArtQuality
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -178,7 +181,12 @@ fun ExperimentalSettingsScreen(
         LazyColumn(
             state = lazyListState,
             contentPadding = PaddingValues(top = currentTopBarHeightDp + 8.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .scrollMotionBlur(
+                    lazyListState = lazyListState,
+                    enabled = uiState.isUiMotionBlurEnabled
+                )
         ) {
             item(key = "player_ui_tweaks_section") {
                 SettingsSection(
