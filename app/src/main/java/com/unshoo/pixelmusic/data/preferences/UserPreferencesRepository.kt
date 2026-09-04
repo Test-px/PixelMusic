@@ -72,6 +72,10 @@ enum class AlbumArtQuality(val maxSize: Int, val label: String) {
     ORIGINAL(0, "Original - Maximum quality")
 }
 
+enum class DynamicIslandStyle {
+    ANIMATED_NOTES, PROGRESS_TIME, STATIC_ICON
+}
+
 enum class PlayerStreamClient {
     ANDROID_VR,
     WEB_REMIX,
@@ -152,7 +156,8 @@ constructor(
         val LATEST_GITHUB_VERSION_CACHE = stringPreferencesKey("latest_github_version_cache")
         val LAST_GITHUB_CHECK_TIME = longPreferencesKey("last_github_check_time")
         val LATEST_GITHUB_CHANGELOG_CACHE = stringPreferencesKey("latest_github_changelog_cache")
-                
+        val DYNAMIC_ISLAND_STYLE = stringPreferencesKey("dynamic_island_style")
+       
         
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
         val ALBUM_ART_PALETTE_STYLE = stringPreferencesKey("album_art_palette_style_v1")
@@ -564,6 +569,23 @@ constructor(
             }
         }
     }
+
+    val dynamicIslandStyleFlow: Flow<DynamicIslandStyle> =
+    dataStore.data.map { preferences ->
+        try {
+            DynamicIslandStyle.valueOf(
+                preferences[PreferencesKeys.DYNAMIC_ISLAND_STYLE] ?: DynamicIslandStyle.ANIMATED_NOTES.name
+            )
+        } catch (e: Exception) {
+            DynamicIslandStyle.ANIMATED_NOTES
+        }
+    }.distinctUntilChanged()
+
+   suspend fun setDynamicIslandStyle(style: DynamicIslandStyle) {
+    dataStore.edit { preferences ->
+        preferences[PreferencesKeys.DYNAMIC_ISLAND_STYLE] = style.name
+    }
+}
 
     // ===== Multi-Artist Settings =====
 
