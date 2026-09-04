@@ -944,22 +944,50 @@ fun SettingsCategoryScreen(
                         }
                         SettingsCategory.PLAYBACK -> {
                             SettingsSubsection(title = stringResource(R.string.setcat_background_playback)) {
-                                // 1. Collect the DataStore preference flow specifically for the Dynamic Island toggle
-                                val isDynamicIslandEnabled by playerViewModel.userPreferencesRepository.dynamicIslandEnabledFlow
-                                    .collectAsStateWithLifecycle(initialValue = true)
-                                
-                                // 2. Add the SwitchSettingItem directly below the AOD Screen toggle
-                                SwitchSettingItem(
-                                    title = "Dynamic Island (Origin OS special)",
-                                    subtitle = "Displays real-time music progress and controls in the origin Island.",
-                                    checked = isDynamicIslandEnabled,
-                                    onCheckedChange = { enabled ->
-                                        coroutineScope.launch {
-                                            playerViewModel.userPreferencesRepository.setDynamicIslandEnabled(enabled)
-                                        }
-                                    },
-                                    leadingIcon = { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
-                                )
+                                // 1. Collect the DataStore preference flows
+val isDynamicIslandEnabled by playerViewModel.userPreferencesRepository.dynamicIslandEnabledFlow
+    .collectAsStateWithLifecycle(initialValue = true)
+val dynamicIslandStyle by playerViewModel.userPreferencesRepository.dynamicIslandStyleFlow
+    .collectAsStateWithLifecycle(initialValue = com.unshoo.pixelmusic.data.preferences.DynamicIslandStyle.ANIMATED_NOTES)
+
+// 2. The Main Toggle
+SwitchSettingItem(
+    title = "Dynamic Island (Origin OS special)",
+    subtitle = "Displays real-time track progress and controls in the status bar pill. Turn off to save battery.",
+    checked = isDynamicIslandEnabled,
+    onCheckedChange = { enabled ->
+        coroutineScope.launch {
+            playerViewModel.userPreferencesRepository.setDynamicIslandEnabled(enabled)
+        }
+    },
+    leadingIcon = { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
+)
+
+// 3. The New Style Selector
+AnimatedVisibility(
+    visible = isDynamicIslandEnabled,
+    enter = expandVertically() + fadeIn(),
+    exit = shrinkVertically() + fadeOut()
+) {
+    ThemeSelectorItem(
+        label = "Island Visualizer Style",
+        description = "Choose what appears in the dynamic island pill",
+        options = mapOf(
+            com.unshoo.pixelmusic.data.preferences.DynamicIslandStyle.ANIMATED_NOTES.name to "Animated Notes",
+            com.unshoo.pixelmusic.data.preferences.DynamicIslandStyle.PROGRESS_TIME.name to "Progress Time",
+            com.unshoo.pixelmusic.data.preferences.DynamicIslandStyle.STATIC_ICON.name to "Static Icon"
+        ),
+        selectedKey = dynamicIslandStyle.name,
+        onSelectionChanged = { key ->
+            coroutineScope.launch {
+                playerViewModel.userPreferencesRepository.setDynamicIslandStyle(
+                    com.unshoo.pixelmusic.data.preferences.DynamicIslandStyle.valueOf(key)
+                )
+            }
+        },
+        leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+    )
+}
 
                                 SwitchSettingItem(
                                     title = "AOD Screen",
