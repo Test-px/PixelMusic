@@ -4,7 +4,7 @@ package com.unshoo.pixelmusic.presentation.screens
 
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
-
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -121,6 +121,7 @@ fun AlbumDetailScreen(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val navBarCompactMode by playerViewModel.navBarCompactMode.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
 
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
@@ -302,7 +303,8 @@ fun AlbumDetailScreen(
                                 val extraHeight =
                                     (topBarHeight.value - minTopBarHeightPx).roundToInt()
                                 IntOffset(0, extraHeight)
-                            },
+                            }
+                            .scrollMotionBlur(lazyListState, enabled = isMotionBlurEnabled),
                         contentPadding = PaddingValues(
                             top = minTopBarHeight + 8.dp,
                             start = 16.dp,
