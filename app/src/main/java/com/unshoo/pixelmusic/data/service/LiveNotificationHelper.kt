@@ -89,7 +89,6 @@ object LiveNotificationHelper {
             ((positionMs.toFloat() / safeDuration) * 100).toInt().coerceIn(0, 100)
         } else 0
 
-        // Android 15 & Android 16 ProgressStyle
         if (Build.VERSION.SDK_INT >= 35) {
             try {
                 val segment = NotificationCompat.ProgressStyle.Segment(100)
@@ -108,7 +107,6 @@ object LiveNotificationHelper {
             builder.setProgress(100, progressPercent, safeDuration == 0L)
         }
 
-        // Clean typography glyphs matching system controls without emoji boxes
         builder.addAction(android.R.drawable.ic_media_previous, "⏮", prevIntent)
             .addAction(android.R.drawable.ic_media_pause, "❚❚", playPauseIntent)
             .addAction(android.R.drawable.ic_media_next, "⏭", nextIntent)
