@@ -1031,33 +1031,38 @@ class MusicService : MediaLibraryService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val startedTemporaryForegroundInOnCreate = temporaryForegroundStartedInOnCreate
-        temporaryForegroundStartedInOnCreate = false
-        val pendingMediaButtonForegroundStart = consumePendingMediaButtonForegroundStart()
-        val forcedForegroundStart =
-            intent?.getBooleanExtra(EXTRA_FORCE_FOREGROUND_ON_START, false) == true
-        val isMediaButtonIntent = intent?.action == Intent.ACTION_MEDIA_BUTTON
-        val needsTemporaryForeground = forcedForegroundStart ||
-            pendingMediaButtonForegroundStart ||
-            (isMediaButtonIntent &&
-                !startedTemporaryForegroundInOnCreate &&
-                !isServiceAlreadyForeground()) ||
-            when (intent?.action) {
-                PlayerActions.PLAY_PAUSE,
-                PlayerActions.NEXT,
-                PlayerActions.PREVIOUS,
-                PlayerActions.FAVORITE,
-                PlayerActions.PLAY_FROM_QUEUE,
-                PlayerActions.SHUFFLE,
-                PlayerActions.REPEAT -> true
-                else -> false
-            }
-        if (needsTemporaryForeground && !startedTemporaryForegroundInOnCreate) {
-            startTemporaryForegroundForCommand()
-        }
+    val startedTemporaryForegroundInOnCreate = temporaryForegroundStartedInOnCreate
+    temporaryForegroundStartedInOnCreate = false
+    val pendingMediaButtonForegroundStart = consumePendingMediaButtonForegroundStart()
+    val forcedForegroundStart =
+        intent?.getBooleanExtra(EXTRA_FORCE_FOREGROUND_ON_START, false) == true
+    val isMediaButtonIntent = intent?.action == Intent.ACTION_MEDIA_BUTTON
 
-        intent?.action?.let { action ->
-            Timber.tag(TAG).d("onStartCommand widget action: %s", action)
+    val isAlreadyFg = isServiceAlreadyForeground() // Evaluate once to prevent hijacking
+
+    val needsTemporaryForeground = forcedForegroundStart ||
+        pendingMediaButtonForegroundStart ||
+        (isMediaButtonIntent &&
+            !startedTemporaryForegroundInOnCreate &&
+            !isAlreadyFg) ||
+        (!isAlreadyFg && when (intent?.action) { // <-- Block if already foreground
+            PlayerActions.PLAY_PAUSE,
+            PlayerActions.NEXT,
+            PlayerActions.PREVIOUS,
+            PlayerActions.FAVORITE,
+            PlayerActions.PLAY_FROM_QUEUE,
+            PlayerActions.SHUFFLE,
+            PlayerActions.REPEAT -> true
+            else -> false
+        })
+
+    if (needsTemporaryForeground && !startedTemporaryForegroundInOnCreate) {
+        startTemporaryForegroundForCommand()
+    }
+
+    intent?.action?.let { action ->
+        Timber.tag(TAG).d("onStartCommand widget action: %s", action)
+
             val player = mediaSession?.player ?: engine.masterPlayer
             when (action) {
                 PlayerActions.PLAY_PAUSE -> {
