@@ -91,6 +91,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 
 
 
@@ -236,6 +237,11 @@ fun SettingsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()
+            .fillMaxSize()
+                .scrollMotionBlur(
+                    lazyListState = lazyListState, 
+                    enabled = uiState.isUiMotionBlurEnabled
+                )
         ) {
             item {
                 com.unshoo.pixelmusic.presentation.components.ExpandableAccountCard(
