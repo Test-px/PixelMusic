@@ -82,11 +82,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val telegramApiId = localProperties.getProperty("TELEGRAM_API_ID") ?: ""
-        val telegramApiHash = localProperties.getProperty("TELEGRAM_API_HASH") ?: ""
-        buildConfigField("int", "TELEGRAM_API_ID", telegramApiId.ifEmpty { "0" })
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
-
         val lastfmApiKey = localProperties.getProperty("LASTFM_API_KEY")
             ?: System.getenv("LASTFM_API_KEY")
             ?: ""
@@ -154,9 +149,6 @@ android {
         checkReleaseBuilds = false
     }
 
-    val targetAbi = project.findProperty("abi") as? String ?: ""
-
-
     bundle {
         abi.enableSplit = true
         density.enableSplit = true
@@ -169,8 +161,6 @@ composeCompiler {
 }
 
 baselineProfile {
-    // Keep release builds fast to invoke locally, but make generated profiles usable as
-    // startup dex-layout input once they are checked into the app.
     automaticGenerationDuringBuild = false
     saveInSrc = true
     dexLayoutOptimization = true
@@ -213,11 +203,10 @@ dependencies {
     implementation(libs.brotli)
     implementation(libs.re2j)
     implementation(libs.rhino)
+
     // Core & Optimization
-    // coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))
-
 
     // AndroidX & Compose
     implementation(libs.androidx.core.ktx)
@@ -245,7 +234,6 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation("io.github.dokar3:quickjs-kt:1.0.14")
-
 
     // DI & Navigation
     implementation(libs.hilt.android)
@@ -283,8 +271,6 @@ dependencies {
     implementation(libs.androidx.graphics.shapes)
 
     // Networking & Serialization
-    implementation(libs.fuel.android)
-    implementation(libs.fuel.json)
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
@@ -324,13 +310,10 @@ dependencies {
         exclude(group = "androidx.compose.ui")
     }
 
-
-
     // Testing (Unit)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.jupiter.engine)
-    // JUnit 4 (Vintage) — required for legacy JUnit 4 tests under useJUnitPlatform()
     testImplementation(libs.junit)
     testRuntimeOnly(libs.junit.vintage.engine)
     testRuntimeOnly(libs.junitplatformlauncher)
