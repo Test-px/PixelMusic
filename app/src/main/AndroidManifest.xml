@@ -42,8 +42,6 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
-
     <application
         android:name=".PixelMusicApplication"
         android:largeHeap="true"
@@ -233,10 +231,6 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
-
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
 
         <receiver
             android:name=".ui.glancewidget.PixelMusicGlanceWidgetReceiver"
