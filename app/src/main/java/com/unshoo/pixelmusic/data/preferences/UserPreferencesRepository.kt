@@ -250,7 +250,8 @@ constructor(
         val VIRTUALIZER_DISMISSED = booleanPreferencesKey("virtualizer_dismissed")
         val LOUDNESS_DISMISSED = booleanPreferencesKey("loudness_dismissed")
         val BACKUP_INFO_DISMISSED = booleanPreferencesKey("backup_info_dismissed")
-
+        val DYNAMIC_ISLAND_ENABLED = booleanPreferencesKey("dynamic_island_enabled")
+        
         // View Mode
         // val IS_GRAPH_VIEW = booleanPreferencesKey("is_graph_view") // Deprecated
         val VIEW_MODE = stringPreferencesKey("equalizer_view_mode")
@@ -655,6 +656,17 @@ constructor(
     suspend fun clearArtistSettingsRescanRequired() {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.ARTIST_SETTINGS_RESCAN_REQUIRED] = false
+        }
+    }
+
+    val dynamicIslandEnabledFlow: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[PreferencesKeys.DYNAMIC_ISLAND_ENABLED] ?: true
+            }
+
+    suspend fun setDynamicIslandEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DYNAMIC_ISLAND_ENABLED] = enabled
         }
     }
 
