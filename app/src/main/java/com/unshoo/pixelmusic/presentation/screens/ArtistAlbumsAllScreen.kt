@@ -29,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +41,7 @@ fun ArtistAlbumsAllScreen(
     viewModel: ArtistDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by viewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
 
     LaunchedEffect(artistId, type, uiState.isLoading) {
         if (!uiState.isLoading) {
@@ -154,6 +157,7 @@ fun ArtistAlbumsAllScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
+                    .scrollMotionBlur(gridState, enabled = isMotionBlurEnabled)
                 ) {
                     groupedItems.forEach { (year, sections) ->
                         item(
