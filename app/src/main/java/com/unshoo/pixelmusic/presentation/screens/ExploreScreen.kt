@@ -120,6 +120,8 @@ import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
 
 // -----------------------------------------------------------------------------------------
 // DYNAMIC VIEWPORT ANIMATION HELPER (Dynamic Morphing Corners + Scale + Alpha)
@@ -194,6 +196,7 @@ fun ExploreScreen(
     val uiState by exploreViewModel.uiState.collectAsStateWithLifecycle()
     val quickPicks by quickPicksViewModel.quickPicks.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val isPlaying by remember(stablePlayerState) { mutableStateOf(stablePlayerState.isPlaying) }
     val currentSongId = stablePlayerState.currentSong?.id
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
@@ -306,6 +309,7 @@ fun ExploreScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
+                        .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                         contentPadding = PaddingValues(
                             top = innerPadding.calculateTopPadding(),
                             bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
