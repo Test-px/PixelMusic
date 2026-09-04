@@ -11,7 +11,6 @@ import java.util.Date
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.outlined.DarkMode
-
 import android.content.Context
 import android.content.Intent
 import android.app.Activity
@@ -908,6 +907,13 @@ fun SettingsCategoryScreen(
                                     selectedKey = uiState.libraryNavigationMode,
                                     onSelectionChanged = { settingsViewModel.setLibraryNavigationMode(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_library_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                SwitchSettingItem(
+                                    title = "Motion Blur",
+                                    subtitle = "Applies a cinematic directional blur when scrolling lists.",
+                                    checked = uiState.isUiMotionBlurEnabled,
+                                    onCheckedChange = { settingsViewModel.setUiMotionBlurEnabled(it) },
+                                    leadingIcon = { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
 
