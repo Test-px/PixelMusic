@@ -1,5 +1,7 @@
 **Sub release 3.6** 
 
+*Motion blur.(Android 13+, in developement)
+
 *Fixed Home screen shuffle button position.
 
 **Final Release 3.5**
