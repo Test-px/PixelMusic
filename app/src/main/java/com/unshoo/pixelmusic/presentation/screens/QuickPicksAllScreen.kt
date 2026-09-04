@@ -60,6 +60,8 @@ import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.QuickPicksViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -72,6 +74,8 @@ fun QuickPicksAllScreen(
     val isLoading by quickPicksViewModel.isLoading.collectAsStateWithLifecycle()
     val selectedCategory by quickPicksViewModel.selectedCategory.collectAsStateWithLifecycle()
     val categories by quickPicksViewModel.categories.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
+    val listState = rememberLazyListState()
 
     val currentSongId by androidx.compose.runtime.remember(playerViewModel.stablePlayerState) {
         playerViewModel.stablePlayerState.map { it.currentSong?.id }.distinctUntilChanged()
@@ -94,8 +98,10 @@ fun QuickPicksAllScreen(
             .background(backgroundBrush)
     ) {
         LazyColumn(
-            state = rememberLazyListState(),
-            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
             contentPadding = PaddingValues(
                 bottom = MiniPlayerHeight + navBarPadding + 16.dp
             ),
