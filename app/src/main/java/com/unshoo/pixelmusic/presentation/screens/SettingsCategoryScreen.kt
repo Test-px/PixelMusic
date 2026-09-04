@@ -944,16 +944,23 @@ fun SettingsCategoryScreen(
                         }
                         SettingsCategory.PLAYBACK -> {
                             SettingsSubsection(title = stringResource(R.string.setcat_background_playback)) {
-                                /*
-                                ThemeSelectorItem(
-                                    label = stringResource(R.string.setcat_keep_playing_label),
-                                    description = stringResource(R.string.setcat_keep_playing_desc),
-                                    options = mapOf("true" to stringResource(R.string.label_on), "false" to stringResource(R.string.label_off)),
-                                    selectedKey = if (uiState.keepPlayingInBackground) "true" else "false",
-                                    onSelectionChanged = { settingsViewModel.setKeepPlayingInBackground(it.toBoolean()) },
-                                    leadingIcon = { Icon(Icons.Rounded.MusicNote, null, tint = MaterialTheme.colorScheme.secondary) }
+                                // 1. Collect the DataStore preference flow specifically for the Dynamic Island toggle
+                                val isDynamicIslandEnabled by playerViewModel.userPreferencesRepository.dynamicIslandEnabledFlow
+                                    .collectAsStateWithLifecycle(initialValue = true)
+                                
+                                // 2. Add the SwitchSettingItem directly below the AOD Screen toggle
+                                SwitchSettingItem(
+                                    title = "Dynamic Island (Origin Island)",
+                                    subtitle = "Displays real-time track progress and controls in the status bar pill. Turn off to save battery.",
+                                    checked = isDynamicIslandEnabled,
+                                    onCheckedChange = { enabled ->
+                                        coroutineScope.launch {
+                                            playerViewModel.userPreferencesRepository.setDynamicIslandEnabled(enabled)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
-                                */
+
                                 SwitchSettingItem(
                                     title = "AOD Screen",
                                     subtitle = "Long-press the album art in Now Playing for a glowing, AMOLED-friendly ambient view. Tap anywhere to exit.",
