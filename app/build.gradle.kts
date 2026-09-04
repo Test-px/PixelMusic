@@ -204,6 +204,10 @@ dependencies {
     implementation(libs.re2j)
     implementation(libs.rhino)
 
+// Fuel HTTP library (required by YoutubeRequestHelper)
+    implementation(libs.fuel.android)
+    implementation(libs.fuel.json)
+
     // Core & Optimization
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))
