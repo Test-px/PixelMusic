@@ -465,15 +465,15 @@ fun HomeScreen(
                     )
                 }
             ) {
-            LazyColumn(
+                LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background)
                     .scrollMotionBlur(
-                    lazyListState = listState, 
-                    enabled = settingsUiState.isUiMotionBlurEnabled
-                )
+                        lazyListState = listState, 
+                        enabled = settingsUiState.isUiMotionBlurEnabled
+                    ),
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding(),
                     bottom = paddingValuesParent.calculateBottomPadding()
