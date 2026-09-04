@@ -950,8 +950,8 @@ fun SettingsCategoryScreen(
                                 
                                 // 2. Add the SwitchSettingItem directly below the AOD Screen toggle
                                 SwitchSettingItem(
-                                    title = "Dynamic Island (Origin Island)",
-                                    subtitle = "Displays real-time track progress and controls in the status bar pill. Turn off to save battery.",
+                                    title = "Dynamic Island (Origin OS special)",
+                                    subtitle = "Displays real-time music progress and controls in the origin Island.",
                                     checked = isDynamicIslandEnabled,
                                     onCheckedChange = { enabled ->
                                         coroutineScope.launch {
