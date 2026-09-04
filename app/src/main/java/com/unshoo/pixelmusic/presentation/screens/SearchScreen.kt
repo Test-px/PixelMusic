@@ -126,6 +126,10 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import timber.log.Timber
 import com.unshoo.pixelmusic.presentation.components.subcomps.EnhancedSongListItem
 import androidx.compose.ui.res.stringResource
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+
+
+
 
 private data class SearchUiSlice(
     val selectedSearchFilter: SearchFilterType = SearchFilterType.ALL,
@@ -167,6 +171,7 @@ fun SearchScreen(
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
     val searchSource by playerViewModel.searchSource.collectAsStateWithLifecycle()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchInputFocusRequester = remember { FocusRequester() }
@@ -382,7 +387,8 @@ fun SearchScreen(
                             },
                             onClearAllHistory = {
                                 playerViewModel.clearSearchHistory()
-                            }
+                            },
+                            isMotionBlurEnabled = isMotionBlurEnabled
                         )
                     }
                 } else {
@@ -557,8 +563,10 @@ fun SearchHistoryList(
     historyItems: List<SearchHistoryItem>,
     onHistoryClick: (String) -> Unit,
     onHistoryDelete: (String) -> Unit,
-    onClearAllHistory: () -> Unit
+    onClearAllHistory: () -> Unit,
+    isMotionBlurEnabled: Boolean = true
 ) {
+    val historyListState = rememberLazyListState()
     Column {
         Row(
             modifier = Modifier
@@ -579,7 +587,10 @@ fun SearchHistoryList(
             }
         }
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = historyListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .scrollMotionBlur(historyListState, enabled = isMotionBlurEnabled),
             verticalArrangement = Arrangement.spacedBy(2.dp),
             contentPadding = PaddingValues(
                 top = 8.dp,
@@ -729,6 +740,7 @@ fun SearchResultsList(
     }
 
     val lazyListState = rememberLazyListState()
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val localDensity = LocalDensity.current
 
     LaunchedEffect(lazyListState) {
@@ -757,7 +769,8 @@ fun SearchResultsList(
                     topStart = 28.dp,
                     topEnd = 28.dp
                 )
-            ),
+            )
+            .scrollMotionBlur(lazyListState, enabled = isMotionBlurEnabled),
         contentPadding = PaddingValues(
             top = 8.dp,
             bottom = if (imePadding <= 8.dp) (MiniPlayerHeight + systemBarPaddingBottom) else imePadding
