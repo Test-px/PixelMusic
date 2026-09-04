@@ -308,7 +308,7 @@ fun ExploreScreen(
 
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize()
                         .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                         contentPadding = PaddingValues(
                             top = innerPadding.calculateTopPadding(),
