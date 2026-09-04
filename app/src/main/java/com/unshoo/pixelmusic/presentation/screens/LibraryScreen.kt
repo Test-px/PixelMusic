@@ -1223,7 +1223,7 @@ onViewToggleChange = { isChecked ->
                                 state = pagerState,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = 8.dp),
+                                    .padding(top = 8.dp)
                                     .scrollMotionBlur(pagerState, enabled = isMotionBlurEnabled),
                                 pageSpacing = 0.dp,
                                 beyondViewportPageCount = 1,
@@ -3222,7 +3222,7 @@ fun LibraryFoldersTab(
                                             bottomStart = PlayerSheetCollapsedCornerRadius,
                                             bottomEnd = PlayerSheetCollapsedCornerRadius
                                         )
-                                    ),
+                                    )
                                     .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                                 state = listState,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
