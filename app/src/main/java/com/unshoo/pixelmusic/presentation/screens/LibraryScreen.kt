@@ -4,7 +4,7 @@ package com.unshoo.pixelmusic.presentation.screens
 
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
-
+import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import android.os.Trace
 import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
@@ -320,6 +320,7 @@ fun LibraryScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     val lastTabIndex by playerViewModel.lastLibraryTabIndexFlow.collectAsStateWithLifecycle()
     val folderArtworkPreference by playerViewModel.userPreferencesRepository.folderArtworkPreferenceFlow.collectAsStateWithLifecycle(initialValue = "recently_added")
     val favoriteIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
@@ -1223,6 +1224,7 @@ onViewToggleChange = { isChecked ->
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(top = 8.dp),
+                                    .scrollMotionBlur(pagerState, enabled = isMotionBlurEnabled),
                                 pageSpacing = 0.dp,
                                 beyondViewportPageCount = 1,
                                 key = { it }
@@ -1359,6 +1361,7 @@ onViewToggleChange = { isChecked ->
                                         LibraryFoldersTab(
                                             folders = folders,
                                             currentFolder = currentFolder,
+                                            isMotionBlurEnabled = isMotionBlurEnabled,
                                             isLoading = isLoading,
                                             folderArtworkPreference = folderArtworkPreference,
                                             bottomBarHeight = bottomBarHeightDp,
@@ -3019,6 +3022,7 @@ fun LibraryFoldersTab(
     onClearPendingLocate: () -> Unit = {},
     onRequestCrossFolderLocate: (String) -> Unit = {},
     folderArtworkPreference: String = "recently_added"
+    isMotionBlurEnabled: Boolean = true
 ) {
     AnimatedContent(
         targetState = Pair(isPlaylistView, currentFolder?.path ?: FOLDER_NAVIGATION_ROOT_KEY),
@@ -3219,6 +3223,7 @@ fun LibraryFoldersTab(
                                             bottomEnd = PlayerSheetCollapsedCornerRadius
                                         )
                                     ),
+                                    .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
                                 state = listState,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(
