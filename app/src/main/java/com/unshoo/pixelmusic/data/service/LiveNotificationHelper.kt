@@ -15,7 +15,7 @@ import com.unshoo.pixelmusic.ui.glancewidget.PlayerActions
 import java.util.Arrays
 
 object LiveNotificationHelper {
-    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v6"
+    private const val LIVE_CHANNEL_ID = "pixelmusic_live_progress_v7"
     private const val LIVE_NOTIFICATION_ID = 1002
 
     private var lastArtworkBytes: ByteArray? = null
@@ -37,6 +37,7 @@ object LiveNotificationHelper {
                 description = "Drives the dynamic island progress pill"
                 setShowBadge(false)
                 setSound(null, null)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_SECRET
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -105,7 +106,7 @@ object LiveNotificationHelper {
             .setContentTitle(title)
             .setContentText(artist)
             .setContentIntent(pendingAppIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setRequestPromotedOngoing(true) 
             .setShortCriticalText(criticalText) // Applying the dynamic text
