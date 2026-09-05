@@ -291,6 +291,9 @@ fun FullPlayerContent(
     }
     
     val playerDesignStyle by playerViewModel.playerDesignStyle.collectAsStateWithLifecycle()
+    
+    val nowPlayingLyricsStyle by playerViewModel.userPreferencesRepository.nowPlayingLyricsStyleFlow
+        .collectAsStateWithLifecycle(initialValue = com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.HIDDEN)
     val isImmersive = playerDesignStyle == com.unshoo.pixelmusic.data.preferences.PlayerDesignStyle.IMMERSIVE || 
                       playerDesignStyle == com.unshoo.pixelmusic.data.preferences.PlayerDesignStyle.IMMERSIVE_EXTENDED
     val isImmersiveExtended = playerDesignStyle == com.unshoo.pixelmusic.data.preferences.PlayerDesignStyle.IMMERSIVE_EXTENDED
@@ -645,6 +648,20 @@ fun FullPlayerContent(
             onFavoriteToggle = onFavoriteToggle,
             isFullScreenArt = isImmersive
         )
+    }
+
+    val karaokeLyricsSection: @Composable (Modifier) -> Unit = { modifier ->
+        if (nowPlayingLyricsStyle == com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.KARAOKE && 
+            lyricsProvider()?.synced?.isNotEmpty() == true) {
+            KaraokeLyricsView(
+                lyrics = lyricsProvider(),
+                playbackPositionFlow = playerViewModel.currentPlaybackPosition,
+                syncOffsetMs = lyricsSyncOffset,
+                modifier = modifier
+            )
+        } else {
+            Spacer(modifier = modifier)
+        }
     }
 
     val portraitSongMetadataSection: @Composable () -> Unit = {
@@ -1150,6 +1167,7 @@ fun FullPlayerContent(
                     songMetadataSection = landscapeSongMetadataSection,
                     playerProgressSection = playerProgressSection,
                     controlsSection = controlsSection,
+                    karaokeLyricsSection = karaokeLyricsSection,
                     isFullScreenArt = isImmersive
                 )
             } else {
@@ -1159,6 +1177,7 @@ fun FullPlayerContent(
                     songMetadataSection = portraitSongMetadataSection,
                     playerProgressSection = playerProgressSection,
                     controlsSection = controlsSection,
+                    karaokeLyricsSection = karaokeLyricsSection,
                     isFullScreenArt = isImmersive
                 )
             }
@@ -1951,6 +1970,7 @@ private fun FullPlayerPortraitContent(
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
     controlsSection: @Composable () -> Unit,
+    karaokeLyricsSection: @Composable (Modifier) -> Unit,
     isFullScreenArt: Boolean
 ) {
     Column(
@@ -1965,7 +1985,7 @@ private fun FullPlayerPortraitContent(
         verticalArrangement = Arrangement.SpaceAround
     ) {
         if (isFullScreenArt) {
-            Spacer(modifier = Modifier.weight(1f))
+            karaokeLyricsSection(Modifier.weight(1f))
         } else {
             albumCoverSection(Modifier)
         }
@@ -1990,6 +2010,7 @@ private fun FullPlayerLandscapeContent(
     songMetadataSection: @Composable () -> Unit,
     playerProgressSection: @Composable () -> Unit,
     controlsSection: @Composable () -> Unit,
+    karaokeLyricsSection: @Composable (Modifier) -> Unit,
     isFullScreenArt: Boolean
 ) {
     Row(
@@ -2003,7 +2024,7 @@ private fun FullPlayerLandscapeContent(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isFullScreenArt) {
-            Spacer(Modifier.fillMaxHeight().weight(1f))
+            karaokeLyricsSection(Modifier.fillMaxHeight().weight(1f))
         } else {
             albumCoverSection(Modifier.fillMaxHeight().weight(1f))
         }
