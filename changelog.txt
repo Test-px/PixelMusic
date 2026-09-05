@@ -1,6 +1,7 @@
 **Sub release 3.6** 
 
-
+*Fixed car play.
+*Updated and polished music recognition animation. ✨ 
 *Dynamic Island support. (Origin os special,considering it's an incredibly big achievement because I've not seen anyone successfully accomplish this perfectly yet🤭)
 *Motion blur.(Android 13+, in developement)
 *Fixed Home screen shuffle button position.
