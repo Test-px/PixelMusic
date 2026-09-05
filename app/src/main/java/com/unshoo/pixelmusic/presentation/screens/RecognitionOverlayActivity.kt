@@ -83,6 +83,7 @@ class RecognitionOverlayActivity : ComponentActivity() {
                 isAmoledBlack = true
             ) {
                 MusicRecognitionOverlay(
+                    isExternalWindow = true, // NEW: This turns on the iOS-style "drop & expand" animation
                     onDismiss = { finish() },
                     onPlayMusic = { result ->
                         lifecycleScope.launch {
