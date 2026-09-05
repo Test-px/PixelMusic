@@ -41,7 +41,8 @@
     <!-- For disabling battery optimization -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
+    
     <application
         android:name=".PixelMusicApplication"
         android:largeHeap="true"
@@ -116,6 +117,9 @@
                 <data android:mimeType="audio/mpegurl" />
                 <data android:mimeType="application/vnd.apple.mpegurl" />
             </intent-filter>
+            <meta-data
+    android:name="com.google.android.gms.car.application"
+    android:resource="@xml/automotive_app_desc" />
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
