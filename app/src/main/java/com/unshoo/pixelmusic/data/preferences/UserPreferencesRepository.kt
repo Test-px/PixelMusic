@@ -103,6 +103,10 @@ enum class PlayerDesignStyle {
     IMMERSIVE_EXTENDED
 }
 
+enum class NowPlayingLyricsStyle {
+    HIDDEN, KARAOKE
+}
+
 val LanguageCodeToName = mapOf(
     "en" to "English",
     "es" to "Español",
@@ -157,6 +161,7 @@ constructor(
         val LAST_GITHUB_CHECK_TIME = longPreferencesKey("last_github_check_time")
         val LATEST_GITHUB_CHANGELOG_CACHE = stringPreferencesKey("latest_github_changelog_cache")
         val DYNAMIC_ISLAND_STYLE = stringPreferencesKey("dynamic_island_style")
+        val NOW_PLAYING_LYRICS_STYLE = stringPreferencesKey("now_playing_lyrics_style")
        
         
         val PLAYER_THEME_PREFERENCE = stringPreferencesKey("player_theme_preference_v2")
@@ -691,6 +696,23 @@ constructor(
             preferences[PreferencesKeys.DYNAMIC_ISLAND_ENABLED] = enabled
         }
     }
+
+    val nowPlayingLyricsStyleFlow: Flow<NowPlayingLyricsStyle> =
+    dataStore.data.map { preferences ->
+        try {
+            NowPlayingLyricsStyle.valueOf(
+                preferences[PreferencesKeys.NOW_PLAYING_LYRICS_STYLE] ?: NowPlayingLyricsStyle.HIDDEN.name
+            )
+        } catch (e: Exception) {
+            NowPlayingLyricsStyle.HIDDEN
+        }
+    }.distinctUntilChanged()
+
+    suspend fun setNowPlayingLyricsStyle(style: NowPlayingLyricsStyle) {
+    dataStore.edit { preferences ->
+        preferences[PreferencesKeys.NOW_PLAYING_LYRICS_STYLE] = style.name
+    }
+}
 
     // ===== Library Sync Settings =====
 
