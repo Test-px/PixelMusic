@@ -1,6 +1,7 @@
 package com.unshoo.pixelmusic.presentation.components.player
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -26,7 +27,7 @@ fun ImmersiveSingleLineLyrics(
     lyrics: Lyrics?,
     playbackPositionFlow: StateFlow<Long>,
     syncOffsetMs: Int,
-    textColor: Color, // NEW: Binds to the system/album dynamic palette
+    textColor: Color, 
     modifier: Modifier = Modifier
 ) {
     val syncedLines = lyrics?.synced ?: emptyList()
@@ -42,7 +43,6 @@ fun ImmersiveSingleLineLyrics(
         if (index >= 0) syncedLines[index].line else ""
     }
 
-    // The AnimatedContent now wraps everything, ensuring smooth transitions even when switching to blank lines
     AnimatedContent(
         targetState = currentLine,
         transitionSpec = {
@@ -59,13 +59,12 @@ fun ImmersiveSingleLineLyrics(
             .padding(horizontal = 4.dp, vertical = 4.dp)
     ) { line ->
         
-        // Dynamically calculates blur based on whether this specific line is entering or exiting
-        val blurY by transition.animateDp(
-            transitionSpec = { tween(300) },
+        // FIX: Using animateDpAsState directly resolves the compiler type inference error
+        val blurY by animateDpAsState(
+            targetValue = if (line == currentLine) 0.dp else 12.dp,
+            animationSpec = tween(300),
             label = "blurY"
-        ) { state ->
-            if (state == line) 0.dp else 12.dp 
-        }
+        )
 
         if (line.isNotBlank()) {
             Box(
@@ -91,7 +90,6 @@ fun ImmersiveSingleLineLyrics(
                 )
             }
         } else {
-            // Invisible spacer to maintain layout height during instrumental breaks
             Spacer(modifier = Modifier.height(36.dp).fillMaxWidth())
         }
     }
