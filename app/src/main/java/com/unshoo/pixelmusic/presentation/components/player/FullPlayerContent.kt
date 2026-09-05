@@ -651,7 +651,8 @@ fun FullPlayerContent(
     }
 
     val singleLineLyricsSection: @Composable () -> Unit = {
-        if (nowPlayingLyricsStyle == com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.KARAOKE && 
+        if (isImmersive &&
+            nowPlayingLyricsStyle == com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.KARAOKE && 
             lyricsProvider()?.synced?.isNotEmpty() == true) {
             ImmersiveSingleLineLyrics(
                 lyrics = lyricsProvider(),
