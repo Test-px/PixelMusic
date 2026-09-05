@@ -656,7 +656,8 @@ fun FullPlayerContent(
             ImmersiveSingleLineLyrics(
                 lyrics = lyricsProvider(),
                 playbackPositionFlow = playerViewModel.currentPlaybackPosition,
-                syncOffsetMs = lyricsSyncOffset
+                syncOffsetMs = lyricsSyncOffset,
+                textColor = playerOnBaseColor
             )
         }
     }
