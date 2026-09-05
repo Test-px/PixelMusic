@@ -1,12 +1,15 @@
 package com.unshoo.pixelmusic.presentation.components.player
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +26,7 @@ fun ImmersiveSingleLineLyrics(
     lyrics: Lyrics?,
     playbackPositionFlow: StateFlow<Long>,
     syncOffsetMs: Int,
+    textColor: Color, // NEW: Binds to the system/album dynamic palette
     modifier: Modifier = Modifier
 ) {
     val syncedLines = lyrics?.synced ?: emptyList()
@@ -38,36 +42,57 @@ fun ImmersiveSingleLineLyrics(
         if (index >= 0) syncedLines[index].line else ""
     }
 
-    // Only render the text if the line isn't blank (hides it during instrumental breaks)
-    if (currentLine.isNotBlank()) {
-        AnimatedContent(
-            targetState = currentLine,
-            transitionSpec = {
-                (fadeIn(animationSpec = tween(300)) + slideInVertically { it / 2 }) togetherWith
-                (fadeOut(animationSpec = tween(300)) + slideOutVertically { -it / 2 })
-            },
-            label = "lyrics_crossfade",
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp)
-        ) { line ->
-            Text(
-                text = line,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = GoogleSansRounded,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp
-                ),
-                color = Color.White.copy(alpha = 0.9f),
-                textAlign = TextAlign.Start,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
+    // The AnimatedContent now wraps everything, ensuring smooth transitions even when switching to blank lines
+    AnimatedContent(
+        targetState = currentLine,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(400)) +
+             scaleIn(initialScale = 0.4f, animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f)) +
+             slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f))) togetherWith
+            (fadeOut(animationSpec = tween(300)) +
+             scaleOut(targetScale = 0.8f, animationSpec = tween(300)) +
+             slideOutVertically(targetOffsetY = { -it / 2 }, animationSpec = tween(300)))
+        },
+        label = "lyrics_crossfade",
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+    ) { line ->
+        
+        // Dynamically calculates blur based on whether this specific line is entering or exiting
+        val blurY by transition.animateDp(
+            transitionSpec = { tween(300) },
+            label = "blurY"
+        ) { state ->
+            if (state == line) 0.dp else 12.dp 
         }
-    } else {
-        // Keeps the vertical space from collapsing during instrumental breaks
-        Spacer(modifier = Modifier.height(30.dp))
+
+        if (line.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 36.dp), // Stable height to prevent UI jumps
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = GoogleSansRounded,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
+                    color = textColor,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .blur(radiusX = 0.dp, radiusY = blurY) // Applies the Y-axis motion blur
+                )
+            }
+        } else {
+            // Invisible spacer to maintain layout height during instrumental breaks
+            Spacer(modifier = Modifier.height(36.dp).fillMaxWidth())
+        }
     }
 }
-
