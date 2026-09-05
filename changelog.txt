@@ -1,4 +1,4 @@
-**Sub release 3.6** 
+**Sub release 3.7** 
 
 *Fixed car play.
 *Updated and polished music recognition animation. ✨ 
