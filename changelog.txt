@@ -1,5 +1,6 @@
 **Sub release 3.7** 
 
+*Lyrics on the Now Playing screen in Immersive or Immersive Extended mode.[@Saurav124x]
 *Fixed car play.[@Xyg901]
 *Updated and polished music recognition animation. ✨ [@Saurav124x]
 *Dynamic Island support. (Origin os special,considering it's an incredibly big achievement because I've not seen anyone successfully accomplish this perfectly yet🤭)[@Saurav124x]
