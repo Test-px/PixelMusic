@@ -711,6 +711,8 @@ fun SettingsCategoryScreen(
                         SettingsCategory.APPEARANCE -> {
                             val useSmoothCorners by settingsViewModel.useSmoothCorners.collectAsStateWithLifecycle()
                             val playerDesignStyle by playerViewModel.playerDesignStyle.collectAsStateWithLifecycle()
+                            val nowPlayingLyricsStyle by playerViewModel.userPreferencesRepository.nowPlayingLyricsStyleFlow
+                                .collectAsStateWithLifecycle(initialValue = com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.HIDDEN)
 
                             SettingsSubsection(title = stringResource(R.string.setcat_global_theme)) {
                                 ThemeSelectorItem(
