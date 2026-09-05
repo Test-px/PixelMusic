@@ -125,6 +125,9 @@ import kotlin.math.roundToInt
 import com.unshoo.pixelmusic.utils.InAppUpdater
 import com.unshoo.pixelmusic.utils.UpdateState
 import com.unshoo.pixelmusic.presentation.components.UpdateNotificationSheet
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+
 
 
 // AboutTopBar removed, replaced by CollapsibleCommonTopBar
@@ -321,12 +324,29 @@ private fun AboutHeroCard(
     }
 
     if (showChangelogDialog) {
+        val isUpdate = updateState is UpdateState.Available
+        val displayVersion = when (val state = updateState) {
+            is UpdateState.Available -> state.versionName
+            else -> versionName
+        }
         UpdateNotificationSheet(
-            isUpdateAvailable = false,
-            versionName = versionName,
+            isUpdateAvailable = isUpdate,
+            versionName = displayVersion,
             changelog = latestChangelog,
             onDismiss = { showChangelogDialog = false },
-            onConfirmClick = { showChangelogDialog = false }
+            onConfirmClick = {
+                showChangelogDialog = false
+                val availableState = updateState as? UpdateState.Available
+                if (availableState != null) {
+                    val appContext = context.applicationContext
+                    InAppUpdater.startOrResumeDownload(
+                        context = appContext,
+                        url = availableState.downloadUrl,
+                        versionName = availableState.versionName
+                    )
+                    navController.navigateSafely("update_download")
+                }
+            }
         )
     }
 
@@ -471,35 +491,106 @@ private fun AboutHeroCard(
                             is UpdateState.Available -> {
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     if (!state.changelog.isNullOrBlank()) {
+                                        val previewLines = remember(state.changelog) {
+                                            val nonBlankLines = state.changelog
+                                                .lines()
+                                                .map { it.trim() }
+                                                .filter { it.isNotEmpty() }
+
+                                            if (nonBlankLines.size >= 3) {
+                                                nonBlankLines.take(3)
+                                            } else {
+                                                // Fallback if the changelog is a single uninterrupted block
+                                                val words = state.changelog.split(Regex("\\s+")).filter { it.isNotEmpty() }
+                                                if (words.size >= 6) {
+                                                    val chunkSize = (words.size + 2) / 3
+                                                    words.chunked(chunkSize).take(3).map { it.joinToString(" ") }
+                                                } else {
+                                                    nonBlankLines
+                                                }
+                                            }
+                                        }
+
                                         Surface(
                                             shape = AbsoluteSmoothCornerShape(16.dp, 60),
                                             color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(bottom = 12.dp)
+                                                .clip(AbsoluteSmoothCornerShape(16.dp, 60))
+                                                .clickable { showChangelogDialog = true }
                                         ) {
-                                            Column(modifier = Modifier.padding(16.dp)) {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(modifier = Modifier.padding(14.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.AutoAwesome,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(16.dp),
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Text(
+                                                            text = "What's new in this update",
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
                                                     Icon(
-                                                        imageVector = Icons.Rounded.AutoAwesome, 
-                                                        contentDescription = null, 
-                                                        modifier = Modifier.size(16.dp), 
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text(
-                                                        text = "What's New", 
-                                                        style = MaterialTheme.typography.labelMedium, 
-                                                        color = MaterialTheme.colorScheme.primary, 
-                                                        fontWeight = FontWeight.Bold
+                                                        imageVector = Icons.Rounded.Notes,
+                                                        contentDescription = "Read full changelog",
+                                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                                        modifier = Modifier.size(16.dp)
                                                     )
                                                 }
+
                                                 Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                    text = state.changelog,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+
+                                                // 1st line: Clearly visible
+                                                if (previewLines.isNotEmpty()) {
+                                                    Text(
+                                                        text = previewLines[0],
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                // 2nd line: Mid blur + slight fade
+                                                if (previewLines.size > 1) {
+                                                    Spacer(modifier = Modifier.height(3.dp))
+                                                    Text(
+                                                        text = previewLines[1],
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier
+                                                            .blur(1.8.dp)
+                                                            .graphicsLayer { alpha = 0.65f }
+                                                    )
+                                                }
+
+                                                // 3rd line: High blur + heavier fade
+                                                if (previewLines.size > 2) {
+                                                    Spacer(modifier = Modifier.height(3.dp))
+                                                    Text(
+                                                        text = previewLines[2],
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier
+                                                            .blur(4.2.dp)
+                                                            .graphicsLayer { alpha = 0.35f }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
