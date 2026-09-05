@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,7 +23,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -49,11 +52,12 @@ import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @Composable
 fun MusicRecognitionOverlay(
+    isExternalWindow: Boolean = false, // NEW: Defaults to false to protect in-app behavior
     onDismiss: () -> Unit,
     onPlayMusic: (RecognitionResult) -> Unit
 ) {
     var status by remember { mutableStateOf<RecognitionStatus>(RecognitionStatus.Ready) }
-    var isOpeningApp by remember { mutableStateOf(false) } // NEW: Tracks the background search state
+    var isOpeningApp by remember { mutableStateOf(false) } 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -142,19 +146,44 @@ fun MusicRecognitionOverlay(
     val textColor = Color.White
     val subTextColor = Color.White.copy(alpha = 0.70f)
 
-    val offscreenStartY = with(density) { -(screenHeight.toPx() + 450.dp.toPx()) }
+    // ANIMATION SETUP
+    val offscreenStartY = with(density) { 
+        if (isExternalWindow) -250.dp.toPx() else -(screenHeight.toPx() + 450.dp.toPx()) 
+    }
     val cardDropOffsetY = remember { Animatable(offscreenStartY) }
+    
+    val initialScale = if (isExternalWindow) 0.7f else 1f
+    val cardScale = remember { Animatable(initialScale) }
+    
+    val initialAlpha = if (isExternalWindow) 0f else 1f
+    val cardAlpha = remember { Animatable(initialAlpha) }
 
     LaunchedEffect(status) {
         if (status is RecognitionStatus.Success) {
             cardDropOffsetY.snapTo(offscreenStartY)
-            cardDropOffsetY.animateTo(
-                targetValue = 0f,
-                animationSpec = spring(
-                    dampingRatio = 0.70f,
-                    stiffness = 340f
+            cardScale.snapTo(initialScale)
+            cardAlpha.snapTo(initialAlpha)
+            
+            launch {
+                cardDropOffsetY.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = 0.70f, stiffness = 300f)
                 )
-            )
+            }
+            if (isExternalWindow) {
+                launch {
+                    cardScale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(dampingRatio = 0.70f, stiffness = 300f)
+                    )
+                }
+                launch {
+                    cardAlpha.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(durationMillis = 250) // Smooth fade
+                    )
+                }
+            }
         }
     }
 
@@ -190,6 +219,8 @@ fun MusicRecognitionOverlay(
                 Surface(
                     modifier = Modifier
                         .offset { IntOffset(0, cardDropOffsetY.value.roundToInt()) }
+                        .scale(cardScale.value) // NEW: Applies scaling
+                        .alpha(cardAlpha.value) // NEW: Applies fade in
                         .width(330.dp)
                         .heightIn(min = 520.dp)
                         .padding(horizontal = 16.dp)
@@ -268,7 +299,6 @@ fun MusicRecognitionOverlay(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
-                            // NEW: Animated content transition for the loading spinner
                             AnimatedContent(
                                 targetState = isOpeningApp,
                                 label = "play_button_state"
