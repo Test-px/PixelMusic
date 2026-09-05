@@ -3,6 +3,7 @@ package com.unshoo.pixelmusic.presentation.components
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -49,6 +50,7 @@ import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
@@ -59,7 +61,9 @@ fun MusicRecognitionOverlay(
     onPlayMusic: (RecognitionResult) -> Unit
 ) {
     var status by remember { mutableStateOf<RecognitionStatus>(RecognitionStatus.Ready) }
-    var isOpeningApp by remember { mutableStateOf(false) } 
+    var isOpeningApp by remember { mutableStateOf(false) }
+    var isClosing by remember { mutableStateOf(false) } // NEW: Tracks the exit animation state
+    
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -154,20 +158,38 @@ fun MusicRecognitionOverlay(
     }
     val cardDropOffsetY = remember { Animatable(offscreenStartY) }
     
-    val initialScale = if (isExternalWindow) 0.4f else 1f // Scale from 0.4x
+    val initialScale = if (isExternalWindow) 0.4f else 1f
     val cardScale = remember { Animatable(initialScale) }
     
     val initialAlpha = if (isExternalWindow) 0f else 1f
     val cardAlpha = remember { Animatable(initialAlpha) }
+    
+    val rootAlpha = remember { Animatable(1f) } // NEW: Controls the entire background fade
 
+    // Safe Dismiss Trigger (Protects internal app behavior)
+    val triggerDismiss: () -> Unit = {
+        if (isExternalWindow) {
+            if (!isClosing) isClosing = true
+        } else {
+            onDismiss() // Original immediate closure for the internal app
+        }
+    }
+
+    // Intercept System Back Button
+    if (isExternalWindow) {
+        BackHandler(enabled = !isClosing) {
+            triggerDismiss()
+        }
+    }
+
+    // ENTRANCE ANIMATIONS
     LaunchedEffect(status) {
-        if (status is RecognitionStatus.Success) {
+        if (status is RecognitionStatus.Success && !isClosing) {
             cardDropOffsetY.snapTo(offscreenStartY)
             cardScale.snapTo(initialScale)
             cardAlpha.snapTo(initialAlpha)
             
             if (isExternalWindow) {
-                // External Window: Slow, smooth drop from the island
                 launch {
                     cardDropOffsetY.animateTo(
                         targetValue = 0f,
@@ -187,7 +209,6 @@ fun MusicRecognitionOverlay(
                     )
                 }
             } else {
-                // Internal App: Original fast slide-in
                 launch {
                     cardDropOffsetY.animateTo(
                         targetValue = 0f,
@@ -198,21 +219,58 @@ fun MusicRecognitionOverlay(
         }
     }
 
+    // EXIT ANIMATIONS (Runs when triggerDismiss sets isClosing = true)
+    LaunchedEffect(isClosing) {
+        if (isClosing && isExternalWindow) {
+            // Fade out the dark background overlay smoothly
+            launch {
+                rootAlpha.animateTo(targetValue = 0f, animationSpec = tween(durationMillis = 350))
+            }
+
+            // Fly the card back up into the island if it's currently showing
+            if (status is RecognitionStatus.Success) {
+                launch {
+                    cardDropOffsetY.animateTo(
+                        targetValue = offscreenStartY,
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f)
+                    )
+                }
+                launch {
+                    cardScale.animateTo(
+                        targetValue = initialScale,
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f)
+                    )
+                }
+                launch {
+                    cardAlpha.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 250) // Fades out slightly before it hits the top
+                    )
+                }
+            }
+            
+            // Wait for the longest animation (the 350ms background fade) to finish, then kill the Activity
+            delay(350)
+            onDismiss()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .alpha(if (isExternalWindow) rootAlpha.value else 1f) // NEW: Applies the root fade
             .then(rootShaderModifier)
             .clip(RoundedCornerShape(screenCornerRadius))
             .background(overlayBackground)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onDismiss
+                onClick = { triggerDismiss() }
             ),
         contentAlignment = Alignment.Center
     ) {
         IconButton(
-            onClick = onDismiss,
+            onClick = { triggerDismiss() },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 16.dp, top = 44.dp)
@@ -235,7 +293,6 @@ fun MusicRecognitionOverlay(
                         .blur(
                             radiusX = 0.dp,
                             radiusY = if (isExternalWindow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                // Dynamic Motion Blur tied to the Y-axis velocity
                                 (abs(cardDropOffsetY.velocity) / 150f).coerceIn(0f, 24f).dp
                             } else 0.dp
                         )
