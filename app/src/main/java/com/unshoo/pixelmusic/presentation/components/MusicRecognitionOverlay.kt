@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -46,13 +47,14 @@ import com.unshoo.pixelmusic.data.shazam.RecognitionStatus
 import com.unshoo.pixelmusic.ui.effects.recognitionRippleEffect
 import com.unshoo.pixelmusic.ui.effects.successSweepEffect
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 @Composable
 fun MusicRecognitionOverlay(
-    isExternalWindow: Boolean = false, // NEW: Defaults to false to protect in-app behavior
+    isExternalWindow: Boolean = false,
     onDismiss: () -> Unit,
     onPlayMusic: (RecognitionResult) -> Unit
 ) {
@@ -152,7 +154,7 @@ fun MusicRecognitionOverlay(
     }
     val cardDropOffsetY = remember { Animatable(offscreenStartY) }
     
-    val initialScale = if (isExternalWindow) 0.7f else 1f
+    val initialScale = if (isExternalWindow) 0.4f else 1f // Scale from 0.4x
     val cardScale = remember { Animatable(initialScale) }
     
     val initialAlpha = if (isExternalWindow) 0f else 1f
@@ -164,23 +166,32 @@ fun MusicRecognitionOverlay(
             cardScale.snapTo(initialScale)
             cardAlpha.snapTo(initialAlpha)
             
-            launch {
-                cardDropOffsetY.animateTo(
-                    targetValue = 0f,
-                    animationSpec = spring(dampingRatio = 0.70f, stiffness = 300f)
-                )
-            }
             if (isExternalWindow) {
+                // External Window: Slow, smooth drop from the island
+                launch {
+                    cardDropOffsetY.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f)
+                    )
+                }
                 launch {
                     cardScale.animateTo(
                         targetValue = 1f,
-                        animationSpec = spring(dampingRatio = 0.70f, stiffness = 300f)
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 100f)
                     )
                 }
                 launch {
                     cardAlpha.animateTo(
                         targetValue = 1f,
-                        animationSpec = tween(durationMillis = 250) // Smooth fade
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                }
+            } else {
+                // Internal App: Original fast slide-in
+                launch {
+                    cardDropOffsetY.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.70f, stiffness = 340f)
                     )
                 }
             }
@@ -219,8 +230,15 @@ fun MusicRecognitionOverlay(
                 Surface(
                     modifier = Modifier
                         .offset { IntOffset(0, cardDropOffsetY.value.roundToInt()) }
-                        .scale(cardScale.value) // NEW: Applies scaling
-                        .alpha(cardAlpha.value) // NEW: Applies fade in
+                        .scale(cardScale.value)
+                        .alpha(cardAlpha.value)
+                        .blur(
+                            radiusX = 0.dp,
+                            radiusY = if (isExternalWindow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                // Dynamic Motion Blur tied to the Y-axis velocity
+                                (abs(cardDropOffsetY.velocity) / 150f).coerceIn(0f, 24f).dp
+                            } else 0.dp
+                        )
                         .width(330.dp)
                         .heightIn(min = 520.dp)
                         .padding(horizontal = 16.dp)
