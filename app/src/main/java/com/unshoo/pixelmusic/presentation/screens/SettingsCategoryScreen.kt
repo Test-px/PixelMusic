@@ -817,6 +817,40 @@ fun SettingsCategoryScreen(
         ) 
     }
 )
+
+                                    // NEW: Conditional Dropdown for Now Playing Lyrics
+AnimatedVisibility(
+    visible = playerDesignStyle == com.unshoo.pixelmusic.data.preferences.PlayerDesignStyle.IMMERSIVE || 
+              playerDesignStyle == com.unshoo.pixelmusic.data.preferences.PlayerDesignStyle.IMMERSIVE_EXTENDED,
+    enter = expandVertically() + fadeIn(),
+    exit = shrinkVertically() + fadeOut()
+) {
+    ThemeSelectorItem(
+        label = "Immersive Lyrics Display",
+        description = "Show synced karaoke lyrics inside the immersive player",
+        options = mapOf(
+            com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.HIDDEN.name to "Hidden",
+            com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.KARAOKE.name to "Karaoke Style"
+        ),
+        selectedKey = nowPlayingLyricsStyle.name,
+        onSelectionChanged = { key ->
+            coroutineScope.launch {
+                playerViewModel.userPreferencesRepository.setNowPlayingLyricsStyle(
+                    com.unshoo.pixelmusic.data.preferences.NowPlayingLyricsStyle.valueOf(key)
+                )
+            }
+        },
+        leadingIcon = { 
+            Icon(
+                painterResource(R.drawable.rounded_lyrics_24), 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.secondary
+            ) 
+        }
+    )
+}
+
+
                                 SwitchSettingItem(
                                     title = stringResource(R.string.setcat_show_player_file_info_title),
                                     subtitle = stringResource(R.string.setcat_show_player_file_info_subtitle),
