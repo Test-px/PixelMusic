@@ -29,13 +29,16 @@ object ShareVideoEngine {
         return@withContext suspendCancellableCoroutine { continuation ->
             try {
                 // 1. Prepare the static image track (15 seconds at 30fps)
-                val imageMediaItem = MediaItem.fromUri(Uri.parse("file://$imagePath"))
+                val imageMediaItem = MediaItem.Builder()
+                    .setUri(Uri.parse("file://$imagePath"))
+                    .setImageDurationMs(15_000L) // FIXED: Required by Media3 for static images
+                    .build()
+                    
                 val editedImage = EditedMediaItem.Builder(imageMediaItem)
-                    .setDurationUs(15_000_000L) // 15 seconds
                     .setFrameRate(30)
                     .build()
                 
-                val imageSequence = EditedMediaItemSequence.withVideoFrom(listOf(editedImage))
+                val imageSequence = EditedMediaItemSequence(mutableListOf(editedImage))
 
                 // 2. Prepare the audio track (Handles both local files and streaming URLs)
                 val audioUri = if (audioPath.startsWith("http")) {
@@ -55,10 +58,10 @@ object ShareVideoEngine {
                     .build()
                 val editedAudio = EditedMediaItem.Builder(audioMediaItem).build()
                 
-                val audioSequence = EditedMediaItemSequence.withAudioFrom(listOf(editedAudio))
+                val audioSequence = EditedMediaItemSequence(mutableListOf(editedAudio))
 
                 // 3. Combine them into a single hardware-accelerated composition
-                val composition = Composition.Builder(listOf(imageSequence, audioSequence)).build()
+                val composition = Composition.Builder(mutableListOf(imageSequence, audioSequence)).build()
 
                 // 4. Configure Transformer for MP4 encoding
                 val transformer = Transformer.Builder(context)
