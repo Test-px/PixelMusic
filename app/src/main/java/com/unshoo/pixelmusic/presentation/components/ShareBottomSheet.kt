@@ -543,8 +543,19 @@ fun ShareBottomSheet(
                                             try {
                                                 val imageFile = saveBitmapToCache(bitmap)
                                                 
+                                                // Convert local Song model to YouTube Song model to satisfy YoutubeHelper
+                                                val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
+                                                    youtubeId = song.youtubeId ?: "",
+                                                    title = song.title,
+                                                    artist = song.displayArtist,
+                                                    duration = "0:00",
+                                                    thumbnailHref = song.albumArtUriString ?: ""
+                                                ).apply {
+                                                    audioFilePath = song.path
+                                                }
+                                                
                                                 // Fetch local file OR remote streaming URL safely
-                                                val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, song)
+                                                val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, ytSong)
                                                 
                                                 if (audioPath.isBlank()) {
                                                     // Failsafe fallback to image
@@ -665,7 +676,19 @@ fun ShareBottomSheet(
                                         isCapturing = true
                                         try {
                                             val imageFile = saveBitmapToCache(bitmap)
-                                            val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, song)
+                                            
+                                            // Convert local Song model to YouTube Song model
+                                            val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
+                                                youtubeId = song.youtubeId ?: "",
+                                                title = song.title,
+                                                artist = song.displayArtist,
+                                                duration = "0:00",
+                                                thumbnailHref = song.albumArtUriString ?: ""
+                                            ).apply {
+                                                audioFilePath = song.path
+                                            }
+                                            
+                                            val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, ytSong)
                                             
                                             if (audioPath.isBlank()) {
                                                 // Fallback to Image Share
