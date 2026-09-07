@@ -543,16 +543,15 @@ fun ShareBottomSheet(
                                             try {
                                                 val imageFile = saveBitmapToCache(bitmap)
                                                 
-                                                // Convert local Song model to YouTube Song model to satisfy YoutubeHelper
+                                                // Convert local Song to YouTube Song by passing audioFilePath in the constructor
                                                 val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
                                                     youtubeId = song.youtubeId ?: "",
                                                     title = song.title,
                                                     artist = song.displayArtist,
                                                     duration = "0:00",
-                                                    thumbnailHref = song.albumArtUriString ?: ""
-                                                ).apply {
-                                                    audioFilePath = song.path
-                                                }
+                                                    thumbnailHref = song.albumArtUriString ?: "",
+                                                    audioFilePath = song.path // FIXED: Passed directly here
+                                                )
                                                 
                                                 // Fetch local file OR remote streaming URL safely
                                                 val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, ytSong)
@@ -677,16 +676,15 @@ fun ShareBottomSheet(
                                         try {
                                             val imageFile = saveBitmapToCache(bitmap)
                                             
-                                            // Convert local Song model to YouTube Song model
+                                            // Convert local Song to YouTube Song
                                             val ytSong = com.unshoo.pixelmusic.data.model.youtube.Song(
                                                 youtubeId = song.youtubeId ?: "",
                                                 title = song.title,
                                                 artist = song.displayArtist,
                                                 duration = "0:00",
-                                                thumbnailHref = song.albumArtUriString ?: ""
-                                            ).apply {
-                                                audioFilePath = song.path
-                                            }
+                                                thumbnailHref = song.albumArtUriString ?: "",
+                                                audioFilePath = song.path // FIXED: Passed directly here
+                                            )
                                             
                                             val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, ytSong)
                                             
