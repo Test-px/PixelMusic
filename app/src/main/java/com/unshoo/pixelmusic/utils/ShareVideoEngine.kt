@@ -29,17 +29,13 @@ object ShareVideoEngine {
         return@withContext suspendCancellableCoroutine { continuation ->
             try {
                 // 1. Prepare the static image track (15 seconds at 30fps)
-                val imageMediaItem = MediaItem.Builder()
-                    .setUri(Uri.parse("file://$imagePath"))
-                    .setImageDurationMs(15_000L) // REQUIRED for static images
-                    .build()
-                    
+                val imageMediaItem = MediaItem.fromUri(Uri.parse("file://$imagePath"))
                 val editedImage = EditedMediaItem.Builder(imageMediaItem)
+                    .setDurationUs(15_000_000L) // 15 seconds
                     .setFrameRate(30)
                     .build()
                 
-                // FIX: Passed the raw item directly (no mutableListOf needed here)
-                val imageSequence = EditedMediaItemSequence(editedImage)
+                val imageSequence = EditedMediaItemSequence.withVideoFrom(listOf(editedImage))
 
                 // 2. Prepare the audio track (Handles both local files and streaming URLs)
                 val audioUri = if (audioPath.startsWith("http")) {
@@ -59,12 +55,10 @@ object ShareVideoEngine {
                     .build()
                 val editedAudio = EditedMediaItem.Builder(audioMediaItem).build()
                 
-                // FIX: Passed the raw item directly (no mutableListOf needed here)
-                val audioSequence = EditedMediaItemSequence(editedAudio)
+                val audioSequence = EditedMediaItemSequence.withAudioFrom(listOf(editedAudio))
 
                 // 3. Combine them into a single hardware-accelerated composition
-                // FIX: This is the ONLY place that requires mutableListOf()
-                val composition = Composition.Builder(mutableListOf(imageSequence, audioSequence)).build()
+                val composition = Composition.Builder(listOf(imageSequence, audioSequence)).build()
 
                 // 4. Configure Transformer for MP4 encoding
                 val transformer = Transformer.Builder(context)
