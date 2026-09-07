@@ -3,6 +3,7 @@ package com.unshoo.pixelmusic.utils
 import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
@@ -29,7 +30,14 @@ object ShareVideoEngine {
         return@withContext suspendCancellableCoroutine { continuation ->
             try {
                 // 1. Prepare the static image track (15 seconds at 30fps)
-                val imageMediaItem = MediaItem.fromUri(Uri.parse("file://$imagePath"))
+                // NOTE: MimeType must be set explicitly, or Transformer can't tell this
+                // is an image. Without it, it falls back to ExoPlayerAssetLoader, which
+                // tries to demux the PNG as audio/video, finds no track, and throws
+                // "asset loader has no audio or video track to output".
+                val imageMediaItem = MediaItem.Builder()
+                    .setUri(Uri.parse("file://$imagePath"))
+                    .setMimeType(MimeTypes.IMAGE_PNG)
+                    .build()
                 val editedImage = EditedMediaItem.Builder(imageMediaItem)
                     .setDurationUs(15_000_000L) // 15 seconds
                     .setFrameRate(30)
