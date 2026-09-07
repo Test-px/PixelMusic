@@ -35,26 +35,29 @@ object ShareVideoEngine {
                     .setFrameRate(30)
                     .build()
                 
-                // FIXED: Use the Media3 1.9.0 static factory method for a video track
                 val imageSequence = EditedMediaItemSequence.withVideoFrom(listOf(editedImage))
 
-                // 2. Prepare the audio track (Trimmed from 30s to 45s for the hook)
+                // 2. Prepare the audio track (Handles both local files and streaming URLs)
+                val audioUri = if (audioPath.startsWith("http")) {
+                    Uri.parse(audioPath)
+                } else {
+                    Uri.parse("file://$audioPath")
+                }
+
                 val audioMediaItem = MediaItem.Builder()
-                    .setUri(Uri.parse("file://$audioPath"))
+                    .setUri(audioUri)
                     .setClippingConfiguration(
                         MediaItem.ClippingConfiguration.Builder()
-                            .setStartPositionMs(30_000L)
-                            .setEndPositionMs(45_000L)
+                            .setStartPositionMs(30_000L) // Start at the 30-second mark (the hook)
+                            .setEndPositionMs(45_000L)   // Grab exactly 15 seconds
                             .build()
                     )
                     .build()
                 val editedAudio = EditedMediaItem.Builder(audioMediaItem).build()
                 
-                // FIXED: Use the Media3 1.9.0 static factory method for an audio track
                 val audioSequence = EditedMediaItemSequence.withAudioFrom(listOf(editedAudio))
 
                 // 3. Combine them into a single hardware-accelerated composition
-                // Composition.Builder safely accepts a standard List of sequences
                 val composition = Composition.Builder(listOf(imageSequence, audioSequence)).build()
 
                 // 4. Configure Transformer for MP4 encoding
