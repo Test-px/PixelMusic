@@ -537,44 +537,42 @@ fun ShareBottomSheet(
                                 containerColor = Color(0xFFE1306C).copy(alpha = 0.12f),
                                 contentColor = Color(0xFFE1306C),
                                 onClick = {
-                                captureAndShare { bitmap ->
-                                    scope.launch {
-                                        isCapturing = true // Keeps your loading spinner spinning during render
-                                        try {
-                                            // 1. Save your custom UI snapshot
-                                            val imageFile = saveBitmapToCache(bitmap)
-                                            
-                                            // 2. Verify we have the local audio file downloaded
-                                            val audioPath = if (song.path.isNotBlank() && File(song.path).exists()) song.path else null
-                                            
-                                            if (audioPath == null) {
-                                                // Fallback: If streaming/not downloaded, just share the silent image
-                                                val fallbackUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
-                                                shareToInstagramStory(context, fallbackUri, null, null)
-                                                return@launch
-                                            }
+                                    captureAndShare { bitmap ->
+                                        scope.launch {
+                                            isCapturing = true // Show loading spinner
+                                            try {
+                                                val imageFile = saveBitmapToCache(bitmap)
+                                                
+                                                // Fetch local file OR remote streaming URL safely
+                                                val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, song)
+                                                
+                                                if (audioPath.isBlank()) {
+                                                    // Failsafe fallback to image
+                                                    val fallbackUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+                                                    shareToInstagramStory(context, fallbackUri, null, null)
+                                                    return@launch
+                                                }
 
-                                            // 3. Trigger hardware-accelerated video rendering
-                                            val outputMp4 = File(context.cacheDir, "insta_share_${System.currentTimeMillis()}.mp4")
-                                            val success = com.unshoo.pixelmusic.utils.ShareVideoEngine.createInstagramShareVideo(
-                                                context = context,
-                                                imagePath = imageFile.absolutePath,
-                                                audioPath = audioPath,
-                                                outputPath = outputMp4.absolutePath
-                                            )
+                                                // Trigger hardware-accelerated video rendering
+                                                val outputMp4 = File(context.cacheDir, "insta_share_${System.currentTimeMillis()}.mp4")
+                                                val success = com.unshoo.pixelmusic.utils.ShareVideoEngine.createInstagramShareVideo(
+                                                    context = context,
+                                                    imagePath = imageFile.absolutePath,
+                                                    audioPath = audioPath,
+                                                    outputPath = outputMp4.absolutePath
+                                                )
 
-                                            // 4. Push directly to Instagram
-                                            if (success) {
-                                                val videoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputMp4)
-                                                shareToInstagramStory(context, videoUri, null, null)
-                                            } else {
-                                                withContext(Dispatchers.Main) { Toast.makeText(context, "Failed to render video", Toast.LENGTH_SHORT).show() }
+                                                if (success) {
+                                                    val videoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputMp4)
+                                                    shareToInstagramStory(context, videoUri, null, null)
+                                                } else {
+                                                    withContext(Dispatchers.Main) { Toast.makeText(context, "Failed to render video", Toast.LENGTH_SHORT).show() }
+                                                }
+                                            } finally {
+                                                isCapturing = false // Hide spinner
                                             }
-                                        } finally {
-                                            isCapturing = false // Hide spinner
                                         }
                                     }
-                                }
                                 }
                             )
                         }
@@ -662,52 +660,52 @@ fun ShareBottomSheet(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             onClick = {
-    captureAndShare { bitmap ->
-        scope.launch {
-            isCapturing = true 
-            try {
-                val imageFile = saveBitmapToCache(bitmap)
-                val audioPath = if (song.path.isNotBlank() && File(song.path).exists()) song.path else null
-                
-                if (audioPath == null) {
-                    // Fallback to static image for WhatsApp
-                    val fallbackUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, fallbackUri)
-                        putExtra(Intent.EXTRA_TEXT, "${song.title}\n🎵 $GITHUB_LINK")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, "Share Image"))
-                    return@launch
-                }
+                                captureAndShare { bitmap ->
+                                    scope.launch {
+                                        isCapturing = true
+                                        try {
+                                            val imageFile = saveBitmapToCache(bitmap)
+                                            val audioPath = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.getSongPlayerUrl(context, song)
+                                            
+                                            if (audioPath.isBlank()) {
+                                                // Fallback to Image Share
+                                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "image/png"
+                                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                                    putExtra(Intent.EXTRA_TEXT, "${song.title}\n🎵 $GITHUB_LINK")
+                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                }
+                                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_sheet_chooser_title)))
+                                                return@launch
+                                            }
 
-                // Render the MP4 Video for WhatsApp!
-                val outputMp4 = File(context.cacheDir, "whatsapp_share_${System.currentTimeMillis()}.mp4")
-                val success = com.unshoo.pixelmusic.utils.ShareVideoEngine.createInstagramShareVideo(
-                    context = context,
-                    imagePath = imageFile.absolutePath,
-                    audioPath = audioPath,
-                    outputPath = outputMp4.absolutePath
-                )
+                                            // Render MP4 Video Share
+                                            val outputMp4 = File(context.cacheDir, "pixelmusic_share_${System.currentTimeMillis()}.mp4")
+                                            val success = com.unshoo.pixelmusic.utils.ShareVideoEngine.createInstagramShareVideo(
+                                                context = context,
+                                                imagePath = imageFile.absolutePath,
+                                                audioPath = audioPath,
+                                                outputPath = outputMp4.absolutePath
+                                            )
 
-                if (success) {
-                    val videoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputMp4)
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "video/mp4"
-                        putExtra(Intent.EXTRA_STREAM, videoUri)
-                        putExtra(Intent.EXTRA_TEXT, "Listening to ${song.title} 🎵\n$GITHUB_LINK")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, "Share Video"))
-                } else {
-                    withContext(Dispatchers.Main) { Toast.makeText(context, "Failed to render video", Toast.LENGTH_SHORT).show() }
-                }
-            } finally {
-                isCapturing = false
-            }
-        }
-    }
+                                            if (success) {
+                                                val videoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputMp4)
+                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "video/mp4" // NOW SHARING VIDEO
+                                                    putExtra(Intent.EXTRA_STREAM, videoUri)
+                                                    putExtra(Intent.EXTRA_TEXT, "Listening to ${song.title} 🎵\n$GITHUB_LINK")
+                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                }
+                                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_sheet_chooser_title)))
+                                            } else {
+                                                withContext(Dispatchers.Main) { Toast.makeText(context, "Failed to render video", Toast.LENGTH_SHORT).show() }
+                                            }
+                                        } finally {
+                                            isCapturing = false
+                                        }
+                                    }
+                                }
                             }
                         )
                     }
