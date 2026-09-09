@@ -121,6 +121,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+import androidx.compose.material3.TextButton
+
 
 
 // -----------------------------------------------------------------------------------------
@@ -209,24 +211,20 @@ fun ExploreScreen(
         }
     }
 
-    // Infinite scroll trigger
-    LaunchedEffect(listState) {
-        snapshotFlow { 
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val isNearEnd = totalItems > 0 && lastVisibleItem >= totalItems - 3
-            
-            // Return totalItems when near the end, or 0 when not. 
-            // This ensures distinctUntilChanged() passes the new size when the list grows.
-            if (isNearEnd) totalItems else 0
-        }.distinctUntilChanged()
-         .collect { triggerTotal ->
-             if (triggerTotal > 0) {
-                 exploreViewModel.loadMore()
-             }
-         }
+// Infinite scroll trigger - FIXED VERSION
+LaunchedEffect(listState) {
+    snapshotFlow { 
+        val layoutInfo = listState.layoutInfo
+        val totalItems = layoutInfo.totalItemsCount
+        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        totalItems > 0 && lastVisibleItem >= totalItems - 5 // Increased threshold
     }
+    .collect { nearEnd ->
+        if (nearEnd) {
+            exploreViewModel.loadMore()
+        }
+    }
+}
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -460,11 +458,14 @@ fun ExploreScreen(
                         // 4) Dynamic Personalized YouTube Sections with Animated Dynamic Shapes
                         if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
                             homeSectionsFiltered.forEachIndexed { index, section ->
-                                item(key = "home_section_${section.title}_${index}_header") {
-                                    SectionHeader(title = section.title)
-                                }
-                                
-                                item(key = "home_section_${section.title}_${index}_carousel") {
+    // Use a more unique key that includes content hash
+    val sectionKey = "home_section_${index}_${section.title.hashCode()}"
+    
+    item(key = "${sectionKey}_header") {
+        SectionHeader(title = section.title)
+    }
+    
+    item(key = sectionKey) {
                                     val titleLower = section.title.lowercase()
                                     val songItems = remember(section.items) { section.items.filterIsInstance<SongItem>() }
                                     val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
@@ -518,18 +519,35 @@ fun ExploreScreen(
                                 }
                             }
 
-                            if (uiState.isContinuationLoading) {
-                                item(key = "loading_indicator") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                                    }
-                                }
-                            }
+                            // Add this inside the LazyColumn builder, after all sections
+if (uiState.isContinuationLoading) {
+    item(key = "pagination_loading") {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+        }
+    }
+} else if (uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
+    item(key = "load_more_button") {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Button(
+                onClick = { exploreViewModel.loadMore() },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Load More")
+            }
+        }
+    }
+}
                         }
                     }
 
