@@ -531,7 +531,7 @@ if (uiState.isContinuationLoading) {
             CircularProgressIndicator(modifier = Modifier.size(32.dp))
         }
     }
-} if (!uiState.isContinuationLoading && uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
+} else if (uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
     item(key = "load_more_button") {
         Box(
             modifier = Modifier
@@ -539,8 +539,9 @@ if (uiState.isContinuationLoading) {
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            TextButton(
-                onClick = { exploreViewModel.loadMore() }
+            Button(
+                onClick = { exploreViewModel.loadMore() },
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Load More")
             }
