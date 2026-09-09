@@ -494,34 +494,56 @@ class ExploreViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        val currentState = _uiState.value
-        val continuation = currentState.homePageContinuation
-        if (currentState.isContinuationLoading || continuation == null) return
+    val currentState = _uiState.value
+    val continuation = currentState.homePageContinuation
+    
+    // Add logging to debug
+    Timber.d("loadMore() called - isContinuationLoading: ${currentState.isContinuationLoading}, continuation: $continuation")
+    
+    if (currentState.isContinuationLoading || continuation == null) {
+        Timber.d("loadMore() skipped - already loading or no continuation")
+        return
+    }
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isContinuationLoading = true) }
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    YouTube.home(continuation = continuation).getOrNull()
-                }
-                if (result != null) {
-                    _uiState.update {
-                        val newState = it.copy(
-                            isContinuationLoading = false,
-                            homePageSections = it.homePageSections + result.sections,
-                            homePageContinuation = result.continuation
-                        )
-                        persistToCache(newState)
-                        newState
-                    }
-                } else {
-                    _uiState.update { it.copy(isContinuationLoading = false) }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error loading more Explore screen sections")
-                _uiState.update { it.copy(isContinuationLoading = false) }
+    viewModelScope.launch {
+        _uiState.update { it.copy(isContinuationLoading = true) }
+        try {
+            val result = withContext(Dispatchers.IO) {
+                YouTube.home(continuation = continuation).getOrNull()
             }
+            
+            Timber.d("loadMore() result: ${result?.sections?.size ?: 0} new sections, new continuation: ${result?.continuation != null}")
+            
+            if (result != null && result.sections.isNotEmpty()) {
+                _uiState.update {
+                    // Deduplicate sections by title to avoid duplicates
+                    val existingTitles = it.homePageSections.map { section -> section.title }.toSet()
+                    val newSections = result.sections.filter { section -> 
+                        section.title !in existingTitles 
+                    }
+                    
+                    val newState = it.copy(
+                        isContinuationLoading = false,
+                        homePageSections = it.homePageSections + newSections,
+                        homePageContinuation = result.continuation
+                    )
+                    persistToCache(newState)
+                    newState
+                }
+            } else {
+                // No more data or error - clear continuation to stop trying
+                _uiState.update { 
+                    it.copy(
+                        isContinuationLoading = false,
+                        homePageContinuation = null // Stop pagination if no more data
+                    ) 
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error loading more Explore screen sections")
+            _uiState.update { it.copy(isContinuationLoading = false) }
         }
+    }
     }
 
     fun setSelectedFilter(filter: String) {
