@@ -207,6 +207,73 @@ val PurpleLightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
+// --- Monochrome Yellow Palette (Minimalist) ---
+private val YellowDarkBackground = Color(0xFF000000)
+private val YellowDarkSurface = Color(0xFF141414)
+private val YellowDarkPrimary = Color(0xFFFFC436) // Vibrant Amber/Yellow
+private val YellowDarkSecondary = Color(0xFFFFFFFF) // White accents
+private val YellowDarkTertiary = Color(0xFFCCCCCC)
+private val YellowDarkOnPrimary = Color(0xFF221500)
+private val YellowDarkOnBackground = Color(0xFFF0F0F0)
+private val YellowDarkOnSurface = Color(0xFFF0F0F0)
+private val YellowDarkOnSurfaceVariant = Color(0xFFAAAAAA)
+
+private val YellowLightBackground = Color(0xFFFFFFFF) // Pure White
+private val YellowLightSurface = Color(0xFFFAFAFA)
+private val YellowLightPrimary = Color(0xFFFFC436) // Vibrant Amber/Yellow
+private val YellowLightOnPrimary = Color(0xFF000000)
+private val YellowLightPrimaryContainer = Color(0xFFFFF3D6)
+private val YellowLightOnPrimaryContainer = Color(0xFF3E2723)
+private val YellowLightSecondary = Color(0xFF111111) // Stark Black for secondary buttons (like your image)
+private val YellowLightSecondaryContainer = Color(0xFFEAEAEA)
+private val YellowLightOnSecondaryContainer = Color(0xFF111111)
+private val YellowLightTertiary = Color(0xFF757575)
+private val YellowLightOnBackground = Color(0xFF111111)
+private val YellowLightOnSurface = Color(0xFF111111)
+private val YellowLightSurfaceVariant = Color(0xFFF4F4F4)
+private val YellowLightOnSurfaceVariant = Color(0xFF666666)
+private val YellowLightOutline = Color(0xFFCCCCCC)
+
+val YellowDarkColorScheme = darkColorScheme(
+    primary = YellowDarkPrimary,
+    secondary = YellowDarkSecondary,
+    tertiary = YellowDarkTertiary,
+    background = YellowDarkBackground,
+    surface = YellowDarkSurface,
+    onPrimary = YellowDarkOnPrimary,
+    onSecondary = Color.Black,
+    onTertiary = Color.Black,
+    onBackground = YellowDarkOnBackground,
+    onSurface = YellowDarkOnSurface,
+    onSurfaceVariant = YellowDarkOnSurfaceVariant,
+    error = Color(0xFFFF5252),
+    onError = Color.White
+)
+
+val YellowLightColorScheme = lightColorScheme(
+    primary = YellowLightPrimary,
+    onPrimary = YellowLightOnPrimary,
+    primaryContainer = YellowLightPrimaryContainer,
+    onPrimaryContainer = YellowLightOnPrimaryContainer,
+    secondary = YellowLightSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = YellowLightSecondaryContainer,
+    onSecondaryContainer = YellowLightOnSecondaryContainer,
+    tertiary = YellowLightTertiary,
+    onTertiary = Color.White,
+    background = YellowLightBackground,
+    onBackground = YellowLightOnBackground,
+    surface = YellowLightSurface,
+    onSurface = YellowLightOnSurface,
+    surfaceVariant = YellowLightSurfaceVariant,
+    onSurfaceVariant = YellowLightOnSurfaceVariant,
+    outline = YellowLightOutline,
+    outlineVariant = YellowLightOutline.copy(alpha = 0.6f),
+    surfaceTint = YellowLightPrimary,
+    error = Color(0xFFD32F2F),
+    onError = Color.White
+)
+
 // --- Slate Blue Palette ---
 private val BlueDarkBackground = Color(0xFF0B0F14)
 private val BlueDarkSurface = Color(0xFF12171E)
@@ -347,6 +414,7 @@ private fun getStaticColorScheme(palette: String, darkTheme: Boolean): androidx.
             "PURPLE" -> PurpleDarkColorScheme
             "BLUE" -> BlueDarkColorScheme
             "ORANGE" -> OrangeDarkColorScheme
+            "YELLOW" -> YellowDarkColorScheme
             else -> SageDarkColorScheme
         }
     } else {
@@ -354,6 +422,7 @@ private fun getStaticColorScheme(palette: String, darkTheme: Boolean): androidx.
             "PURPLE" -> PurpleLightColorScheme
             "BLUE" -> BlueLightColorScheme
             "ORANGE" -> OrangeLightColorScheme
+            "YELLOW" -> YellowLightColorScheme
             else -> SageLightColorScheme
         }
     }
