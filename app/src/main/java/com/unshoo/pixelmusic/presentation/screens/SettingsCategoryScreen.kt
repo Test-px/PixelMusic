@@ -796,7 +796,8 @@ fun SettingsCategoryScreen(
                                         "SAGE" to stringResource(R.string.setcat_color_palette_sage),
                                         "PURPLE" to stringResource(R.string.setcat_color_palette_purple),
                                         "BLUE" to stringResource(R.string.setcat_color_palette_blue),
-                                        "ORANGE" to stringResource(R.string.setcat_color_palette_orange)
+                                        "ORANGE" to stringResource(R.string.setcat_color_palette_orange),
+                                        "YELLOW" to "Monochrome Yellow"
                                     ),
                                     selectedKey = uiState.colorPalette,
                                     onSelectionChanged = { settingsViewModel.setColorPalette(it) },
