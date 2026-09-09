@@ -215,10 +215,14 @@ fun ExploreScreen(
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
             val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItems > 0 && lastVisibleItem >= totalItems - 3
+            val isNearEnd = totalItems > 0 && lastVisibleItem >= totalItems - 3
+            
+            // Return totalItems when near the end, or 0 when not. 
+            // This ensures distinctUntilChanged() passes the new size when the list grows.
+            if (isNearEnd) totalItems else 0
         }.distinctUntilChanged()
-         .collect { nearEnd ->
-             if (nearEnd) {
+         .collect { triggerTotal ->
+             if (triggerTotal > 0) {
                  exploreViewModel.loadMore()
              }
          }
