@@ -121,6 +121,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
+import androidx.compose.material3.TextButton
+
 
 
 // -----------------------------------------------------------------------------------------
@@ -529,16 +531,19 @@ if (uiState.isContinuationLoading) {
             CircularProgressIndicator(modifier = Modifier.size(32.dp))
         }
     }
-} else if (uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
-    // Show retry button if pagination failed but we have more data available
-    item(key = "pagination_retry") {
-        TextButton(
-            onClick = { exploreViewModel.loadMore() },
+} if (!uiState.isContinuationLoading && uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
+    item(key = "load_more_button") {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text("Load more")
+            TextButton(
+                onClick = { exploreViewModel.loadMore() }
+            ) {
+                Text("Load More")
+            }
         }
     }
 }
