@@ -456,11 +456,14 @@ LaunchedEffect(listState) {
                         // 4) Dynamic Personalized YouTube Sections with Animated Dynamic Shapes
                         if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
                             homeSectionsFiltered.forEachIndexed { index, section ->
-                                item(key = "home_section_${section.title}_${index}_header") {
-                                    SectionHeader(title = section.title)
-                                }
-                                
-                                item(key = "home_section_${section.title}_${index}_carousel") {
+    // Use a more unique key that includes content hash
+    val sectionKey = "home_section_${index}_${section.title.hashCode()}"
+    
+    item(key = "${sectionKey}_header") {
+        SectionHeader(title = section.title)
+    }
+    
+    item(key = sectionKey) {
                                     val titleLower = section.title.lowercase()
                                     val songItems = remember(section.items) { section.items.filterIsInstance<SongItem>() }
                                     val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
@@ -514,18 +517,31 @@ LaunchedEffect(listState) {
                                 }
                             }
 
-                            if (uiState.isContinuationLoading) {
-                                item(key = "loading_indicator") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                                    }
-                                }
-                            }
+                            // Add this inside the LazyColumn builder, after all sections
+if (uiState.isContinuationLoading) {
+    item(key = "pagination_loading") {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+        }
+    }
+} else if (uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
+    // Show retry button if pagination failed but we have more data available
+    item(key = "pagination_retry") {
+        TextButton(
+            onClick = { exploreViewModel.loadMore() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text("Load more")
+        }
+    }
+}
                         }
                     }
 
