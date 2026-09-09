@@ -1069,44 +1069,89 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearExoPlayerCache() {
-    viewModelScope.launch(Dispatchers.IO) {
-        // 1. Clear ExoPlayer RAM/Disk Cache
-        try { exoCache.clearAllCache() } catch (e: Exception) { e.printStackTrace() }
-        
-        // 2. Clear Umihi/InnerTube hidden files (The 1.48 GB Data Partition culprit)
-        try { com.unshoo.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context) } catch (e: Exception) { e.printStackTrace() }
+        viewModelScope.launch(Dispatchers.IO) {
+            var bytesFreed = 0L
 
-        // 3. Clear Coil Image Cache
-        try {
-            context.imageLoader.diskCache?.clear()
-            context.imageLoader.memoryCache?.clear()
-        } catch (e: Exception) { e.printStackTrace() }
-    }
-}
+            // 1. Clear ExoPlayer RAM/Disk Cache
+            try { exoCache.clearAllCache() } catch (e: Exception) { e.printStackTrace() }
+            
+            // 2. Clear Coil Image Cache
+            try {
+                context.imageLoader.diskCache?.clear()
+                context.imageLoader.memoryCache?.clear()
+            } catch (e: Exception) { e.printStackTrace() }
 
-private fun enforceGlobalStorageLimit(limitMb: Int) {
-    if (limitMb <= 0) return 
-    val limitBytes = limitMb.toLong() * 1024 * 1024
-    
-    val downloadDir = com.unshoo.pixelmusic.data.remote.youtube.UmihiHelper.getDownloadDirectory(context)
-    if (!downloadDir.exists()) return
-    
-    val mediaFiles = downloadDir.listFiles()?.filter { it.isFile }?.toMutableList() ?: return
-    var totalSize = mediaFiles.sumOf { it.length() }
-    
-    if (totalSize > limitBytes) {
-        // Sort by oldest lastModified so we delete older songs first
-        mediaFiles.sortBy { it.lastModified() } 
-        
-        for (file in mediaFiles) {
-            if (totalSize <= limitBytes) break
-            val size = file.length()
-            if (file.delete()) {
-                totalSize -= size
+            // 3. Delete Rows AND Reclaim SQLite Storage Bloat (Crucial for the 1.48GB)
+            try { 
+                com.unshoo.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context) 
+                val db = com.unshoo.pixelmusic.data.database.youtube.AppDatabase.getInstance(context)
+                // SQLite does NOT return space to the OS when rows are deleted. VACUUM forces it to shrink.
+                db.query(androidx.sqlite.db.SimpleSQLiteQuery("VACUUM"))
+                db.query(androidx.sqlite.db.SimpleSQLiteQuery("PRAGMA wal_checkpoint(TRUNCATE)"))
+            } catch (e: Exception) { e.printStackTrace() }
+
+            // 4. Nuclear Sweep of Internal Files (Catches extensionless files & ExoPlayer bugs)
+            context.filesDir.walkBottomUp().forEach { file ->
+                if (file.isFile) {
+                    val name = file.name.lowercase()
+                    // Target audio/video files OR files with NO extension (often raw cached chunks)
+                    if (name.endsWith(".exo") || name.endsWith(".m4a") || name.endsWith(".webm") || 
+                        name.endsWith(".mp3") || name.endsWith(".opus") || name.endsWith(".mp4") || 
+                        name.endsWith(".part") || !name.contains(".")) {
+                        bytesFreed += file.length()
+                        file.delete()
+                    }
+                }
+            }
+
+            // 5. Nuclear Sweep of External Files (If Umihi routed them to Android/data/...)
+            context.getExternalFilesDir(null)?.walkBottomUp()?.forEach { file ->
+                if (file.isFile) {
+                    bytesFreed += file.length()
+                    file.delete()
+                }
+            }
+
+            // 6. Nuke bloated ExoPlayer SQLite index files
+            context.deleteDatabase("exoplayer_internal.db")
+            context.deleteDatabase("exoplayer_internal.db-wal")
+            context.deleteDatabase("exoplayer_internal.db-shm")
+
+            val mbFreed = bytesFreed / (1024 * 1024)
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(context, "Sweep Complete: Freed $mbFreed MB of hidden files!", android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }
-}
+
+    private fun enforceGlobalStorageLimit(limitMb: Int) {
+        if (limitMb <= 0) return 
+        val limitBytes = limitMb.toLong() * 1024 * 1024
+        
+        val filesDir = context.filesDir
+        if (!filesDir.exists()) return
+        
+        // Match media extensions AND files with no extension (raw chunks)
+        val mediaFiles = filesDir.walkTopDown().filter { file ->
+            if (!file.isFile) return@filter false
+            val name = file.name.lowercase()
+            name.endsWith(".exo") || name.endsWith(".m4a") || name.endsWith(".webm") || 
+            name.endsWith(".opus") || name.endsWith(".part") || !name.contains(".")
+        }.toMutableList()
+        
+        var totalSize = mediaFiles.sumOf { it.length() }
+        
+        if (totalSize > limitBytes) {
+            mediaFiles.sortBy { it.lastModified() } 
+            for (file in mediaFiles) {
+                if (totalSize <= limitBytes) break
+                val size = file.length()
+                if (file.delete()) {
+                    totalSize -= size
+                }
+            }
+        }
+    }
 
     fun primeExplorer() {
         fileExplorerStateHolder.primeExplorerRoot()
