@@ -497,48 +497,81 @@ class ExploreViewModel @Inject constructor(
     val currentState = _uiState.value
     val continuation = currentState.homePageContinuation
     
-    // Add logging to debug
-    Timber.d("loadMore() called - isContinuationLoading: ${currentState.isContinuationLoading}, continuation: $continuation")
+    Timber.d("loadMore() called - isContinuationLoading: ${currentState.isContinuationLoading}, continuation: ${continuation != null}")
     
-    if (currentState.isContinuationLoading || continuation == null) {
-        Timber.d("loadMore() skipped - already loading or no continuation")
+    // Prevent multiple simultaneous calls
+    if (currentState.isContinuationLoading) {
+        Timber.d("loadMore() skipped - already loading")
+        return
+    }
+    
+    // No more data available
+    if (continuation == null) {
+        Timber.d("loadMore() skipped - no continuation token")
         return
     }
 
     viewModelScope.launch {
         _uiState.update { it.copy(isContinuationLoading = true) }
+        
         try {
             val result = withContext(Dispatchers.IO) {
                 YouTube.home(continuation = continuation).getOrNull()
             }
             
-            Timber.d("loadMore() result: ${result?.sections?.size ?: 0} new sections, new continuation: ${result?.continuation != null}")
+            Timber.d("loadMore() API result: ${result?.sections?.size ?: 0} sections, hasContinuation: ${result?.continuation != null}")
             
-            if (result != null && result.sections.isNotEmpty()) {
-                _uiState.update {
-                    // Deduplicate sections by title to avoid duplicates
-                    val existingTitles = it.homePageSections.map { section -> section.title }.toSet()
-                    val newSections = result.sections.filter { section -> 
-                        section.title !in existingTitles 
-                    }
-                    
-                    val newState = it.copy(
-                        isContinuationLoading = false,
-                        homePageSections = it.homePageSections + newSections,
-                        homePageContinuation = result.continuation
-                    )
-                    persistToCache(newState)
-                    newState
-                }
-            } else {
-                // No more data or error - clear continuation to stop trying
+            if (result == null) {
+                // API failed - don't clear continuation, allow retry
+                _uiState.update { it.copy(isContinuationLoading = false) }
+                return@launch
+            }
+            
+            if (result.sections.isEmpty()) {
+                // No more data - clear continuation to stop pagination
+                Timber.d("loadMore() - no more sections, stopping pagination")
                 _uiState.update { 
                     it.copy(
                         isContinuationLoading = false,
-                        homePageContinuation = null // Stop pagination if no more data
+                        homePageContinuation = null
                     ) 
                 }
+                return@launch
             }
+            
+            // Filter out duplicates by section title
+            val existingTitles = currentState.homePageSections.map { it.title }.toSet()
+            val uniqueNewSections = result.sections.filter { newSection ->
+                newSection.title !in existingTitles
+            }
+            
+            Timber.d("loadMore() - ${uniqueNewSections.size} unique sections after deduplication")
+            
+            if (uniqueNewSections.isEmpty()) {
+                // All sections were duplicates - try next page immediately
+                Timber.d("loadMore() - all sections were duplicates, fetching next page")
+                _uiState.update { 
+                    it.copy(
+                        isContinuationLoading = false,
+                        homePageContinuation = result.continuation
+                    ) 
+                }
+                // Recursively call loadMore for next page
+                loadMore()
+                return@launch
+            }
+            
+            // Add unique sections and update continuation
+            _uiState.update {
+                val newState = it.copy(
+                    isContinuationLoading = false,
+                    homePageSections = it.homePageSections + uniqueNewSections,
+                    homePageContinuation = result.continuation
+                )
+                persistToCache(newState)
+                newState
+            }
+            
         } catch (e: Exception) {
             Timber.e(e, "Error loading more Explore screen sections")
             _uiState.update { it.copy(isContinuationLoading = false) }
