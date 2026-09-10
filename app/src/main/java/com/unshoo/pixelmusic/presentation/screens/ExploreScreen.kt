@@ -519,7 +519,7 @@ LaunchedEffect(listState) {
                                 }
                             }
 
-                            // Add this inside the LazyColumn builder, after all sections
+// Loading indicator at bottom
 if (uiState.isContinuationLoading) {
     item(key = "pagination_loading") {
         Box(
@@ -529,22 +529,6 @@ if (uiState.isContinuationLoading) {
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(modifier = Modifier.size(32.dp))
-        }
-    }
-} else if (uiState.homePageContinuation != null && uiState.homePageSections.isNotEmpty()) {
-    item(key = "load_more_button") {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Button(
-                onClick = { exploreViewModel.loadMore() },
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Load More")
-            }
         }
     }
 }
