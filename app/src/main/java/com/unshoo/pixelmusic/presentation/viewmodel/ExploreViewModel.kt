@@ -528,13 +528,15 @@ class ExploreViewModel @Inject constructor(
             }
             
             if (result.sections.isEmpty()) {
-                // No more data - clear continuation to stop pagination
-                Timber.d("loadMore() - no more sections, stopping pagination")
-                _uiState.update { 
+                Timber.d("loadMore() - no sections in this page, trying next")
+                _uiState.update {
                     it.copy(
                         isContinuationLoading = false,
-                        homePageContinuation = null
-                    ) 
+                        homePageContinuation = result.continuation
+                    )
+                }
+                if (result.continuation != null) {
+                    loadMore()
                 }
                 return@launch
             }
