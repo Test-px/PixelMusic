@@ -91,6 +91,13 @@ class ExploreViewModel @Inject constructor(
             if (cacheFile.exists()) {
                 val json = cacheFile.readText()
                 val cache = gson.fromJson(json, ExploreCacheModel::class.java)
+
+                if (cache.cacheVersion != ExploreCacheModel.CURRENT_CACHE_VERSION) {
+                    Timber.d("Explore cache is outdated (v${cache.cacheVersion}, need v${ExploreCacheModel.CURRENT_CACHE_VERSION}) - ignoring it")
+                    cacheFile.delete()
+                    return
+                }
+                
                 _uiState.update {
                     it.copy(
                         isLoading = true, // still loading fresh data
@@ -114,7 +121,8 @@ class ExploreViewModel @Inject constructor(
                     albums = state.newReleaseAlbums,
                     charts = state.chartsPage,
                     continuation = state.homePageContinuation,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis(),
+                    cacheVersion = ExploreCacheModel.CURRENT_CACHE_VERSION
                 )
                 val json = gson.toJson(cache)
                 cacheFile.writeText(json)
@@ -592,8 +600,16 @@ data class ExploreCacheModel(
     val albums: List<AlbumItem>,
     val charts: ChartsPage?,
     val continuation: String?,
-    val timestamp: Long
-)
+    val timestamp: Long,
+    val cacheVersion: Int = 0
+) {
+    companion object {
+        // Bump this number any time you change how Explore data is fetched/parsed
+        // (like we just did). Any cache saved with an older number gets thrown away
+        // automatically instead of silently reusing broken/stale data.
+        const val CURRENT_CACHE_VERSION = 2
+    }
+}
 
 private class YTItemTypeAdapter : com.google.gson.JsonSerializer<YTItem>, com.google.gson.JsonDeserializer<YTItem> {
     override fun serialize(src: YTItem, typeOfSrc: java.lang.reflect.Type, context: com.google.gson.JsonSerializationContext): com.google.gson.JsonElement {
