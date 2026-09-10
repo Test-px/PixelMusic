@@ -767,9 +767,7 @@ object YouTube {
             ?.mapNotNull {
                 HomePage.Section.fromMusicCarouselShelfRenderer(it)
             }.orEmpty()
-        val nextContinuation = if (sections.isEmpty()) null else {
-            response.continuationContents?.sectionListContinuation?.continuations?.getContinuation()
-        }
+        val nextContinuation = response.continuationContents?.sectionListContinuation?.continuations?.getContinuation()
         HomePage(
             chips = null,
             sections = sections,
