@@ -1068,13 +1068,20 @@ class SettingsViewModel @Inject constructor(
         fileExplorerStateHolder.loadDirectory(file)
     }
 
+    private fun dirSizeBytes(dir: File?): Long {
+        if (dir == null || !dir.exists()) return 0L
+        return dir.walkBottomUp().filter { it.isFile }.sumOf { it.length() }
+    }
+
     fun clearExoPlayerCache() {
         viewModelScope.launch(Dispatchers.IO) {
-            var bytesFreed = 0L
+            val sizeBefore = dirSizeBytes(context.filesDir) +
+                dirSizeBytes(context.cacheDir) +
+                dirSizeBytes(context.getExternalFilesDir(null))
 
             // 1. Clear ExoPlayer RAM/Disk Cache
             try { exoCache.clearAllCache() } catch (e: Exception) { e.printStackTrace() }
-            
+
             // 2. Clear Coil Image Cache
             try {
                 context.imageLoader.diskCache?.clear()
@@ -1082,10 +1089,9 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) { e.printStackTrace() }
 
             // 3. Delete Rows AND Reclaim SQLite Storage Bloat (Crucial for the 1.48GB)
-            try { 
-                com.unshoo.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context) 
+            try {
+                com.unshoo.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context)
                 val db = com.unshoo.pixelmusic.data.database.youtube.AppDatabase.getInstance(context)
-                // SQLite does NOT return space to the OS when rows are deleted. VACUUM forces it to shrink.
                 db.query(androidx.sqlite.db.SimpleSQLiteQuery("VACUUM"))
                 db.query(androidx.sqlite.db.SimpleSQLiteQuery("PRAGMA wal_checkpoint(TRUNCATE)"))
             } catch (e: Exception) { e.printStackTrace() }
@@ -1094,11 +1100,9 @@ class SettingsViewModel @Inject constructor(
             context.filesDir.walkBottomUp().forEach { file ->
                 if (file.isFile) {
                     val name = file.name.lowercase()
-                    // Target audio/video files OR files with NO extension (often raw cached chunks)
-                    if (name.endsWith(".exo") || name.endsWith(".m4a") || name.endsWith(".webm") || 
-                        name.endsWith(".mp3") || name.endsWith(".opus") || name.endsWith(".mp4") || 
+                    if (name.endsWith(".exo") || name.endsWith(".m4a") || name.endsWith(".webm") ||
+                        name.endsWith(".mp3") || name.endsWith(".opus") || name.endsWith(".mp4") ||
                         name.endsWith(".part") || !name.contains(".")) {
-                        bytesFreed += file.length()
                         file.delete()
                     }
                 }
@@ -1107,7 +1111,6 @@ class SettingsViewModel @Inject constructor(
             // 5. Nuclear Sweep of External Files (If Umihi routed them to Android/data/...)
             context.getExternalFilesDir(null)?.walkBottomUp()?.forEach { file ->
                 if (file.isFile) {
-                    bytesFreed += file.length()
                     file.delete()
                 }
             }
@@ -1117,7 +1120,13 @@ class SettingsViewModel @Inject constructor(
             context.deleteDatabase("exoplayer_internal.db-wal")
             context.deleteDatabase("exoplayer_internal.db-shm")
 
-            val mbFreed = bytesFreed / (1024 * 1024)
+            val sizeAfter = dirSizeBytes(context.filesDir) +
+                dirSizeBytes(context.cacheDir) +
+                dirSizeBytes(context.getExternalFilesDir(null))
+
+            val bytesFreed = (sizeBefore - sizeAfter).coerceAtLeast(0)
+            val mbFreed = String.format("%.1f", bytesFreed / (1024.0 * 1024.0))
+
             withContext(Dispatchers.Main) {
                 android.widget.Toast.makeText(context, "Sweep Complete: Freed $mbFreed MB of hidden files!", android.widget.Toast.LENGTH_LONG).show()
             }
