@@ -556,6 +556,14 @@ if (uiState.isContinuationLoading) {
                 }
             }
         }
+
+        HomeShuffleFab(
+            isShuffleEnabled = false,
+            isPlayerActive = currentSongId != null,
+            onClick = { navController.navigateSafely(Screen.SmartMix.route) },
+            isExploreMode = true,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
     }
 }
 
