@@ -573,7 +573,7 @@ Box(
     modifier = Modifier
         .fillMaxWidth()
         .align(Alignment.TopCenter)
-        .height(statusBarHeight + 48.dp)
+        .height(statusBarHeight + 40.dp)
         .background(
             brush = Brush.verticalGradient(
                 colorStops = arrayOf(
