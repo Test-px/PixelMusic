@@ -556,6 +556,7 @@ if (uiState.isContinuationLoading) {
                 }
             }
         }
+    }
 
         HomeShuffleFab(
             isShuffleEnabled = false,
