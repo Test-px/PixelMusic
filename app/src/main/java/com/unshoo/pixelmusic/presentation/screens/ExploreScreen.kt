@@ -231,6 +231,13 @@ fun ExploreScreen(
         }
     }
 
+    // Smooth alpha for the big "Explore" title — fades out on scroll, fades back in at the top
+    val exploreTitleAlpha by animateFloatAsState(
+        targetValue = if (isScrolled) 0f else 1f,
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "exploreTitleAlpha"
+    )
+
     // Infinite scroll trigger
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -334,18 +341,18 @@ fun ExploreScreen(
                         }
 
                         LazyColumn(
-    state = listState,
-    modifier = Modifier
-        .fillMaxSize()
-        .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
-    contentPadding = PaddingValues(
-        // Push the first item down so it starts below the status bar,
-        // but let subsequent content scroll edge-to-edge underneath it.
-        top = statusBarHeight + innerPadding.calculateTopPadding() + 8.dp,
-        bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
-    ),
-    verticalArrangement = Arrangement.spacedBy(24.dp)
-){
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
+                            contentPadding = PaddingValues(
+                                // Push the first item down so it starts below the "Explore" title.
+                                // Content still scrolls edge-to-edge underneath the status bar.
+                                top = statusBarHeight + innerPadding.calculateTopPadding() + 76.dp,
+                                bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
                             item(key = "explore_filters") {
                                 Row(
                                     modifier = Modifier
@@ -498,7 +505,6 @@ fun ExploreScreen(
                                         val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
 
                                         when {
-                                            // Shape Style 1: Similar Artists
                                             titleLower.startsWith("similar to") || titleLower.contains("fans also like") -> {
                                                 SimilarArtistsCarousel(
                                                     artists = section.items.filterIsInstance<ArtistItem>(),
@@ -506,7 +512,6 @@ fun ExploreScreen(
                                                 )
                                             }
 
-                                            // Shape Style 2: Trending / Covers / Remixes / Hits
                                             isAllSongs && (titleLower.contains("trending") || titleLower.contains("covers") || titleLower.contains("remix") || titleLower.contains("hits")) -> {
                                                 SongPillsCarousel(
                                                     songs = songItems,
@@ -515,7 +520,6 @@ fun ExploreScreen(
                                                 )
                                             }
 
-                                            // Shape Style 3: Videos / Long Listens / Multi-Track
                                             isAllSongs && (titleLower.contains("video") || titleLower.contains("long listen") || titleLower.contains("for you") || titleLower.contains("commented") || songItems.size >= 6) -> {
                                                 SongBigBoxCarousel(
                                                     songs = songItems,
@@ -524,7 +528,6 @@ fun ExploreScreen(
                                                 )
                                             }
 
-                                            // Shape Style 4: Mixed for you / Daily discover
                                             titleLower.contains("mixed for you") || titleLower.contains("daily discover") -> {
                                                 MixedStationCarousel(
                                                     items = section.items,
@@ -533,7 +536,6 @@ fun ExploreScreen(
                                                 )
                                             }
 
-                                            // Shape Style 5: Default Carousels
                                             else -> {
                                                 YTItemCarousel(
                                                     items = section.items,
@@ -584,8 +586,6 @@ fun ExploreScreen(
         }
 
         // Top scrim: evenly-faded fog over the status bar area as content scrolls under
-
-        // Match the scrim's top color to the content's top color so no visible seam appears
         val scrimTopColor = if (isLightTheme) {
             primaryColor.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.background)
         } else {
@@ -610,6 +610,20 @@ fun ExploreScreen(
                         )
                     )
                 )
+        )
+
+        // Big "Explore" title — sits above the scrim, fades out on scroll
+        Text(
+            text = "Explore",
+            fontFamily = GoogleSansRounded,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 40.sp,
+            letterSpacing = 1.sp,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 24.dp, top = statusBarHeight + 12.dp)
+                .graphicsLayer { alpha = exploreTitleAlpha }
         )
 
         HomeShuffleFab(
