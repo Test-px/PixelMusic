@@ -3,75 +3,95 @@ name: 🔨 Manual Test Build
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: test-build
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build Signed Release APK
+    name: Build Signed Release APK (arm64-v8a)
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: ☕ Set up JDK 21
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant execute permission for gradlew
+      - name: 🐘 Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: 🔐 Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create Keystore properties
+      - name: 🗝️ Create Keystore properties
         run: |
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > keystore.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
 
-      - name: Patch App for Testing
+      - name: 🩹 Patch App for Testing
         run: |
-          # 1. Change the InAppUpdater URL (wildcard catch to prevent mismatch errors)
-          sed -i 's|repos/[^/]*/PixelMusic/releases/latest|repos/Test-px/PixelMusic/releases/latest|g' app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
+          # 1. Point InAppUpdater at the test repo
+          sed -i 's|repos/[^/]*/PixelMusic/releases/latest|repos/Test-px/PixelMusic/releases/latest|g' \
+            app/src/main/java/com/unshoo/pixelmusic/utils/InAppUpdater.kt
 
-          # 2. Safely change ONLY the main applicationId (will not touch applicationIdSuffix)
-          sed -i 's/applicationId = ".*"/applicationId = "com.unshoo.pixelmusic.test"/' app/build.gradle.kts
-          
-          # 3. Change App Name to strictly "Test"
-          sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Test<\/string>/g' app/src/main/res/values/strings.xml
+          # 2. Rename applicationId (won't touch applicationIdSuffix)
+          sed -i 's/applicationId = ".*"/applicationId = "com.unshoo.pixelmusic.test"/' \
+            app/build.gradle.kts
 
-      - name: Calculate Sequential Version
+          # 3. Rename app label in EVERY locale's strings.xml
+          find app/src/main/res -name "strings.xml" -exec \
+            sed -i 's|<string name="app_name">[^<]*</string>|<string name="app_name">Test</string>|g' {} +
+
+      - name: 🔢 Calculate Sequential Version
         run: |
-          # Fetch the latest successful release tag from the Test-px repository
-          LATEST_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" https://api.github.com/repos/Test-px/PixelMusic/releases/latest | jq -r .tag_name)
-          
-          # If no releases exist yet, start at 1. Otherwise, extract the number and add 1.
+          LATEST_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.TEST_REPO_PAT }}" \
+            https://api.github.com/repos/Test-px/PixelMusic/releases/latest | jq -r .tag_name)
+
           if [ "$LATEST_TAG" == "null" ] || [ -z "$LATEST_TAG" ]; then
             NEXT_NUM=1
           else
             LAST_NUM=$(echo "$LATEST_TAG" | sed 's/[^0-9]*//g')
             NEXT_NUM=$((LAST_NUM + 1))
           fi
-          
+
           echo "Next version will be test-build-$NEXT_NUM"
-          
-          # Save the new number to GitHub Environments so the next steps can use it
           echo "NEXT_NUM=$NEXT_NUM" >> $GITHUB_ENV
 
-      - name: Build Release APK
-        # We use env.NEXT_NUM instead of github.run_number
-        run: ./gradlew :app:assembleRelease -PAPP_VERSION_NAME="test-build-${{ env.NEXT_NUM }}"
+      - name: 🛠️ Build Release APK (arm64-v8a only)
+        run: |
+          ./gradlew :app:assembleRelease \
+            -Pandroid.injected.build.abi=arm64-v8a \
+            -PAPP_VERSION_NAME="test-build-${{ env.NEXT_NUM }}" \
+            -PAPP_VERSION_CODE=${{ env.NEXT_NUM }} \
+            --stacktrace
 
-      - name: Clean Up Old Releases and Tags
-        # Use the built-in GitHub CLI (gh) for a much cleaner deletion process
+      - name: 🔍 Diagnostic - list produced APKs
+        if: always()
+        run: |
+          echo "=== APK files under app/build ==="
+          find app/build -type f -name "*.apk" -print 2>/dev/null || echo "None found"
+          echo ""
+          echo "=== app/build/outputs/apk tree ==="
+          find app/build/outputs/apk -type f 2>/dev/null || echo "Directory missing"
+
+      - name: 🧹 Clean Up Old Releases and Tags
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.TEST_REPO_PAT }}
         run: |
-          echo "Build succeeded! Wiping old releases and tags to keep the repo clean..."
-          
-          # 1. Find all releases and forcefully delete them AND their associated tags
+          echo "Build succeeded! Wiping old releases and tags..."
           RELEASES=$(gh release list --repo Test-px/PixelMusic --limit 500 --json tagName --jq '.[].tagName')
           for tag in $RELEASES; do
             if [ -n "$tag" ]; then
@@ -79,9 +99,9 @@ jobs:
               gh release delete "$tag" --repo Test-px/PixelMusic --cleanup-tag -y || true
             fi
           done
-          
-          # 2. Sweep for any leftover dangling tags that didn't have an associated release
-          DANGLING_TAGS=$(gh api repos/Test-px/PixelMusic/git/matching-refs/tags/test-build- --jq '.[].ref' 2>/dev/null || echo "")
+
+          DANGLING_TAGS=$(gh api repos/Test-px/PixelMusic/git/matching-refs/tags/test-build- \
+            --jq '.[].ref' 2>/dev/null || echo "")
           for ref in $DANGLING_TAGS; do
             if [ -n "$ref" ]; then
               echo "Deleting dangling ref: $ref"
@@ -89,7 +109,8 @@ jobs:
             fi
           done
 
-      - name: Upload to Testing Repository
+      - name: 📤 Upload to Testing Repository
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           repository: Test-px/PixelMusic
@@ -97,9 +118,11 @@ jobs:
           tag_name: test-build-${{ env.NEXT_NUM }}
           name: Test Build ${{ env.NEXT_NUM }}
           body_path: changelog.txt
-          files: app/build/outputs/apk/release/*.apk
+          files: |
+            app/build/outputs/apk/release/**/*.apk
 
-      - name: Sync Fork Automatically
+      - name: 🔄 Sync Fork Automatically
+        if: success()
         run: |
           curl -L \
             -X POST \
@@ -108,4 +131,3 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/Test-px/PixelMusic/merge-upstream \
             -d '{"branch":"main"}'
-            
