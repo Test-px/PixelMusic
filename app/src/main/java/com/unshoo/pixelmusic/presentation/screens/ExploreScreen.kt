@@ -123,6 +123,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import androidx.compose.material3.TextButton
 import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
+import kotlinx.coroutines.delay
 
 
 
@@ -204,6 +205,17 @@ fun ExploreScreen(
     val currentSongId = stablePlayerState.currentSong?.id
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
+
+// Drives the FAB's spring-up animation on entry, mirroring the Home screen behavior
+var isExploreFabActive by remember { mutableStateOf(false) }
+LaunchedEffect(currentSongId) {
+    if (currentSongId != null) {
+        delay(200) // let the FAB sit low first, then spring up
+        isExploreFabActive = true
+    } else {
+        isExploreFabActive = false
+    }
+}
 
     val listState = rememberLazyListState()
     val isScrolled by remember {
@@ -560,7 +572,7 @@ if (uiState.isContinuationLoading) {
 
         HomeShuffleFab(
             isShuffleEnabled = false,
-            isPlayerActive = currentSongId != null,
+            isPlayerActive = isExploreFabActive,
             onClick = { navController.navigateSafely(Screen.SmartMix.route) },
             isExploreMode = true,
             modifier = Modifier.align(Alignment.BottomEnd)
