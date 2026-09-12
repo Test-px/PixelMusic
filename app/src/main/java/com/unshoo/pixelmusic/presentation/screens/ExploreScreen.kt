@@ -210,7 +210,7 @@ fun ExploreScreen(
 var isExploreFabActive by remember { mutableStateOf(false) }
 LaunchedEffect(currentSongId) {
     if (currentSongId != null) {
-        delay(200) // let the FAB sit low first, then spring up
+        delay(100) // let the FAB sit low first, then spring up
         isExploreFabActive = true
     } else {
         isExploreFabActive = false
@@ -254,15 +254,8 @@ LaunchedEffect(listState) {
     
 Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            ExploreTopBar(
-                onSettingsClick = { navController.navigateSafely(Screen.Settings.route) },
-                onCreateClick = { navController.navigateSafely(Screen.SmartMix.route) },
-                isScrolled = isScrolled
-            )
-        }
-    ) { innerPadding ->
+    modifier = Modifier.fillMaxSize()
+) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = {
@@ -323,15 +316,16 @@ Box(modifier = Modifier.fillMaxSize()) {
                     }
 
                     LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                        .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
-                        contentPadding = PaddingValues(
-                            top = innerPadding.calculateTopPadding(),
-                            bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
+    state = listState,
+    modifier = Modifier.fillMaxSize()
+    .statusBarsPadding()
+    .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
+    contentPadding = PaddingValues(
+        top = innerPadding.calculateTopPadding(),
+        bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
+    ),
+    verticalArrangement = Arrangement.spacedBy(24.dp)
+) {
                         item(key = "explore_filters") {
                             Row(
                                 modifier = Modifier
