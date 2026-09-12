@@ -211,6 +211,7 @@ fun ExploreScreen(
     val currentSongId = stablePlayerState.currentSong?.id
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     // Drives the FAB's spring-up animation on entry, mirroring the Home screen behavior
     var isExploreFabActive by remember { mutableStateOf(false) }
@@ -333,17 +334,18 @@ fun ExploreScreen(
                         }
 
                         LazyColumn(
-                            state = listState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .statusBarsPadding()
-                                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
+    state = listState,
+    modifier = Modifier
+        .fillMaxSize()
+        .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
+    contentPadding = PaddingValues(
+        // Push the first item down so it starts below the status bar,
+        // but let subsequent content scroll edge-to-edge underneath it.
+        top = statusBarHeight + innerPadding.calculateTopPadding() + 8.dp,
+        bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
+    ),
+    verticalArrangement = Arrangement.spacedBy(24.dp)
+){
                             item(key = "explore_filters") {
                                 Row(
                                     modifier = Modifier
@@ -582,7 +584,6 @@ fun ExploreScreen(
         }
 
         // Top scrim: evenly-faded fog over the status bar area as content scrolls under
-        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
         // Match the scrim's top color to the content's top color so no visible seam appears
         val scrimTopColor = if (isLightTheme) {
