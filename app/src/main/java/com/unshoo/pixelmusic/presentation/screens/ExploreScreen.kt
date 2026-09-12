@@ -122,6 +122,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import androidx.compose.material3.TextButton
+import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
 
 
 
@@ -238,7 +239,8 @@ LaunchedEffect(listState) {
             endY = 1000f
         )
     }
-
+    
+Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -555,7 +557,17 @@ if (uiState.isContinuationLoading) {
             }
         }
     }
+
+        HomeShuffleFab(
+            isShuffleEnabled = false,
+            isPlayerActive = currentSongId != null,
+            onClick = { navController.navigateSafely(Screen.SmartMix.route) },
+            isExploreMode = true,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    }
 }
+
 
 // -----------------------------------------------------------------------------------------
 // ANIMATED SHAPE COMPONENTS

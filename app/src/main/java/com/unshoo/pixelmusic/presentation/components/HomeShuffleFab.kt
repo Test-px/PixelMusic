@@ -26,13 +26,18 @@ import androidx.compose.ui.unit.dp
 import com.unshoo.pixelmusic.R
 import kotlinx.coroutines.delay
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+
+
 
 @Composable
 fun HomeShuffleFab(
     isShuffleEnabled: Boolean,
     isPlayerActive: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExploreMode: Boolean = false
 ) {
     val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     
@@ -92,10 +97,21 @@ fun HomeShuffleFab(
     val dynamicHorizontalPadding = if (systemNavBarInset > 30.dp) 14.dp else systemNavBarInset
     val dynamicEndPadding = 16.dp + dynamicHorizontalPadding
 
+    val containerColor = when {
+        isExploreMode -> MaterialTheme.colorScheme.primary
+        isShuffleEnabled -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val contentColor = when {
+        isExploreMode -> MaterialTheme.colorScheme.onPrimary
+        isShuffleEnabled -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
+
     FloatingActionButton(
         onClick = onClick,
-        containerColor = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = if (isShuffleEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
+        containerColor = containerColor,
+        contentColor = contentColor,
         shape = CircleShape,
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = 0.dp,
@@ -107,10 +123,18 @@ fun HomeShuffleFab(
             .padding(bottom = animatedBottomOffset.coerceAtLeast(0.dp), end = dynamicEndPadding)
             .size(64.dp)
     ) {
-        Icon(
-            painter = painterResource(R.drawable.rounded_shuffle_24),
-            contentDescription = stringResource(R.string.cd_shuffle_play),
-            modifier = Modifier.size(32.dp)
-        )
+        if (isExploreMode) {
+            Icon(
+                imageVector = Icons.Rounded.AutoAwesome,
+                contentDescription = "Smart Mix",
+                modifier = Modifier.size(32.dp)
+            )
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.rounded_shuffle_24),
+                contentDescription = stringResource(R.string.cd_shuffle_play),
+                modifier = Modifier.size(32.dp)
+            )
+        }
     }
 }
