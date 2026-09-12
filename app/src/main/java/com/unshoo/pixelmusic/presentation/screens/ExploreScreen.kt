@@ -124,6 +124,9 @@ import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import androidx.compose.material3.TextButton
 import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 
 
 
@@ -563,6 +566,24 @@ if (uiState.isContinuationLoading) {
             }
         }
     }
+
+        // Top scrim: blends content into the status bar area as it scrolls under
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .height(statusBarHeight + 20.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to MaterialTheme.colorScheme.background,
+                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+                )
+        )
 
         HomeShuffleFab(
             isShuffleEnabled = false,
