@@ -118,8 +118,7 @@ jobs:
           tag_name: test-build-${{ env.NEXT_NUM }}
           name: Test Build ${{ env.NEXT_NUM }}
           body_path: changelog.txt
-          files: |
-            app/build/outputs/apk/release/**/*.apk
+          files: '**/*.apk'
 
       - name: 🔄 Sync Fork Automatically
         if: success()

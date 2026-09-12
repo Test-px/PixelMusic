@@ -154,8 +154,7 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           name: 🌟 Release ${{ env.TAG_NAME }}
           body: ${{ env.RELEASE_BODY }}
-          files: |
-            app/build/outputs/apk/release/**/*.apk
+          files: '**/*.apk'
 
       - name: 📦 Upload Signed Release APK artifact
         if: success()
