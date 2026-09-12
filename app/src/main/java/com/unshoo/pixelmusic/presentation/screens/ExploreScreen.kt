@@ -210,7 +210,7 @@ fun ExploreScreen(
 var isExploreFabActive by remember { mutableStateOf(false) }
 LaunchedEffect(currentSongId) {
     if (currentSongId != null) {
-        delay(200) // let the FAB sit low first, then spring up
+        delay(100) // let the FAB sit low first, then spring up
         isExploreFabActive = true
     } else {
         isExploreFabActive = false
