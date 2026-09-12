@@ -213,7 +213,7 @@ fun ExploreScreen(
 var isExploreFabActive by remember { mutableStateOf(false) }
 LaunchedEffect(currentSongId) {
     if (currentSongId != null) {
-        delay(100) // let the FAB sit low first, then spring up
+        delay(50) // let the FAB sit low first, then spring up
         isExploreFabActive = true
     } else {
         isExploreFabActive = false
@@ -573,17 +573,22 @@ Box(
     modifier = Modifier
         .fillMaxWidth()
         .align(Alignment.TopCenter)
-        .height(statusBarHeight + 48.dp)
+        .height(statusBarHeight + 40.dp)
         .background(
-            brush = Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.0f to MaterialTheme.colorScheme.background,
-                    0.55f to MaterialTheme.colorScheme.background,
-                    0.80f to MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                    1.0f to Color.Transparent
-                )
-            )
+    brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to MaterialTheme.colorScheme.background,
+            0.15f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
+            0.30f to MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+            0.60f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+            0.72f to MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
+            0.85f to MaterialTheme.colorScheme.background.copy(alpha = 0.22f),
+            0.95f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
+            1.00f to Color.Transparent
         )
+    )
+)
 )
 
         HomeShuffleFab(
