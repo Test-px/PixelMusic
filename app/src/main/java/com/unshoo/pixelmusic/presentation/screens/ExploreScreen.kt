@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -110,7 +115,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.offset
-import androidx.compose.material.icons.rounded.AutoAwesome
 import unshoo.ianshulyadav.pixelmusic.innertube.models.AlbumItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.ArtistItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.PlaylistItem
@@ -124,9 +128,6 @@ import com.unshoo.pixelmusic.ui.modifiers.scrollMotionBlur
 import androidx.compose.material3.TextButton
 import com.unshoo.pixelmusic.presentation.components.HomeShuffleFab
 import kotlinx.coroutines.delay
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
 
 
 
@@ -203,22 +204,23 @@ fun ExploreScreen(
     val uiState by exploreViewModel.uiState.collectAsStateWithLifecycle()
     val quickPicks by quickPicksViewModel.quickPicks.collectAsStateWithLifecycle()
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
-    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
+    val isMotionBlurEnabled by playerViewModel.userPreferencesRepository.uiMotionBlurEnabledFlow
+        .collectAsStateWithLifecycle(initialValue = true)
     val isPlaying by remember(stablePlayerState) { mutableStateOf(stablePlayerState.isPlaying) }
     val currentSongId = stablePlayerState.currentSong?.id
     val quickPicksDisplayMode by playerViewModel.quickPicksDisplayMode.collectAsStateWithLifecycle()
     val pullRefreshState = rememberPullToRefreshState()
 
-// Drives the FAB's spring-up animation on entry, mirroring the Home screen behavior
-var isExploreFabActive by remember { mutableStateOf(false) }
-LaunchedEffect(currentSongId) {
-    if (currentSongId != null) {
-        delay(50) // let the FAB sit low first, then spring up
-        isExploreFabActive = true
-    } else {
-        isExploreFabActive = false
+    // Drives the FAB's spring-up animation on entry, mirroring the Home screen behavior
+    var isExploreFabActive by remember { mutableStateOf(false) }
+    LaunchedEffect(currentSongId) {
+        if (currentSongId != null) {
+            delay(50) // let the FAB sit low first, then spring up
+            isExploreFabActive = true
+        } else {
+            isExploreFabActive = false
+        }
     }
-}
 
     val listState = rememberLazyListState()
     val isScrolled by remember {
@@ -227,369 +229,380 @@ LaunchedEffect(currentSongId) {
         }
     }
 
-// Infinite scroll trigger - FIXED VERSION
-LaunchedEffect(listState) {
-    snapshotFlow { 
-        val layoutInfo = listState.layoutInfo
-        val totalItems = layoutInfo.totalItemsCount
-        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        totalItems > 0 && lastVisibleItem >= totalItems - 5 // Increased threshold
-    }
-    .collect { nearEnd ->
-        if (nearEnd) {
-            exploreViewModel.loadMore()
+    // Infinite scroll trigger
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 5
+        }.collect { nearEnd ->
+            if (nearEnd) {
+                exploreViewModel.loadMore()
+            }
         }
     }
-}
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val primaryColor = MaterialTheme.colorScheme.primary
-    val backgroundBrush = remember(surfaceColor, primaryColor) {
-        Brush.verticalGradient(
-            colors = listOf(
-                primaryColor.copy(alpha = 0.15f),
-                surfaceColor.copy(alpha = 0.6f),
-                surfaceColor
-            ),
-            endY = 1000f
-        )
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val backgroundBrush = remember(surfaceColor, primaryColor, isLightTheme) {
+        if (isLightTheme) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    primaryColor.copy(alpha = 0.15f),
+                    surfaceColor.copy(alpha = 0.6f),
+                    surfaceColor
+                ),
+                endY = 1000f
+            )
+        } else {
+            // Dark mode: no primary tint — pure flat surface, avoids the foggy warm glow
+            Brush.verticalGradient(
+                colors = listOf(
+                    surfaceColor,
+                    surfaceColor
+                ),
+                endY = 1000f
+            )
+        }
     }
-    
-Box(modifier = Modifier.fillMaxSize()) {
-    Scaffold(
-    modifier = Modifier.fillMaxSize()
-) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = {
-                exploreViewModel.loadData(forceRefresh = true)
-                quickPicksViewModel.refresh()
-            },
-            state = pullRefreshState,
-            modifier = Modifier.fillMaxSize(),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullRefreshState,
-                    isRefreshing = uiState.isRefreshing,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-            }
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundBrush)
-            ) {
-                if (uiState.isLoading && uiState.homePageSections.isEmpty() && uiState.newReleaseAlbums.isEmpty() && uiState.chartsPage == null) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
-                } else if (uiState.error != null && uiState.homePageSections.isEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = uiState.error!!,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        Button(
-                            onClick = { exploreViewModel.loadData() },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "Retry")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Retry")
-                        }
-                    }
-                } else {
-                    val homeSectionsFiltered = remember(uiState.homePageSections) {
-                        uiState.homePageSections.filter {
-                            !it.title.contains("quick picks", ignoreCase = true) &&
-                            !it.title.contains("quick", ignoreCase = true)
-                        }
-                    }
 
-                    LazyColumn(
-    state = listState,
-    modifier = Modifier.fillMaxSize()
-    .statusBarsPadding()
-    .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
-    contentPadding = PaddingValues(
-        top = innerPadding.calculateTopPadding(),
-        bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
-    ),
-    verticalArrangement = Arrangement.spacedBy(24.dp)
-) {
-                        item(key = "explore_filters") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = {
+                    exploreViewModel.loadData(forceRefresh = true)
+                    quickPicksViewModel.refresh()
+                },
+                state = pullRefreshState,
+                modifier = Modifier.fillMaxSize(),
+                indicator = {
+                    PullToRefreshDefaults.LoadingIndicator(
+                        state = pullRefreshState,
+                        isRefreshing = uiState.isRefreshing,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(backgroundBrush)
+                ) {
+                    if (uiState.isLoading && uiState.homePageSections.isEmpty() && uiState.newReleaseAlbums.isEmpty() && uiState.chartsPage == null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else if (uiState.error != null && uiState.homePageSections.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = uiState.error!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            Button(
+                                onClick = { exploreViewModel.loadData() },
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                val categories = listOf("All", "For You", "New Releases", "Charts")
-                                categories.forEach { category ->
-                                    FilterChip(
-                                        selected = uiState.selectedFilter == category,
-                                        onClick = { exploreViewModel.setSelectedFilter(category) },
-                                        label = { Text(category) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            labelColor = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        shape = RoundedCornerShape(16.dp),
-                                        border = null
-                                    )
-                                }
+                                Icon(Icons.Rounded.Refresh, contentDescription = "Retry")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Retry")
+                            }
+                        }
+                    } else {
+                        val homeSectionsFiltered = remember(uiState.homePageSections) {
+                            uiState.homePageSections.filter {
+                                !it.title.contains("quick picks", ignoreCase = true) &&
+                                    !it.title.contains("quick", ignoreCase = true)
                             }
                         }
 
-                        // 1) Charts
-                        if (uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()) {
-                            uiState.chartsPage!!.sections.forEachIndexed { index, chartSection ->
-                                item(key = "chart_${chartSection.title}_${index}_header") {
-                                    SectionHeader(title = chartSection.title)
-                                }
-
-                                val songItems = chartSection.items.filterIsInstance<SongItem>()
-                                if (songItems.isNotEmpty()) {
-                                    val songListNative = songItems.map { it.toNativeSong() }
-                                    items(songItems.size) { idx ->
-                                        val songItem = songItems[idx]
-                                        val songNative = songListNative[idx]
-                                        EnhancedSongListItem(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            song = songNative,
-                                            isPlaying = isPlaying && currentSongId == songNative.id,
-                                            isCurrentSong = currentSongId == songNative.id,
-                                            onClick = {
-                                                playerViewModel.showAndPlaySong(
-                                                    songNative,
-                                                    songListNative,
-                                                    chartSection.title
-                                                )
-                                            },
-                                            onMoreOptionsClick = {
-                                                playerViewModel.selectSongForInfo(songNative)
-                                            }
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .statusBarsPadding()
+                                .scrollMotionBlur(listState, enabled = isMotionBlurEnabled),
+                            contentPadding = PaddingValues(
+                                top = innerPadding.calculateTopPadding(),
+                                bottom = paddingValuesParent.calculateBottomPadding() + 160.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            item(key = "explore_filters") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val categories = listOf("All", "For You", "New Releases", "Charts")
+                                    categories.forEach { category ->
+                                        FilterChip(
+                                            selected = uiState.selectedFilter == category,
+                                            onClick = { exploreViewModel.setSelectedFilter(category) },
+                                            label = { Text(category) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                labelColor = MaterialTheme.colorScheme.onSurface
+                                            ),
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = null
                                         )
                                     }
-                                } else {
-                                    item(key = "chart_${chartSection.title}_${index}_list") {
-                                        LazyRow(
-                                            contentPadding = PaddingValues(horizontal = 16.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            items(chartSection.items) { item ->
-                                                when (item) {
-                                                    is AlbumItem -> AlbumCarouselItem(album = item, onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId)) })
-                                                    is ArtistItem -> ArtistCardItem(artist = item, onClick = { navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id)) })
-                                                    is PlaylistItem -> PlaylistCardItem(playlist = item, onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id)) })
-                                                    else -> {}
+                                }
+                            }
+
+                            // 1) Charts
+                            if (uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()) {
+                                uiState.chartsPage!!.sections.forEachIndexed { index, chartSection ->
+                                    item(key = "chart_${chartSection.title}_${index}_header") {
+                                        SectionHeader(title = chartSection.title)
+                                    }
+
+                                    val songItems = chartSection.items.filterIsInstance<SongItem>()
+                                    if (songItems.isNotEmpty()) {
+                                        val songListNative = songItems.map { it.toNativeSong() }
+                                        items(songItems.size) { idx ->
+                                            val songItem = songItems[idx]
+                                            val songNative = songListNative[idx]
+                                            EnhancedSongListItem(
+                                                modifier = Modifier.padding(horizontal = 16.dp),
+                                                song = songNative,
+                                                isPlaying = isPlaying && currentSongId == songNative.id,
+                                                isCurrentSong = currentSongId == songNative.id,
+                                                onClick = {
+                                                    playerViewModel.showAndPlaySong(
+                                                        songNative,
+                                                        songListNative,
+                                                        chartSection.title
+                                                    )
+                                                },
+                                                onMoreOptionsClick = {
+                                                    playerViewModel.selectSongForInfo(songNative)
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        item(key = "chart_${chartSection.title}_${index}_list") {
+                                            LazyRow(
+                                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                            ) {
+                                                items(chartSection.items) { item ->
+                                                    when (item) {
+                                                        is AlbumItem -> AlbumCarouselItem(album = item, onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId)) })
+                                                        is ArtistItem -> ArtistCardItem(artist = item, onClick = { navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id)) })
+                                                        is PlaylistItem -> PlaylistCardItem(playlist = item, onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id)) })
+                                                        else -> {}
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
+
+                            // 2) New Releases
+                            if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "New Releases") &&
+                                uiState.newReleaseAlbums.isNotEmpty()
+                            ) {
+                                item(key = "new_releases_header") {
+                                    SectionHeader(title = "New Releases")
+                                }
+                                item(key = "new_releases_carousel") {
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        items(uiState.newReleaseAlbums) { album ->
+                                            AlbumCarouselItem(
+                                                album = album,
+                                                onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId)) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3) Quick Picks
+                            if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
+                                quickPicks.isNotEmpty()
+                            ) {
+                                item(key = "quick_picks_section") {
+                                    QuickPicksSection(
+                                        songs = quickPicks,
+                                        onSongClick = { song -> playerViewModel.showAndPlaySong(song, quickPicks, "Quick Picks") },
+                                        onSeeAllClick = { navController.navigateSafely(Screen.QuickPicksAll.route) },
+                                        currentSongId = currentSongId,
+                                        displayMode = quickPicksDisplayMode
+                                    )
+                                }
+                            }
+
+                            // 3.5) Recent Mixes (last.fm)
+                            if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
+                                uiState.recentMixes.isNotEmpty()
+                            ) {
+                                item(key = "recent_mixes_header") {
+                                    SectionHeader(title = "Recent Mixes (last.fm)")
+                                }
+                                item(key = "recent_mixes_carousel") {
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        items(uiState.recentMixes) { playlist ->
+                                            RecentMixCardItem(
+                                                playlist = playlist,
+                                                playerViewModel = playerViewModel,
+                                                onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id)) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 4) Dynamic Personalized YouTube Sections with Animated Dynamic Shapes
+                            if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
+                                homeSectionsFiltered.forEachIndexed { index, section ->
+                                    val sectionKey = "home_section_${index}_${section.title.hashCode()}"
+
+                                    item(key = "${sectionKey}_header") {
+                                        SectionHeader(title = section.title)
+                                    }
+
+                                    item(key = sectionKey) {
+                                        val titleLower = section.title.lowercase()
+                                        val songItems = remember(section.items) { section.items.filterIsInstance<SongItem>() }
+                                        val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
+
+                                        when {
+                                            // Shape Style 1: Similar Artists
+                                            titleLower.startsWith("similar to") || titleLower.contains("fans also like") -> {
+                                                SimilarArtistsCarousel(
+                                                    artists = section.items.filterIsInstance<ArtistItem>(),
+                                                    navController = navController
+                                                )
+                                            }
+
+                                            // Shape Style 2: Trending / Covers / Remixes / Hits
+                                            isAllSongs && (titleLower.contains("trending") || titleLower.contains("covers") || titleLower.contains("remix") || titleLower.contains("hits")) -> {
+                                                SongPillsCarousel(
+                                                    songs = songItems,
+                                                    playerViewModel = playerViewModel,
+                                                    sectionTitle = section.title
+                                                )
+                                            }
+
+                                            // Shape Style 3: Videos / Long Listens / Multi-Track
+                                            isAllSongs && (titleLower.contains("video") || titleLower.contains("long listen") || titleLower.contains("for you") || titleLower.contains("commented") || songItems.size >= 6) -> {
+                                                SongBigBoxCarousel(
+                                                    songs = songItems,
+                                                    playerViewModel = playerViewModel,
+                                                    sectionTitle = section.title
+                                                )
+                                            }
+
+                                            // Shape Style 4: Mixed for you / Daily discover
+                                            titleLower.contains("mixed for you") || titleLower.contains("daily discover") -> {
+                                                MixedStationCarousel(
+                                                    items = section.items,
+                                                    navController = navController,
+                                                    playerViewModel = playerViewModel
+                                                )
+                                            }
+
+                                            // Shape Style 5: Default Carousels
+                                            else -> {
+                                                YTItemCarousel(
+                                                    items = section.items,
+                                                    navController = navController,
+                                                    playerViewModel = playerViewModel,
+                                                    sectionTitle = section.title
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Loading indicator at bottom
+                                if (uiState.isContinuationLoading) {
+                                    item(key = "pagination_loading") {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        // 2) New Releases
-                        if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "New Releases") &&
-                            uiState.newReleaseAlbums.isNotEmpty()
-                        ) {
-                            item(key = "new_releases_header") {
-                                SectionHeader(title = "New Releases")
-                            }
-                            item(key = "new_releases_carousel") {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    items(uiState.newReleaseAlbums) { album ->
-                                        AlbumCarouselItem(
-                                            album = album,
-                                            onClick = { navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId)) }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomCenter)
+                                .height(paddingValuesParent.calculateBottomPadding() + 160.dp)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colorStops = arrayOf(
+                                            0.0f to Color.Transparent,
+                                            0.2f to Color.Transparent,
+                                            0.8f to MaterialTheme.colorScheme.background,
+                                            1.0f to MaterialTheme.colorScheme.background
                                         )
-                                    }
-                                }
-                            }
-                        }
-
-                        // 3) Quick Picks
-                        if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
-                            quickPicks.isNotEmpty()
-                        ) {
-                            item(key = "quick_picks_section") {
-                                QuickPicksSection(
-                                    songs = quickPicks,
-                                    onSongClick = { song -> playerViewModel.showAndPlaySong(song, quickPicks, "Quick Picks") },
-                                    onSeeAllClick = { navController.navigateSafely(Screen.QuickPicksAll.route) },
-                                    currentSongId = currentSongId,
-                                    displayMode = quickPicksDisplayMode
-                                )
-                            }
-                        }
-
-                        // 3.5) Recent Mixes (last.fm)
-                        if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") &&
-                            uiState.recentMixes.isNotEmpty()
-                        ) {
-                            item(key = "recent_mixes_header") {
-                                SectionHeader(title = "Recent Mixes (last.fm)")
-                            }
-                            item(key = "recent_mixes_carousel") {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    items(uiState.recentMixes) { playlist ->
-                                        RecentMixCardItem(
-                                            playlist = playlist,
-                                            playerViewModel = playerViewModel,
-                                            onClick = { navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id)) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // 4) Dynamic Personalized YouTube Sections with Animated Dynamic Shapes
-                        if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
-                            homeSectionsFiltered.forEachIndexed { index, section ->
-    // Use a more unique key that includes content hash
-    val sectionKey = "home_section_${index}_${section.title.hashCode()}"
-    
-    item(key = "${sectionKey}_header") {
-        SectionHeader(title = section.title)
-    }
-    
-    item(key = sectionKey) {
-                                    val titleLower = section.title.lowercase()
-                                    val songItems = remember(section.items) { section.items.filterIsInstance<SongItem>() }
-                                    val isAllSongs = songItems.size == section.items.size && songItems.isNotEmpty()
-
-                                    when {
-                                        // Shape Style 1: Similar Artists
-                                        titleLower.startsWith("similar to") || titleLower.contains("fans also like") -> {
-                                            SimilarArtistsCarousel(
-                                                artists = section.items.filterIsInstance<ArtistItem>(),
-                                                navController = navController
-                                            )
-                                        }
-
-                                        // Shape Style 2: Trending / Covers / Remixes / Hits -> 2-Row Capsule Pills with animated corners
-                                        isAllSongs && (titleLower.contains("trending") || titleLower.contains("covers") || titleLower.contains("remix") || titleLower.contains("hits")) -> {
-                                            SongPillsCarousel(
-                                                songs = songItems,
-                                                playerViewModel = playerViewModel,
-                                                sectionTitle = section.title
-                                            )
-                                        }
-
-                                        // Shape Style 3: Videos / Long Listens / Multi-Track -> Big Box Containers with dynamic corners
-                                        isAllSongs && (titleLower.contains("video") || titleLower.contains("long listen") || titleLower.contains("for you") || titleLower.contains("commented") || songItems.size >= 6) -> {
-                                            SongBigBoxCarousel(
-                                                songs = songItems,
-                                                playerViewModel = playerViewModel,
-                                                sectionTitle = section.title
-                                            )
-                                        }
-
-                                        // Shape Style 4: Mixed for you / Daily discover -> Station Cards with dynamic corners
-                                        titleLower.contains("mixed for you") || titleLower.contains("daily discover") -> {
-                                            MixedStationCarousel(
-                                                items = section.items,
-                                                navController = navController,
-                                                playerViewModel = playerViewModel
-                                            )
-                                        }
-
-                                        // Shape Style 5: Default Carousels with animated items
-                                        else -> {
-                                            YTItemCarousel(
-                                                items = section.items,
-                                                navController = navController,
-                                                playerViewModel = playerViewModel,
-                                                sectionTitle = section.title
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-// Loading indicator at bottom
-if (uiState.isContinuationLoading) {
-    item(key = "pagination_loading") {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(modifier = Modifier.size(32.dp))
-        }
-    }
-}
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .height(paddingValuesParent.calculateBottomPadding() + 160.dp)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to Color.Transparent,
-                                        0.2f to Color.Transparent,
-                                        0.8f to MaterialTheme.colorScheme.background,
-                                        1.0f to MaterialTheme.colorScheme.background
                                     )
                                 )
-                            )
-                    )
+                        )
+                    }
                 }
             }
         }
-    }
 
-// Top scrim: blends content into the status bar area as it scrolls under
-val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-Box(
-    modifier = Modifier
-        .fillMaxWidth()
-        .align(Alignment.TopCenter)
-        .height(statusBarHeight + 40.dp)
-        .background(
-    brush = Brush.verticalGradient(
-        colorStops = arrayOf(
-            0.00f to MaterialTheme.colorScheme.background,
-            0.15f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-            0.30f to MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
-            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
-            0.60f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-            0.72f to MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
-            0.85f to MaterialTheme.colorScheme.background.copy(alpha = 0.22f),
-            0.95f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
-            1.00f to Color.Transparent
+        // Top scrim: blends content into the status bar area as it scrolls under
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .height(statusBarHeight + 40.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.00f to MaterialTheme.colorScheme.background,
+                            0.15f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
+                            0.30f to MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+                            0.60f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                            0.72f to MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
+                            0.85f to MaterialTheme.colorScheme.background.copy(alpha = 0.22f),
+                            0.95f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
+                            1.00f to Color.Transparent
+                        )
+                    )
+                )
         )
-    )
-)
-)
 
         HomeShuffleFab(
             isShuffleEnabled = false,
@@ -606,9 +619,6 @@ Box(
 // ANIMATED SHAPE COMPONENTS
 // -----------------------------------------------------------------------------------------
 
-/**
- * 1. Pill-Shaped Song Grid (2 Horizontal Rows with dynamic corners & scale)
- */
 @Composable
 fun SongPillsCarousel(
     songs: List<SongItem>,
@@ -695,9 +705,6 @@ fun SongPillsCarousel(
     }
 }
 
-/**
- * 2. Big Box Container with 3 Stacked Songs (Multi-Track Box with dynamic corners & scale)
- */
 @Composable
 fun SongBigBoxCarousel(
     songs: List<SongItem>,
@@ -785,9 +792,6 @@ fun SongBigBoxCarousel(
     }
 }
 
-/**
- * 3. Featured Station Cards (Dynamic Corners, Image Morphing & Scale)
- */
 @Composable
 fun MixedStationCarousel(
     items: List<YTItem>,
@@ -885,10 +889,6 @@ fun MixedStationCarousel(
         }
     }
 }
-
-// -----------------------------------------------------------------------------------------
-// STANDARD CAROUSEL COMPONENTS WITH ANIMATED DYNAMICS
-// -----------------------------------------------------------------------------------------
 
 @Composable
 fun YTItemCarousel(
@@ -1101,7 +1101,7 @@ fun ExploreTopBar(
         animationSpec = tween(durationMillis = 300),
         label = "topbar_alpha_transition"
     )
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
