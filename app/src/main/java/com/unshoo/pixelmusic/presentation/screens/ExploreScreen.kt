@@ -70,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
@@ -215,7 +216,7 @@ fun ExploreScreen(
     var isExploreFabActive by remember { mutableStateOf(false) }
     LaunchedEffect(currentSongId) {
         if (currentSongId != null) {
-            delay(30) // let the FAB sit low first, then spring up
+            delay(50) // let the FAB sit low first, then spring up
             isExploreFabActive = true
         } else {
             isExploreFabActive = false
@@ -580,24 +581,30 @@ fun ExploreScreen(
             }
         }
 
-        // Top scrim: blends content into the status bar area as it scrolls under
+        // Top scrim: evenly-faded fog over the status bar area as content scrolls under
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
+        // Match the scrim's top color to the content's top color so no visible seam appears
+        val scrimTopColor = if (isLightTheme) {
+            primaryColor.copy(alpha = 0.15f).compositeOver(MaterialTheme.colorScheme.background)
+        } else {
+            surfaceColor
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .height(statusBarHeight + 40.dp)
+                .height(statusBarHeight + 64.dp)
                 .background(
                     brush = Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0.00f to MaterialTheme.colorScheme.background,
-                            0.15f to MaterialTheme.colorScheme.background.copy(alpha = 0.98f),
-                            0.30f to MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
-                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
-                            0.60f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-                            0.72f to MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
-                            0.85f to MaterialTheme.colorScheme.background.copy(alpha = 0.22f),
-                            0.95f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
+                            0.00f to scrimTopColor.copy(alpha = 0.95f),
+                            0.18f to scrimTopColor.copy(alpha = 0.86f),
+                            0.36f to scrimTopColor.copy(alpha = 0.68f),
+                            0.54f to scrimTopColor.copy(alpha = 0.48f),
+                            0.72f to scrimTopColor.copy(alpha = 0.28f),
+                            0.88f to scrimTopColor.copy(alpha = 0.11f),
                             1.00f to Color.Transparent
                         )
                     )
