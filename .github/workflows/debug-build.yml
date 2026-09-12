@@ -53,11 +53,15 @@ jobs:
       - name: 🛠️ Build debug APK (arm64-v8a only)
         run: ./gradlew :app:assembleDebug -Pandroid.injected.build.abi=arm64-v8a --stacktrace --no-daemon
 
-      - name: 📂 List produced APK files
+      - name: 📂 List every APK in workspace
         if: always()
         run: |
-          echo "Searching for APK files..."
-          find app/build/outputs -type f -name "*.apk" -print || true
+          echo "=== Searching whole workspace for APKs ==="
+          find . -type f -name "*.apk" -print 2>/dev/null || true
+          echo "=== Searching build output dirs ==="
+          find . -type d -name "outputs" -print 2>/dev/null || true
+          echo "=== Listing app/build recursively (top 100) ==="
+          find app/build -maxdepth 6 -type f 2>/dev/null | head -n 100 || true
 
       - name: 📤 Upload debug APK
         if: success()
@@ -65,7 +69,7 @@ jobs:
         with:
           name: PixelMusic-debug-${{ github.sha }}
           path: |
-            app/build/outputs/apk/debug/**/*.apk
+            **/*.apk
           if-no-files-found: error
           retention-days: 14
 
