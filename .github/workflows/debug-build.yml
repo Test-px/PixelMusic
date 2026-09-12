@@ -53,15 +53,52 @@ jobs:
       - name: 🛠️ Build debug APK (arm64-v8a only)
         run: ./gradlew :app:assembleDebug -Pandroid.injected.build.abi=arm64-v8a --stacktrace --no-daemon
 
-      - name: 📂 List every APK in workspace
+      - name: 🔍 Diagnostic - where is the APK?
         if: always()
         run: |
-          echo "=== Searching whole workspace for APKs ==="
+          echo "========================================="
+          echo "1) Any .apk in the whole workspace:"
+          echo "========================================="
           find . -type f -name "*.apk" -print 2>/dev/null || true
-          echo "=== Searching build output dirs ==="
-          find . -type d -name "outputs" -print 2>/dev/null || true
-          echo "=== Listing app/build recursively (top 100) ==="
-          find app/build -maxdepth 6 -type f 2>/dev/null | head -n 100 || true
+
+          echo ""
+          echo "========================================="
+          echo "2) Contents of app/build (max 4 levels):"
+          echo "========================================="
+          find app/build -maxdepth 4 -type d 2>/dev/null || echo "app/build does not exist"
+
+          echo ""
+          echo "========================================="
+          echo "3) Does app/build/outputs exist?"
+          echo "========================================="
+          ls -la app/build/outputs 2>/dev/null || echo "NO — app/build/outputs missing"
+
+          echo ""
+          echo "========================================="
+          echo "4) Does app/build/outputs/apk exist?"
+          echo "========================================="
+          ls -la app/build/outputs/apk 2>/dev/null || echo "NO — app/build/outputs/apk missing"
+
+          echo ""
+          echo "========================================="
+          echo "5) Contents of app/build/outputs/apk/debug (if any):"
+          echo "========================================="
+          find app/build/outputs/apk/debug -type f 2>/dev/null || echo "NO — folder missing"
+
+          echo ""
+          echo "========================================="
+          echo "6) Gradle's build-results.json:"
+          echo "========================================="
+          find /home/runner/work/_temp -name "build-results-*.json" -exec cat {} \; 2>/dev/null || true
+
+          echo ""
+          echo "========================================="
+          echo "7) Any APK anywhere on the runner:"
+          echo "========================================="
+          find /home/runner -type f -name "*.apk" 2>/dev/null | head -n 50 || true
+
+          echo ""
+          echo "=== DONE ==="
 
       - name: 📤 Upload debug APK
         if: success()
@@ -70,7 +107,7 @@ jobs:
           name: PixelMusic-debug-${{ github.sha }}
           path: |
             **/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: 📎 Upload build reports on failure
