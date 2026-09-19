@@ -68,14 +68,24 @@ object PixelLogger {
     private var logDir: File? = null
     private var currentLogFile: File? = null
 
-    /** Call once from Application.onCreate() */
-    fun init(context: Context) {
-        if (!started.compareAndSet(false, true)) return
-        val dir = File(context.filesDir, "logs").apply { mkdirs() }
-        logDir = dir
-        currentLogFile = File(dir, "pixelmusic.log")
-        ioScope.launch { drainToFile() }
-    }
+/** Call once from Application.onCreate() */
+fun init(context: Context) {
+    if (!started.compareAndSet(false, true)) return
+
+    // Unconditional probes. Bypass the enabled flag, bypass any level filter.
+    // If any of these five reach LogFox, we know the process is alive and
+    // which levels the OS / LogFox are letting through.
+    Log.v("PM-BOOT", "init: v probe")
+    Log.d("PM-BOOT", "init: d probe")
+    Log.i("PM-BOOT", "init: i probe")
+    Log.w("PM-BOOT", "init: w probe")
+    Log.e("PM-BOOT", "init: e probe")
+
+    val dir = File(context.filesDir, "logs").apply { mkdirs() }
+    logDir = dir
+    currentLogFile = File(dir, "pixelmusic.log")
+    ioScope.launch { drainToFile() }
+}
 
     fun setEnabled(value: Boolean) {
         _enabled.value = value
@@ -132,13 +142,15 @@ object PixelLogger {
             throwable = throwable,
         )
 
-        // Logcat mirror
-        when (level) {
-            'D' -> Log.d("PM-${category.shortName}/$tag", message)
-            'I' -> Log.i("PM-${category.shortName}/$tag", message)
-            'W' -> Log.w("PM-${category.shortName}/$tag", message, throwable)
-            'E' -> Log.e("PM-${category.shortName}/$tag", message, throwable)
-        }
+// Android drops tags longer than 23 chars on some OEM ROMs.
+// Format: PM-<3-char category>/<up to 12 chars of tag>  = max 20 chars.
+val logTag = "PM-${category.shortName}/${tag.take(12)}"
+when (level) {
+    'D' -> Log.d(logTag, message)
+    'I' -> Log.i(logTag, message)
+    'W' -> Log.w(logTag, message, throwable)
+    'E' -> Log.e(logTag, message, throwable)
+}
 
         // Ring buffer
         synchronized(buffer) {
