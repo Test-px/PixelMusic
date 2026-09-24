@@ -1,3 +1,8 @@
+⚡ **CursorWindow & Memory Leak Fix (Test Build)**
+• Resolved OutOfMemoryError (OOM) and playback stuttering (500–800ms lag) on Meizu 21 and other high-end flagship devices (Snapdragon 8 Gen 3/2, Dimensity 9300+).
+• Optimized Room database queries with lightweight projections to avoid loading full lyrics into memory across whole library collections.
+• Reduced Coil bitmap cache allocation to 12% and actively clear memory caches under memory pressure.
+
 ⚠️ **IMPORTANT NOTICE: APPLICATION ID CHANGE**
 We are changing our Application ID to `com.saurav.pixelmusic`. Because of this change, the new update cannot be installed over the previous version directly.
 
