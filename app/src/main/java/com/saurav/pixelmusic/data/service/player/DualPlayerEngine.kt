@@ -192,7 +192,12 @@ class DualPlayerEngine @Inject constructor(
             }
         }
 
+        private var lastFailedMediaId: String? = null
+        private var retryAttemptsForCurrentTrack: Int = 0
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            lastFailedMediaId = null
+            retryAttemptsForCurrentTrack = 0
             val incomingUriStr = mediaItem?.localConfiguration?.uri?.toString()
             activePlaybackResolvedUris.keys
                 .filter { it != incomingUriStr }
@@ -247,16 +252,41 @@ class DualPlayerEngine @Inject constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Attempting auto-skip recovery.")
+            Timber.tag("DualPlayerEngine").e(error, "PlayerError intercepted! Attempting recovery or auto-skip.")
             
-            val currentMediaId = playerA.currentMediaItem?.mediaId
+            val currentMediaItem = playerA.currentMediaItem
+            val currentMediaId = currentMediaItem?.mediaId
             if (currentMediaId != null) {
                 val uriString = if (currentMediaId.startsWith("youtube://")) currentMediaId else "youtube://$currentMediaId"
                 resolvedUriCache.remove(uriString)
                 activePlaybackResolvedUris.remove(uriString)
+                val cleanId = currentMediaId.removePrefix("youtube://").removePrefix("youtube_")
+                com.saurav.pixelmusic.data.remote.youtube.YoutubeHelper.streamUrlLruCache.let { cache ->
+                    cache.remove("${cleanId}_high")
+                    cache.remove("${cleanId}_low")
+                    cache.snapshot().keys.filter { it.startsWith("${cleanId}_") }.forEach { cache.remove(it) }
+                }
             }
 
             scope.launch {
+                // If this is the first failure on the current track, attempt in-place retry at current position
+                if (currentMediaId != null && (currentMediaId != lastFailedMediaId || retryAttemptsForCurrentTrack < 1)) {
+                    lastFailedMediaId = currentMediaId
+                    retryAttemptsForCurrentTrack++
+                    val currentPos = playerA.currentPosition.coerceAtLeast(0L)
+                    val currentIndex = playerA.currentMediaItemIndex
+                    Timber.tag("DualPlayerEngine").i("Retrying track %s at pos %d ms (attempt %d)", currentMediaId, currentPos, retryAttemptsForCurrentTrack)
+                    delay(300)
+                    if (currentIndex in 0 until playerA.mediaItemCount) {
+                        playerA.seekTo(currentIndex, currentPos)
+                        playerA.prepare()
+                        playerA.play()
+                        return@launch
+                    }
+                }
+
+                lastFailedMediaId = null
+                retryAttemptsForCurrentTrack = 0
                 delay(300)
                 if (playerA.hasNextMediaItem()) {
                     playerA.seekToNextMediaItem()
@@ -605,44 +635,89 @@ class DualPlayerEngine @Inject constructor(
                 val scheme = uri.scheme
                 if (scheme == "youtube") {
                     val originalUri = uri.toString()
+                    val videoId = originalUri.removePrefix("youtube://")
                     val localPath = localFilePathCache[originalUri]
                     if (localPath != null && File(localPath).exists()) {
-                        return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
+                        return dataSpec.buildUpon()
+                            .setUri(Uri.fromFile(File(localPath)))
+                            .setKey(videoId)
+                            .build()
                     }
 
                     fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
-    val urlStr = resolvedUri.toString()
-    if (urlStr.startsWith("http")) {
-        // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter
-        val profile = saurav.shru.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
-        val headers = mutableMapOf<String, String>()
-        
-        headers["User-Agent"] = profile.userAgent
-        if (profile.origin != null) headers["Origin"] = profile.origin
-        if (profile.referer != null) headers["Referer"] = profile.referer
-        
-        this.setHttpRequestHeaders(headers)
-    }
-    return this
+                        val urlStr = resolvedUri.toString()
+                        if (urlStr.startsWith("http")) {
+                            // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter
+                            val profile = saurav.shru.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
+                            val headers = mutableMapOf<String, String>()
+                            
+                            headers["User-Agent"] = profile.userAgent
+                            if (profile.origin != null) headers["Origin"] = profile.origin
+                            if (profile.referer != null) headers["Referer"] = profile.referer
+                            
+                            this.setHttpRequestHeaders(headers)
+                        }
+                        return this
                     }
 
+                    // 1. Offline / Cache-first check:
+                    // If audio bytes are already cached for this videoId in ExoCache,
+                    // we can bypass network resolution and let CacheDataSource read directly from disk!
+                    if (exoCache.isPartiallyOrFullyCached(videoId, 256 * 1024L)) {
+                        val cachedResolved = resolvedUriCache.get(originalUri)?.takeIf { isStreamUrlStillValid(it.toString()) }
+                        val targetUri = cachedResolved ?: Uri.parse("https://cache.pixelmusic.local/$videoId")
+                        return dataSpec.buildUpon()
+                            .setUri(targetUri)
+                            .setKey(videoId)
+                            .applyYtHeaders(targetUri)
+                            .build()
+                    }
+
+                    // 2. Memory cache check with URL validity verification
                     val resolved = resolvedUriCache.get(originalUri)
-                    if (resolved != null) {
-                        return dataSpec.buildUpon().setUri(resolved).applyYtHeaders(resolved).build()
+                    if (resolved != null && isStreamUrlStillValid(resolved.toString())) {
+                        return dataSpec.buildUpon()
+                            .setUri(resolved)
+                            .setKey(videoId)
+                            .applyYtHeaders(resolved)
+                            .build()
+                    } else if (resolved != null) {
+                        resolvedUriCache.remove(originalUri)
+                        activePlaybackResolvedUris.remove(originalUri)
                     }
 
+                    // 3. Network resolution with fallback to disk cache if network fails
                     try {
                         val fallbackResolved = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
-                            kotlinx.coroutines.withTimeoutOrNull(6000L) {
+                            kotlinx.coroutines.withTimeoutOrNull(15000L) {
                                 resolveCloudUri(uri)
                             }
                         }
                         if (fallbackResolved != null && fallbackResolved != uri) {
-                            return dataSpec.buildUpon().setUri(fallbackResolved).applyYtHeaders(fallbackResolved).build()
+                            return dataSpec.buildUpon()
+                                .setUri(fallbackResolved)
+                                .setKey(videoId)
+                                .applyYtHeaders(fallbackResolved)
+                                .build()
                         } else {
+                            if (exoCache.isPartiallyOrFullyCached(videoId, 64 * 1024L)) {
+                                val dummyUri = Uri.parse("https://cache.pixelmusic.local/$videoId")
+                                return dataSpec.buildUpon()
+                                    .setUri(dummyUri)
+                                    .setKey(videoId)
+                                    .build()
+                            }
                             throw IOException("Stream resolution failed or timed out for $originalUri")
                         }
                     } catch (e: Exception) {
+                        if (exoCache.isPartiallyOrFullyCached(videoId, 64 * 1024L)) {
+                            Timber.tag("DualPlayerEngine").i("Network resolve failed, but playing from cache for %s", originalUri)
+                            val dummyUri = Uri.parse("https://cache.pixelmusic.local/$videoId")
+                            return dataSpec.buildUpon()
+                                .setUri(dummyUri)
+                                .setKey(videoId)
+                                .build()
+                        }
                         Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
                         throw IOException("Stream resolution failed", e)
                     }
@@ -653,8 +728,8 @@ class DualPlayerEngine @Inject constructor(
         
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(8000)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
             
         val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val cacheDataSourceFactory = CacheDataSource.Factory()
@@ -735,13 +810,34 @@ class DualPlayerEngine @Inject constructor(
 
 private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String, Deferred<Uri>>()
 
+    private fun isStreamUrlStillValid(url: String): Boolean {
+        try {
+            val expireParam = url.substringAfter("expire=", "").substringBefore("&")
+            if (expireParam.isNotEmpty()) {
+                val expireTimeSecs = expireParam.toLongOrNull() ?: return false
+                val currentTimeSecs = System.currentTimeMillis() / 1000
+                return expireTimeSecs > currentTimeSecs + 300
+            }
+            return url.startsWith("http")
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
     suspend fun resolveCloudUri(uri: Uri): Uri = withContext(Dispatchers.IO + NonCancellable) {
         val uriString = uri.toString()
         
-        activePlaybackResolvedUris[uriString]?.let { return@withContext it }
+        activePlaybackResolvedUris[uriString]?.let { cached ->
+            if (isStreamUrlStillValid(cached.toString())) return@withContext cached
+            else activePlaybackResolvedUris.remove(uriString)
+        }
         resolvedUriCache.get(uriString)?.let { cachedUri ->
-            activePlaybackResolvedUris[uriString] = cachedUri
-            return@withContext cachedUri
+            if (isStreamUrlStillValid(cachedUri.toString())) {
+                activePlaybackResolvedUris[uriString] = cachedUri
+                return@withContext cachedUri
+            } else {
+                resolvedUriCache.remove(uriString)
+            }
         }
 
         val deferred = inFlightResolutions.getOrPut(uriString) {
@@ -795,6 +891,7 @@ private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String,
         val builder = mediaItem.buildUpon().setUri(resolvedUri)
         if (scheme == "youtube") {
             val videoId = uri.toString().removePrefix("youtube://")
+            builder.setCustomCacheKey(videoId)
             val cachedMime = com.saurav.pixelmusic.data.remote.youtube.YoutubeHelper.streamMimeTypeLruCache.let { cache ->
                 cache.get("${videoId}_high")
                     ?: cache.get("${videoId}_low")
