@@ -4144,7 +4144,11 @@ class PlayerViewModel @Inject constructor(
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 clearPreparingSongIfMatching()
                 playbackStateHolder.updateStablePlayerState { it.copy(isBuffering = false) }
-                sendToast("Track unavailable, skipping...")
+                if (playerCtrl.hasNextMediaItem()) {
+                    sendToast("Track error, recovering...")
+                } else {
+                    sendToast("Track unavailable")
+                }
             }
             override fun onTracksChanged(tracks: Tracks) {
                 if (isRemoteSessionControllingPlayback()) return

@@ -1,3 +1,10 @@
+⚡ **Audio Cache Rebuild & Offline Playback Guarantee (Test Build)**
+• Implemented canonical videoId cache keying in ExoCache so cached audio is never orphaned by expired stream URLs.
+• Added direct offline cache bypass in DualPlayerEngine: tracks with cached bytes play instantly without network connection.
+• Upgraded QueuePreloadManager with proactive next-track pre-buffering (5MB) early in playback to guarantee seamless transitions without errors.
+• Added background showcase pre-caching for Home and Explore feeds (preloading top tracks audio and artwork thumbnails).
+• Integrated seamless in-place playback recovery on transient network errors before falling back to auto-skip.
+
 ⚡ **CursorWindow & Memory Leak Fix (Test Build)**
 • Resolved OutOfMemoryError (OOM) and playback stuttering (500–800ms lag) on Meizu 21 and other high-end flagship devices (Snapdragon 8 Gen 3/2, Dimensity 9300+).
 • Optimized Room database queries with lightweight projections to avoid loading full lyrics into memory across whole library collections.
