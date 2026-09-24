@@ -127,6 +127,11 @@ object QueuePreloadManager {
 
         preloadJob?.cancel()
         preloadJob = currentScope.launch(Dispatchers.IO) {
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val isOnline = cm?.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) } ?: false
+            if (!isOnline) return@launch
+
+            val isMetered = cm?.isActiveNetworkMetered == true
             val settings = datastoreRepository?.settings?.first() ?: return@launch
             if (!settings.preloadQueueEnabled) return@launch
 
@@ -157,8 +162,9 @@ object QueuePreloadManager {
                     thumbnailHref = mediaItem.mediaMetadata.artworkUri?.toString().orEmpty()
                 )
 
+                // Adapt pre-buffering to metered data vs Wi-Fi to save user data
                 val isImmediateNext = (i == currentIndex + 1)
-                val requiredBytes = if (isImmediateNext) 5 * 1024 * 1024L else 2 * 1024 * 1024L
+                val requiredBytes = if (isMetered) 1024 * 1024L else (if (isImmediateNext) 2 * 1024 * 1024L else 1024 * 1024L)
 
                 val isAlreadyCached = exoCache?.isPartiallyOrFullyCached(cleanYoutubeId, requiredBytes) == true
                 if (!isAlreadyCached) {
@@ -235,59 +241,5 @@ object QueuePreloadManager {
         }
     }
 
-    fun preloadShowcaseSongs(
-        ctx: Context,
-        exoCacheInstance: ExoCache,
-        songs: List<com.saurav.pixelmusic.data.model.Song>,
-        maxSongs: Int = 10
-    ) {
-        if (exoCache == null) exoCache = exoCacheInstance
-        if (appContext == null) appContext = ctx.applicationContext
 
-        val currentScope = scope ?: CoroutineScope(Dispatchers.IO)
-        currentScope.launch(Dispatchers.IO) {
-            val songsToPreload = songs.take(maxSongs)
-            for (domainSong in songsToPreload) {
-                val cleanYoutubeId = (domainSong.youtubeId?.takeIf { it.isNotBlank() }
-                    ?: domainSong.id.removePrefix("youtube://").removePrefix("youtube_"))
-                if (cleanYoutubeId.isBlank()) continue
-
-                val thumbnailUrl = domainSong.albumArtUriString
-                if (!thumbnailUrl.isNullOrBlank()) {
-                    try {
-                        val optimizedUrl = com.saurav.pixelmusic.utils.ThumbnailUrlUtils.optimizeArtworkUrl(
-                            thumbnailUrl,
-                            com.saurav.pixelmusic.presentation.components.SmartImageCache.getEffectiveQuality()
-                        ) ?: thumbnailUrl
-                        val request = coil.request.ImageRequest.Builder(ctx)
-                            .data(optimizedUrl)
-                            .diskCacheKey(optimizedUrl)
-                            .build()
-                        coil.Coil.imageLoader(ctx).enqueue(request)
-                    } catch (e: Exception) {
-                        printe("QueuePreloadManager: failed to preload showcase artwork for $cleanYoutubeId: ${e.message}")
-                    }
-                }
-
-                if (!exoCacheInstance.isPartiallyOrFullyCached(cleanYoutubeId, 1024 * 1024L)) {
-                    try {
-                        val ytSong = Song(
-                            youtubeId = cleanYoutubeId,
-                            title = domainSong.title,
-                            artist = domainSong.artist,
-                            thumbnailHref = thumbnailUrl.orEmpty()
-                        )
-                        val streamUrl = YoutubeHelper.getSongPlayerUrl(ctx, ytSong, allowLocal = false)
-                        if (streamUrl.isNotBlank() && streamUrl.startsWith("http")) {
-                            engineRef?.resolvedUriCache?.put("youtube://$cleanYoutubeId", Uri.parse(streamUrl))
-                            prefetchAudioBytes(ctx, cleanYoutubeId, streamUrl, 2 * 1024 * 1024L)
-                        }
-                    } catch (e: Exception) {
-                        printe("QueuePreloadManager: failed to pre-cache showcase audio for $cleanYoutubeId: ${e.message}")
-                    }
-                }
-                delay(300)
-            }
-        }
-    }
 }

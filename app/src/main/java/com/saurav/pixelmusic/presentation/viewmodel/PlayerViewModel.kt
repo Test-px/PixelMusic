@@ -4047,10 +4047,14 @@ class PlayerViewModel @Inject constructor(
                             }
                             loadLyricsForCurrentSong()
 
-                            // Component 27: Pre-cache recently played YouTube songs in background
+                            // Component 27: Pre-cache recently played YouTube songs in background only when online
                             val youtubeId = currentSongValue.youtubeId
                             if (youtubeId != null && currentSongValue.path.isBlank()) {
                                 viewModelScope.launch(Dispatchers.IO) {
+                                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                                    val isOnline = cm?.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) } ?: false
+                                    if (!isOnline) return@launch
+
                                     try {
                                         val ytSong = com.saurav.pixelmusic.data.model.youtube.Song(
                                             youtubeId = youtubeId,

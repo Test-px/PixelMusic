@@ -1,9 +1,9 @@
 ⚡ **Audio Cache Rebuild & Offline Playback Guarantee (Test Build)**
-• Implemented canonical videoId cache keying in ExoCache so cached audio is never orphaned by expired stream URLs.
-• Added direct offline cache bypass in DualPlayerEngine: tracks with cached bytes play instantly without network connection.
-• Upgraded QueuePreloadManager with proactive next-track pre-buffering (5MB) early in playback to guarantee seamless transitions without errors.
-• Added background showcase pre-caching for Home and Explore feeds (preloading top tracks audio and artwork thumbnails).
-• Integrated seamless in-place playback recovery on transient network errors before falling back to auto-skip.
+• Fixed MediaCodec native abort crash on Android 16 by eliminating dummy local URIs and stopping rapid offline skip loops.
+• Placed CacheDataSource directly on the media source root: cached tracks (most played, recently played) stream instantly from disk without network resolution or DNS lookup.
+• Caching now occurs gracefully with natural browsing and playback, completely removing heavy background auto-downloading on app launch.
+• Adaptive data-saver pre-buffering: pre-buffers next queue track lightly (1MB on mobile data, 2MB on Wi-Fi) respecting user quality settings.
+• Clean offline handling: stops playback gracefully without error cascades when the device is disconnected.
 
 ⚡ **CursorWindow & Memory Leak Fix (Test Build)**
 • Resolved OutOfMemoryError (OOM) and playback stuttering (500–800ms lag) on Meizu 21 and other high-end flagship devices (Snapdragon 8 Gen 3/2, Dimensity 9300+).

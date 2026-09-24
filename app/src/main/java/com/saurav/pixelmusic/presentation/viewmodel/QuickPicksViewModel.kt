@@ -44,8 +44,7 @@ class QuickPicksViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val musicRepository: MusicRepository,
     private val engagementDao: com.saurav.pixelmusic.data.database.EngagementDao,
-    private val playbackStatsRepository: PlaybackStatsRepository,
-    private val exoCache: com.saurav.pixelmusic.data.remote.youtube.ExoCache
+    private val playbackStatsRepository: PlaybackStatsRepository
 ) : ViewModel() {
 
     private val _quickPicks = MutableStateFlow<List<Song>>(emptyList())
@@ -100,10 +99,7 @@ class QuickPicksViewModel @Inject constructor(
             for (i in 0 until songsArray.length()) {
                 songs.add(songFromJson(songsArray.getJSONObject(i)))
             }
-            if (songs.isNotEmpty()) {
-                _quickPicks.value = songs
-                com.saurav.pixelmusic.data.remote.youtube.QueuePreloadManager.preloadShowcaseSongs(context, exoCache, songs)
-            }
+            if (songs.isNotEmpty()) _quickPicks.value = songs
 
             if (categoriesJson != null) {
                 val catArray = JSONArray(categoriesJson)
@@ -118,7 +114,6 @@ class QuickPicksViewModel @Inject constructor(
 
     private fun saveToCache(songs: List<Song>, categories: List<String>) {
         try {
-            com.saurav.pixelmusic.data.remote.youtube.QueuePreloadManager.preloadShowcaseSongs(context, exoCache, songs)
             val songsArray = JSONArray()
             songs.forEach { songsArray.put(songToJson(it)) }
             val catArray = JSONArray()
