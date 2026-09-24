@@ -101,16 +101,21 @@ object MediaItemBuilder {
     const val EXTERNAL_EXTRA_NAVIDROME_ID = EXTERNAL_EXTRA_PREFIX + "NAVIDROME_ID"
 
     fun build(song: Song): MediaItem {
-        return MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setMediaId(song.id)
             .setUri(playbackUri(song))
             .setMimeType(playbackMimeType(song))
             .setMediaMetadata(buildMediaMetadataForSong(song))
-            .build()
+        val videoId = song.youtubeId?.takeIf { it.isNotBlank() }
+            ?: if (song.contentUriString.startsWith("youtube://")) song.contentUriString.removePrefix("youtube://") else null
+        if (!videoId.isNullOrBlank()) {
+            builder.setCustomCacheKey(videoId)
+        }
+        return builder.build()
     }
 
     fun buildForExternalController(context: Context, song: Song): MediaItem {
-        return MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setMediaId(song.id)
             .setUri(playbackUri(song))
             .setMimeType(playbackMimeType(song))
@@ -120,7 +125,12 @@ object MediaItemBuilder {
                     exposedArtworkUri = externalControllerArtworkUri(context, song.albumArtUriString)
                 )
             )
-            .build()
+        val videoId = song.youtubeId?.takeIf { it.isNotBlank() }
+            ?: if (song.contentUriString.startsWith("youtube://")) song.contentUriString.removePrefix("youtube://") else null
+        if (!videoId.isNullOrBlank()) {
+            builder.setCustomCacheKey(videoId)
+        }
+        return builder.build()
     }
 
     fun playbackUri(song: Song): Uri = playbackUri(

@@ -126,5 +126,53 @@ class ExoCache(
         }
     }
 
+    fun isCached(key: String, position: Long = 0L, length: Long = 1L): Boolean {
+        return try {
+            cache.isCached(key, position, length)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun isPartiallyOrFullyCached(key: String, minBytes: Long = 256 * 1024L): Boolean {
+        return try {
+            cache.getCachedLength(key, 0L, 100_000_000L) >= minBytes
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun isFullyCached(key: String): Boolean {
+        return try {
+            val metadata = cache.getContentMetadata(key)
+            val contentLength = androidx.media3.datasource.cache.ContentMetadata.getContentLength(metadata)
+            if (contentLength > 0L) {
+                cache.isCached(key, 0L, contentLength)
+            } else {
+                cache.getCachedLength(key, 0L, 100_000_000L) > 1024 * 1024L
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun getCachedBytes(key: String): Long {
+        return try {
+            cache.getCachedLength(key, 0L, 100_000_000L)
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    fun getCachedVideoIds(): Set<String> {
+        return try {
+            cache.keys.filter { key ->
+                isPartiallyOrFullyCached(key, 256 * 1024L)
+            }.toSet()
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+
     private val databaseProvider by lazy { StandaloneDatabaseProvider(context) }
 }
