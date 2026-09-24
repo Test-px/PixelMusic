@@ -252,7 +252,7 @@ object QueuePreloadManager {
                     ?: domainSong.id.removePrefix("youtube://").removePrefix("youtube_"))
                 if (cleanYoutubeId.isBlank()) continue
 
-                val thumbnailUrl = domainSong.albumArtUriString ?: domainSong.thumbnailHref
+                val thumbnailUrl = domainSong.albumArtUriString
                 if (!thumbnailUrl.isNullOrBlank()) {
                     try {
                         val optimizedUrl = com.saurav.pixelmusic.utils.ThumbnailUrlUtils.optimizeArtworkUrl(
