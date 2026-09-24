@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
@@ -269,15 +271,24 @@ class DualPlayerEngine @Inject constructor(
             }
 
             scope.launch {
-                // If this is the first failure on the current track, attempt in-place retry at current position
-                if (currentMediaId != null && (currentMediaId != lastFailedMediaId || retryAttemptsForCurrentTrack < 1)) {
+                // If device is offline (no network), stop playback cleanly without cascading skip storms
+                if (!isNetworkAvailable(context)) {
+                    Timber.tag("DualPlayerEngine").w("Offline: stopping playback cleanly.")
+                    lastFailedMediaId = null
+                    retryAttemptsForCurrentTrack = 0
+                    playerA.playWhenReady = false
+                    return@launch
+                }
+
+                // If online, only attempt 1 retry if it's the first failure on this track
+                if (currentMediaId != null && (currentMediaId != lastFailedMediaId && retryAttemptsForCurrentTrack < 1)) {
                     lastFailedMediaId = currentMediaId
                     retryAttemptsForCurrentTrack++
                     val currentPos = playerA.currentPosition.coerceAtLeast(0L)
                     val currentIndex = playerA.currentMediaItemIndex
                     Timber.tag("DualPlayerEngine").i("Retrying track %s at pos %d ms (attempt %d)", currentMediaId, currentPos, retryAttemptsForCurrentTrack)
-                    delay(300)
-                    if (currentIndex in 0 until playerA.mediaItemCount) {
+                    delay(500)
+                    if (currentIndex in 0 until playerA.mediaItemCount && playerA.playbackState != Player.STATE_ENDED) {
                         playerA.seekTo(currentIndex, currentPos)
                         playerA.prepare()
                         playerA.play()
@@ -660,20 +671,7 @@ class DualPlayerEngine @Inject constructor(
                         return this
                     }
 
-                    // 1. Offline / Cache-first check:
-                    // If audio bytes are already cached for this videoId in ExoCache,
-                    // we can bypass network resolution and let CacheDataSource read directly from disk!
-                    if (exoCache.isPartiallyOrFullyCached(videoId, 256 * 1024L)) {
-                        val cachedResolved = resolvedUriCache.get(originalUri)?.takeIf { isStreamUrlStillValid(it.toString()) }
-                        val targetUri = cachedResolved ?: Uri.parse("https://cache.pixelmusic.local/$videoId")
-                        return dataSpec.buildUpon()
-                            .setUri(targetUri)
-                            .setKey(videoId)
-                            .applyYtHeaders(targetUri)
-                            .build()
-                    }
-
-                    // 2. Memory cache check with URL validity verification
+                    // 1. Memory cache check with URL validity verification
                     val resolved = resolvedUriCache.get(originalUri)
                     if (resolved != null && isStreamUrlStillValid(resolved.toString())) {
                         return dataSpec.buildUpon()
@@ -686,38 +684,28 @@ class DualPlayerEngine @Inject constructor(
                         activePlaybackResolvedUris.remove(originalUri)
                     }
 
-                    // 3. Network resolution with fallback to disk cache if network fails
+                    // 2. Offline check: if offline, do not attempt network extraction
+                    if (!isNetworkAvailable(context)) {
+                        throw IOException("No internet connection to resolve $originalUri")
+                    }
+
+                    // 3. Network resolution
                     try {
                         val fallbackResolved = kotlinx.coroutines.runBlocking(Dispatchers.IO) {
                             kotlinx.coroutines.withTimeoutOrNull(15000L) {
                                 resolveCloudUri(uri)
                             }
                         }
-                        if (fallbackResolved != null && fallbackResolved != uri) {
+                        if (fallbackResolved != null && fallbackResolved != uri && isStreamUrlStillValid(fallbackResolved.toString())) {
                             return dataSpec.buildUpon()
                                 .setUri(fallbackResolved)
                                 .setKey(videoId)
                                 .applyYtHeaders(fallbackResolved)
                                 .build()
                         } else {
-                            if (exoCache.isPartiallyOrFullyCached(videoId, 64 * 1024L)) {
-                                val dummyUri = Uri.parse("https://cache.pixelmusic.local/$videoId")
-                                return dataSpec.buildUpon()
-                                    .setUri(dummyUri)
-                                    .setKey(videoId)
-                                    .build()
-                            }
                             throw IOException("Stream resolution failed or timed out for $originalUri")
                         }
                     } catch (e: Exception) {
-                        if (exoCache.isPartiallyOrFullyCached(videoId, 64 * 1024L)) {
-                            Timber.tag("DualPlayerEngine").i("Network resolve failed, but playing from cache for %s", originalUri)
-                            val dummyUri = Uri.parse("https://cache.pixelmusic.local/$videoId")
-                            return dataSpec.buildUpon()
-                                .setUri(dummyUri)
-                                .setKey(videoId)
-                                .build()
-                        }
                         Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
                         throw IOException("Stream resolution failed", e)
                     }
@@ -732,12 +720,12 @@ class DualPlayerEngine @Inject constructor(
             .setReadTimeoutMs(15000)
             
         val baseDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
+        val resolvingFactory = ResolvingDataSource.Factory(baseDataSourceFactory, resolver)
         val cacheDataSourceFactory = CacheDataSource.Factory()
             .setCache(exoCache.cache)
-            .setUpstreamDataSourceFactory(baseDataSourceFactory)
+            .setUpstreamDataSourceFactory(resolvingFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
-        val resolvingFactory = ResolvingDataSource.Factory(cacheDataSourceFactory, resolver)
         val extractorsFactory = DefaultExtractorsFactory()
             .setMp4ExtractorFlags(Mp4Extractor.FLAG_WORKAROUND_IGNORE_EDIT_LISTS)
 
@@ -752,7 +740,7 @@ class DualPlayerEngine @Inject constructor(
             .build()
 
         return ExoPlayer.Builder(context, renderersFactory)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(resolvingFactory, extractorsFactory))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory, extractorsFactory))
             .setLoadControl(loadControl)
             .build().apply {
             setAudioAttributes(audioAttributes, false)
@@ -809,6 +797,17 @@ class DualPlayerEngine @Inject constructor(
     }
 
 private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String, Deferred<Uri>>()
+
+    private fun isNetworkAvailable(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+            val activeNetwork = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(activeNetwork) ?: return false
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     private fun isStreamUrlStillValid(url: String): Boolean {
         try {
