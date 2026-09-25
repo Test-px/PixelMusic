@@ -211,8 +211,8 @@ object AutoQueueManager {
             lastFetchedVideoId = seedId
 
             if (resolvedVideoId != null) {
-                // Online song — create a fresh endpoint and pre-fetch first batch
-                val endpoint = WatchEndpoint(videoId = resolvedVideoId, playlistId = "RDAMVM$resolvedVideoId")
+                // Online song — create a fresh tailored endpoint without forced playlistId
+                val endpoint = WatchEndpoint(videoId = resolvedVideoId)
                 currentWatchEndpoint = endpoint
                 continuationToken = null
             }
@@ -1324,7 +1324,7 @@ object AutoQueueManager {
 
     private suspend fun fetchOnlineRelated(videoId: String): List<Song> {
         try {
-            val endpoint = currentWatchEndpoint ?: WatchEndpoint(videoId = videoId, playlistId = "RDAMVM$videoId")
+            val endpoint = currentWatchEndpoint ?: WatchEndpoint(videoId = videoId)
             val result = YouTube.next(endpoint = endpoint, continuation = continuationToken, followAutomixPreview = true)
             
             var fetchedSongs = emptyList<Song>()
@@ -1355,10 +1355,26 @@ object AutoQueueManager {
                             addedVideoIds.addAll(retainedSet)
                         }
                         continuationToken = null
-                        currentWatchEndpoint = WatchEndpoint(videoId = videoId, playlistId = "RDAMVM$videoId")
+                        currentWatchEndpoint = WatchEndpoint(videoId = videoId)
                     } else {
                         // More continuation available — just return empty to try next page
                         printd("AutoQueueManager: All fetched items already added, will try next continuation")
+                    }
+                    // Metrolist fallback: check relatedEndpoint if filtered items are empty
+                    if (filteredItems.isEmpty() && nextResult.relatedEndpoint != null) {
+                        try {
+                            val relatedPage = YouTube.related(nextResult.relatedEndpoint).getOrNull()
+                            val relatedSongs = relatedPage?.songs?.filter { it.id !in addedVideoIdsLocal }.orEmpty()
+                            if (relatedSongs.isNotEmpty()) {
+                                for (item in relatedSongs) {
+                                    addToAddedVideoIds(item.id)
+                                }
+                                fetchedSongs = relatedSongs.map { it.toNativeSong() }
+                                return@onSuccess
+                            }
+                        } catch (e: Exception) {
+                            printd("AutoQueueManager: Fallback relatedEndpoint failed: ${e.message}")
+                        }
                     }
                     return@onSuccess
                 }

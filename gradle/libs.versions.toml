@@ -70,6 +70,7 @@ jdom2 = "2.0.6.1"
 jose4j = "0.9.6"
 httpclient = "4.5.14"
 newpipeextractor = "v0.26.3"
+innertubex = "v0.7.0"
 fuel = "2.3.1"
 
 # DI
@@ -228,6 +229,7 @@ androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchm
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 newpipeextractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version.ref = "newpipeextractor" }
+innertubex = { module = "com.github.MetrolistGroup.innertubex:innertubex", version.ref = "innertubex" }
 fuel-json = { module = "com.github.kittinunf.fuel:fuel-json", version.ref = "fuel" }
 fuel-android = { module = "com.github.kittinunf.fuel:fuel-android", version.ref = "fuel" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }

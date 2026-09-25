@@ -202,6 +202,8 @@ NewPipe.init(object : Downloader() {
             }
         }
 
+        com.saurav.pixelmusic.utils.InnerTubeXPlayer.initialize(this)
+
         // Benchmark variant intentionally restarts/kills app process during tests.
         // Avoid persisting those events as user-facing crash reports.
         if (BuildConfig.BUILD_TYPE != "benchmark") {

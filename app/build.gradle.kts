@@ -207,6 +207,7 @@ dependencies {
     implementation(libs.ktor.client.encoding)
     implementation(libs.brotli)
     implementation(libs.re2j)
+    implementation(libs.innertubex)
 
 
 

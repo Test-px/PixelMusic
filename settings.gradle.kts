@@ -31,6 +31,7 @@ dependencyResolutionManagement {
                 includeGroup("com.github.racra")
                 includeGroup("com.github.tdlibx")
                 includeGroup("com.github.TeamNewPipe")
+                includeGroupByRegex("com\\.github\\.MetrolistGroup.*")
             }
         }
         maven("https://storage.googleapis.com/snap-kit-build/maven")

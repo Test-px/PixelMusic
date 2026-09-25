@@ -311,18 +311,36 @@ class QuickPicksViewModel @Inject constructor(
         val uniqueSeedArtistIds = seedArtistIds.distinct().shuffled()
 
         // 2. Query different recommendation endpoints concurrently
-        // Bucket A: Song Mix Radios (fetch related radio mix for up to 3 distinct seed songs)
+        // Bucket A: Song Mix Radios (fetch tailored radio mix using clean videoId from Metrolist)
         val songMixesDeferred = uniqueSeedSongs.take(3).map { (videoId, _) ->
             async(Dispatchers.IO) {
                 try {
                     val radioResult = YouTube.next(
-                        WatchEndpoint(playlistId = "RDAMVM$videoId", videoId = videoId)
+                        WatchEndpoint(videoId = videoId)
                     ).getOrNull()
                     radioResult?.items?.filterIsInstance<SongItem>()?.filterVideo(pureYtMusicOnly) ?: emptyList()
                 } catch (e: Exception) {
                     Timber.tag("QuickPicks").w(e, "Song mix radio fetch failed for videoId: $videoId")
                     emptyList()
                 }
+            }
+        }
+
+        // Bucket A.2: Related Endpoint Recommendations (seed from latest listen like Metrolist)
+        val relatedEndpointDeferred = async(Dispatchers.IO) {
+            try {
+                val latestSeedVideoId = uniqueSeedSongs.firstOrNull()?.first
+                if (!latestSeedVideoId.isNullOrBlank()) {
+                    val nextResult = YouTube.next(WatchEndpoint(videoId = latestSeedVideoId)).getOrNull()
+                    val relatedEndpoint = nextResult?.relatedEndpoint
+                    if (relatedEndpoint != null) {
+                        val relatedPage = YouTube.related(relatedEndpoint).getOrNull()
+                        relatedPage?.songs?.filterVideo(pureYtMusicOnly) ?: emptyList()
+                    } else emptyList()
+                } else emptyList()
+            } catch (e: Exception) {
+                Timber.tag("QuickPicks").w(e, "Related endpoint fetch failed")
+                emptyList()
             }
         }
 
@@ -431,6 +449,7 @@ class QuickPicksViewModel @Inject constructor(
 
         // Await all async requests
         val songMixSongs = songMixesDeferred.flatMap { it.await() }
+        val relatedSongs = relatedEndpointDeferred.await()
         val artistRadioSongs = artistRadiosDeferred.flatMap { it.await() }
         val artistNameRadioSongs = artistNameRadiosDeferred.flatMap { it.await() }
         val homeRecSongs = ytHomeRecommendationsDeferred.await()
@@ -439,7 +458,7 @@ class QuickPicksViewModel @Inject constructor(
 
         // 3. Blend, map, and de-duplicate
         val combinedCandidates = mutableListOf<Song>()
-        (songMixSongs + artistRadioSongs + artistNameRadioSongs + homeRecSongs + onlineHistorySongs)
+        (songMixSongs + relatedSongs + artistRadioSongs + artistNameRadioSongs + homeRecSongs + onlineHistorySongs)
             .map { it.toNativeSong() }
             .let { combinedCandidates.addAll(it) }
         combinedCandidates.addAll(localPopularSongs)
