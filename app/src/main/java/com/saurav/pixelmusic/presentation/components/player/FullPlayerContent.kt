@@ -1651,7 +1651,7 @@ private fun FullPlayerAlbumCoverSection(
                         scaleX = albumArtScale
                         scaleY = albumArtScale
                     },
-                albumArtQuality = remember(song.id) { albumArtQuality }
+                albumArtQuality = albumArtQuality
             )
         }
     }

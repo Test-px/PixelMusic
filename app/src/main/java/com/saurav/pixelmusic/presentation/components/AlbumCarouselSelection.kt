@@ -67,11 +67,9 @@ fun AlbumCarouselSection(
             pageCount = { queue.size }
         )
 
-        // Calculate target size based on quality
-        val targetSize = remember(currentSong?.id, albumArtQuality) {
-            if (albumArtQuality.maxSize == 0) SafeOriginalAlbumArtSize
-            else Size(albumArtQuality.maxSize, albumArtQuality.maxSize)
-        }
+        // Use full safe original size so Coil decodes at crisp native resolution
+        // URL optimization already governs network bandwidth usage
+        val targetSize = SafeOriginalAlbumArtSize
 
         // Player -> Carousel
         val currentSongIndex = remember(currentSong?.id, currentMediaItemIndex, queue) {

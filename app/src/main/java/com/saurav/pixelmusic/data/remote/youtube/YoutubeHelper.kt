@@ -572,11 +572,17 @@ private suspend fun getSongUrlFromYoutube(
         val mimeType = playbackData.format.mimeType
         val bitrate = playbackData.format.bitrate
 
-        playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let {
-            playbackTrackingCache[videoId] = it
-        }
+        val isM4a = mimeType?.contains("mp4", ignoreCase = true) == true ||
+            mimeType?.contains("m4a", ignoreCase = true) == true ||
+            mimeType?.contains("aac", ignoreCase = true) == true
 
-        return@withContext Triple(streamUrl, mimeType, bitrate)
+        if (!requireM4a || isM4a) {
+            playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let {
+                playbackTrackingCache[videoId] = it
+            }
+            return@withContext Triple(streamUrl, mimeType, bitrate)
+        }
+        UmihiHelper.printd("InnerTubeXPlayer stream is not M4A ($mimeType), falling back to NewPipeExtractor for M4A download")
     } catch (e: Exception) {
         UmihiHelper.printe("InnerTubeXPlayer extraction failed for $videoId: ${e.message}; attempting fallback")
     }

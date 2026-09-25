@@ -482,13 +482,13 @@ object SongDownloader {
 
                 while (true) {
                     val sampleSize = extractor.readSampleData(buffer, 0)
-                    if (sampleSize < 0) break
+                    if (sampleSize <= 0) break
                     bufferInfo.offset = 0
                     bufferInfo.size = sampleSize
                     bufferInfo.flags = extractor.sampleFlags
                     bufferInfo.presentationTimeUs = extractor.sampleTime
                     muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
-                    extractor.advance()
+                    if (!extractor.advance()) break
                 }
 
                 muxer.stop()
@@ -499,7 +499,12 @@ object SongDownloader {
                 throw Exception("No audio track found in downloaded file")
             }
 
-            imageDownloadJob.await()
+            try {
+                kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                    imageDownloadJob.await()
+                }
+            } catch (_: Exception) {
+            }
 
             notificationBuilder.setContentText("Writing metadata...")
             updateNotification(notificationManager, notificationId, notificationBuilder)
