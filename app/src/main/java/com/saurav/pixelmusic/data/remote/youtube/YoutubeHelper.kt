@@ -49,6 +49,7 @@ import saurav.shru.pixelmusic.innertube.utils.StreamClientUtils
 import saurav.shru.pixelmusic.innertube.YouTube
 import saurav.shru.pixelmusic.innertube.PlaybackAuthState
 import saurav.shru.pixelmusic.innertube.models.response.PlayerResponse
+import com.saurav.pixelmusic.utils.InnerTubeXPlayer
 import com.saurav.pixelmusic.data.preferences.PlayerStreamClient
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.withTimeoutOrNull
@@ -536,6 +537,36 @@ private suspend fun getSongUrlFromYoutube(
     requireM4a: Boolean = false
 ): Triple<String, String?, Int?> = withContext(Dispatchers.IO) {
     val videoId = song.youtubeId
+    if (videoId.isNullOrBlank()) throw Exception("Invalid youtubeId for song: ${song.title}")
+
+    // 1. Primary: InnerTubeXPlayer with PoToken and Zemer Cipher
+    try {
+        InnerTubeXPlayer.initialize(context)
+        val quality = when {
+            lowQuality -> StreamingAudioQuality.LOW
+            maxBitrateKbps in 1..96 -> StreamingAudioQuality.LOW
+            maxBitrateKbps > 200 -> StreamingAudioQuality.HIGH
+            else -> StreamingAudioQuality.AUTO
+        }
+        val playbackData = InnerTubeXPlayer.playerResponseForPlayback(
+            videoId = videoId,
+            audioQuality = quality,
+        ).getOrThrow()
+
+        val streamUrl = playbackData.streamUrl
+        val mimeType = playbackData.format.mimeType
+        val bitrate = playbackData.format.bitrate
+
+        playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let {
+            playbackTrackingCache[videoId] = it
+        }
+
+        return@withContext Triple(streamUrl, mimeType, bitrate)
+    } catch (e: Exception) {
+        UmihiHelper.printe("InnerTubeXPlayer extraction failed for $videoId: ${e.message}; attempting fallback")
+    }
+
+    // 2. Secondary fallback: NewPipeExtractor
     val streamInfo = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$videoId")
     
     val audioStreams = streamInfo.audioStreams
