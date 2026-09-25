@@ -20,11 +20,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://jitpack.io") {
-            metadataSources {
-                mavenPom()
-                artifact()
-                ignoreGradleMetadataRedirection()
-            }
             content {
                 includeGroup("com.github.FaceOnLive")
                 includeGroup("com.github.philburk")
