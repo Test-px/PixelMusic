@@ -138,14 +138,20 @@ class LyricsStateHolder @Inject constructor(
 
             val fetchedLyrics = try {
                 withContext(Dispatchers.IO) {
-                    val ytLyrics = fetchYouTubeLyrics(song)
-                    if (ytLyrics != null) {
-                        LyricsUtils.parseLyrics(ytLyrics)
+                    val repoLyrics = musicRepository.getLyrics(
+                        song = song,
+                        sourcePreference = sourcePreference
+                    )
+                    if (repoLyrics != null && !repoLyrics.synced.isNullOrEmpty()) {
+                        repoLyrics
                     } else {
-                        musicRepository.getLyrics(
-                            song = song,
-                            sourcePreference = sourcePreference
-                        )
+                        val ytLyrics = fetchYouTubeLyrics(song)
+                        if (ytLyrics != null) {
+                            val parsedYt = LyricsUtils.parseLyrics(ytLyrics)
+                            if (hasValidLyrics(parsedYt)) parsedYt else repoLyrics
+                        } else {
+                            repoLyrics
+                        }
                     }
                 }
             } catch (cancellation: CancellationException) {
@@ -223,19 +229,6 @@ class LyricsStateHolder @Inject constructor(
                 }
             }
 
-            // Check YouTube lyrics first if available
-            val ytLyricsRaw = withContext(Dispatchers.IO) { fetchYouTubeLyrics(song) }
-            if (ytLyricsRaw != null) {
-                val parsed = LyricsUtils.parseLyrics(ytLyricsRaw)
-                if (hasValidLyrics(parsed)) {
-                    _searchUiState.value = LyricsSearchUiState.Success(parsed)
-                    val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, ytLyricsRaw)
-                    val updatedSong = song.withPersistedLyrics(ytLyricsRaw, refreshedAlbumArtUri)
-                    _songUpdates.emit(updatedSong to parsed)
-                    return@launch
-                }
-            }
-
             // Build ordered list of local source checks based on user preference.
             // API_FIRST: skip local sources, go straight to remote.
             // EMBEDDED_FIRST: check embedded, then local .lrc, then remote.
@@ -292,6 +285,17 @@ class LyricsStateHolder @Inject constructor(
                         _songUpdates.emit(updatedSong to lyrics)
                     }
                     .onFailure { error ->
+                        val ytLyricsRaw = withContext(Dispatchers.IO) { fetchYouTubeLyrics(song) }
+                        if (ytLyricsRaw != null) {
+                            val parsed = LyricsUtils.parseLyrics(ytLyricsRaw)
+                            if (hasValidLyrics(parsed)) {
+                                _searchUiState.value = LyricsSearchUiState.Success(parsed)
+                                val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, ytLyricsRaw)
+                                val updatedSong = song.withPersistedLyrics(ytLyricsRaw, refreshedAlbumArtUri)
+                                _songUpdates.emit(updatedSong to parsed)
+                                return@launch
+                            }
+                        }
                         handleError(error)
                     }
             }

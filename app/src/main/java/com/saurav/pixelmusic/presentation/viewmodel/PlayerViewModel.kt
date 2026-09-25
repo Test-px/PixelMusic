@@ -1169,6 +1169,7 @@ class PlayerViewModel @Inject constructor(
 
                     val hydratedSong = currentSong.withRepositoryHydration(repositorySong)
                     val persistedLyrics = parsePersistedLyrics(hydratedSong.lyrics)
+                    val hasSyncedPersisted = persistedLyrics?.synced?.isNotEmpty() == true
                     val shouldApplyPersistedLyrics = currentState.lyrics == null && persistedLyrics != null
                     val shouldRefreshSong = hydratedSong != currentSong
                     val shouldReloadLyrics =
@@ -1176,7 +1177,7 @@ class PlayerViewModel @Inject constructor(
                             currentState.lyrics == null &&
                             hydratedSong.improvesLyricsLookupComparedTo(currentSong)
 
-                    if (shouldApplyPersistedLyrics || shouldReloadLyrics) {
+                    if ((shouldApplyPersistedLyrics && hasSyncedPersisted) || shouldReloadLyrics) {
                         lyricsStateHolder.cancelLoading()
                     }
 
@@ -1184,7 +1185,7 @@ class PlayerViewModel @Inject constructor(
                         updateSongInStates(
                             updatedSong = hydratedSong,
                             newLyrics = if (shouldApplyPersistedLyrics) persistedLyrics else null,
-                            isLoadingLyrics = if (shouldApplyPersistedLyrics) false else null
+                            isLoadingLyrics = if (shouldApplyPersistedLyrics && hasSyncedPersisted) false else null
                         )
 
                         if (_selectedSongForInfo.value?.id == hydratedSong.id) {

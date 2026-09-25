@@ -219,11 +219,13 @@ class SmartLyricsMatcher(private val client: OkHttpClient) {
                 runCatching { providerService.getSyncedLyrics(info, provider) }.getOrNull()
             } else null
 
-            val hit = ScoredHit(provider, cand.strategy, pr, conf, lyrics, null)
-            val key = "${hit.provider}|${hit.result.title}|${hit.result.artist}|${hit.result.durationSec}"
-            val existing = hits[key]
-            if (existing == null || hit.confidence.score > existing.confidence.score) hits[key] = hit
-            if (hit.tier != MatchTier.REJECT && hit.confidence.score >= ConfidenceScorer.AUTO_ACCEPT_THRESHOLD) break
+            if (!lyrics.isNullOrBlank()) {
+                val hit = ScoredHit(provider, cand.strategy, pr, conf, lyrics, null)
+                val key = "${hit.provider}|${hit.result.title}|${hit.result.artist}|${hit.result.durationSec}"
+                val existing = hits[key]
+                if (existing == null || hit.confidence.score > existing.confidence.score) hits[key] = hit
+                if (hit.tier != MatchTier.REJECT && hit.confidence.score >= ConfidenceScorer.AUTO_ACCEPT_THRESHOLD) break
+            }
         }
         return hits.values.sortedByDescending { it.confidence.score }
     }

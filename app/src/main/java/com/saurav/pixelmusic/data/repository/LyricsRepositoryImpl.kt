@@ -190,10 +190,15 @@ class LyricsRepositoryImpl @Inject constructor(
             }
         }
 
+        var fallbackStoredLyrics: Lyrics? = null
         if (!forceRefresh) {
             loadStoredLyrics(song, cacheKey, includeMemoryCache = false)?.let { stored ->
-                lyricsCache.put(cacheKey, stored.first)
-                return@withContext stored.first
+                if (!stored.first.synced.isNullOrEmpty()) {
+                    lyricsCache.put(cacheKey, stored.first)
+                    return@withContext stored.first
+                } else {
+                    fallbackStoredLyrics = stored.first
+                }
             }
         }
 
@@ -220,7 +225,7 @@ class LyricsRepositoryImpl @Inject constructor(
             }
         }
 
-        return@withContext null
+        return@withContext fallbackStoredLyrics
     }
 
     override suspend fun getStoredLyrics(song: Song): Pair<Lyrics, String>? = withContext(Dispatchers.IO) {
@@ -238,7 +243,7 @@ class LyricsRepositoryImpl @Inject constructor(
         }
 
         val cachedJson = loadLocalLyricsJson(song)
-        if (cachedJson != null) return@withContext cachedJson
+        if (cachedJson != null && !cachedJson.synced.isNullOrEmpty()) return@withContext cachedJson
 
         try {
             val localTrack = LocalTrack(
@@ -252,19 +257,26 @@ class LyricsRepositoryImpl @Inject constructor(
             
             // The magic happens here! Concurrently search all 7 providers
             val hits = smartLyricsMatcher.search(localTrack, candidates)
+            val eligibleHits = hits.filter { it.tier == MatchTier.AUTO_ACCEPT || it.tier == MatchTier.REVIEW }
             
-            // Find the best hit that meets the confidence bar
-            val bestHit = hits.firstOrNull { it.tier == MatchTier.AUTO_ACCEPT || it.tier == MatchTier.REVIEW }
-            
-            if (bestHit != null) {
-                val rawLyrics = smartLyricsMatcher.fetchLyrics(bestHit)
+            var fallbackPlainResult: Lyrics? = null
+            for (hit in eligibleHits) {
+                val rawLyrics = smartLyricsMatcher.fetchLyrics(hit)
                 if (!rawLyrics.isNullOrBlank()) {
                     val parsed = LyricsUtils.parseLyrics(rawLyrics).copy(areFromRemote = true)
                     if (parsed.isValid()) {
-                        saveToDbAndCache(song, rawLyrics, isSynced = parsed.synced?.isNotEmpty() == true)
-                        return@withContext parsed
+                        if (parsed.synced?.isNotEmpty() == true) {
+                            saveToDbAndCache(song, rawLyrics, isSynced = true)
+                            return@withContext parsed
+                        } else if (fallbackPlainResult == null) {
+                            fallbackPlainResult = parsed
+                        }
                     }
                 }
+            }
+            if (fallbackPlainResult != null) {
+                saveToDbAndCache(song, lyricsToRawContent(fallbackPlainResult) ?: "", isSynced = false)
+                return@withContext fallbackPlainResult
             }
             return@withContext null
         } catch (e: Exception) {
@@ -671,15 +683,17 @@ class LyricsRepositoryImpl @Inject constructor(
         try {
             val cacheKey = generateCacheKey(song.id)
             loadStoredLyrics(song, cacheKey, includeMemoryCache = true)?.let { stored ->
-                lyricsCache.put(cacheKey, stored.first)
-                return@withContext Result.success(stored)
+                if (!stored.first.synced.isNullOrEmpty()) {
+                    lyricsCache.put(cacheKey, stored.first)
+                    return@withContext Result.success(stored)
+                }
             }
 
             val searchResult = searchRemote(song)
             if (searchResult.isSuccess) {
                 val (_, results) = searchResult.getOrThrow()
                 if (results.isNotEmpty()) {
-                    val best = results.first()
+                    val best = results.firstOrNull { it.lyrics.synced?.isNotEmpty() == true } ?: results.first()
                     val rawLyricsToSave = best.rawLyrics
 
                     try {

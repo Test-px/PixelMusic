@@ -31,14 +31,14 @@ object ConfidenceScorer {
 
     fun score(local: LocalTrack, result: ProviderResult): ConfidenceBreakdown {
         // Pixel Music's existing TextMatch logic can be reused here!
-        val titleSim = similarity(local.title, result.title)
+        val titleSim = TextMatch.similarity(local.title, result.title)
 
         var weightSum = W_TITLE
         var weighted = W_TITLE * titleSim
 
         var artistSim = 0.0
         if (!local.artist.isNullOrBlank() && !result.artist.isNullOrBlank()) {
-            artistSim = similarity(local.artist, result.artist)
+            artistSim = TextMatch.similarity(local.artist, result.artist)
             weightSum += W_ARTIST
             weighted += W_ARTIST * artistSim
         }
@@ -54,7 +54,7 @@ object ConfidenceScorer {
 
         var albumSim = 0.0
         if (!local.album.isNullOrBlank() && !result.album.isNullOrBlank()) {
-            albumSim = similarity(local.album, result.album)
+            albumSim = TextMatch.similarity(local.album, result.album)
             weightSum += W_ALBUM
             weighted += W_ALBUM * albumSim
         }
@@ -89,16 +89,5 @@ object ConfidenceScorer {
         )
     }
 
-    // A simple Jaro-Winkler or Levenshtein string similarity function
-    // You can replace this with Pixel Music's existing `TextMatch.similarity` if you have one.
-    private fun similarity(s1: String?, s2: String?): Double {
-        if (s1.isNullOrBlank() || s2.isNullOrBlank()) return 0.0
-        val str1 = s1.trim().lowercase()
-        val str2 = s2.trim().lowercase()
-        if (str1 == str2) return 1.0
-        // Basic fallback calculation. (You will want to drop SongSync's TextMatch.kt here later)
-        val matches = str1.split(" ").intersect(str2.split(" ").toSet()).size
-        val maxLen = maxOf(str1.split(" ").size, str2.split(" ").size)
-        return matches.toDouble() / maxLen.toDouble()
-    }
+    private fun similarity(s1: String?, s2: String?): Double = TextMatch.similarity(s1, s2)
 }

@@ -17,7 +17,7 @@ class LRCLibAPI(
     private val gson: Gson = Gson()
 ) {
     private val baseURL = "https://lrclib.net/api/"
-    private val userAgent = "PixelMusic/1.0"
+    private val userAgent = "PixelMusic/1.0 (https://github.com/Xing1P/PixelMusic)"
 
     suspend fun searchCandidates(query: String): List<LrcLibResponse> = withContext(Dispatchers.IO) {
         val enc = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
