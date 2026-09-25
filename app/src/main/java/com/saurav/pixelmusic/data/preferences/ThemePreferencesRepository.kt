@@ -37,7 +37,7 @@ class ThemePreferencesRepository @Inject constructor(
     }
 
     val colorPalettePreferenceFlow: Flow<String> = dataStore.data.map { preferences ->
-        preferences[Keys.COLOR_PALETTE_PREFERENCE] ?: "SAGE"
+        preferences[Keys.COLOR_PALETTE_PREFERENCE] ?: "DYNAMIC"
     }
 
     val albumArtPaletteStyleFlow: Flow<AlbumArtPaletteStyle> = dataStore.data.map { preferences ->

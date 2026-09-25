@@ -445,9 +445,9 @@ fun PixelMusicTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     colorSchemePairOverride: ColorSchemePair? = null,
-    colorPalette: String = "SAGE",
+    colorPalette: String = "DYNAMIC",
     useSystemFont: Boolean = false,
-    isAmoledBlack: Boolean = false, // <-- ADD THIS
+    isAmoledBlack: Boolean = false,
     content: @Composable () -> Unit
 ) {
     FontSettings.useSystemFont = useSystemFont
@@ -486,17 +486,21 @@ fun PixelMusicTheme(
         baseColorScheme
     }
 
-    // 3. Smoothly animate ColorScheme changes (e.g. song/thumbnail/palette transitions)
-    val animatedColorScheme = rememberAnimatedColorScheme(finalColorScheme)
+    // 3. Smoothly animate ColorScheme changes when Live Album Art palette is active
+    val activeColorScheme = if (colorPalette == "ALBUM_ART" && colorSchemePairOverride != null) {
+        rememberAnimatedColorScheme(finalColorScheme)
+    } else {
+        finalColorScheme
+    }
 
     PixelMusicStatusBarStyle(
-        color = animatedColorScheme.background,
-        navigationColor = animatedColorScheme.background
+        color = activeColorScheme.background,
+        navigationColor = activeColorScheme.background
     )
 
     CompositionLocalProvider(LocalPixelMusicDarkTheme provides darkTheme) {
         MaterialTheme(
-            colorScheme = animatedColorScheme,
+            colorScheme = activeColorScheme,
             typography = Typography,
             shapes = Shapes,
             motionScheme = MotionScheme.expressive(),
@@ -515,7 +519,7 @@ fun rememberAnimatedColorScheme(
     var toScheme by remember { mutableStateOf(target) }
 
     LaunchedEffect(target) {
-        if (toScheme == target) return@LaunchedEffect
+        if (toScheme == target && progress.value == 1f) return@LaunchedEffect
         fromScheme = lerpColorScheme(fromScheme, toScheme, progress.value)
         toScheme = target
         progress.snapTo(0f)

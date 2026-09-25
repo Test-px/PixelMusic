@@ -76,7 +76,7 @@ data class SettingsUiState(
     val appFontMode: String = AppFontMode.APP_DEFAULT,
     val amoledBlackModeEnabled: Boolean = false,
     val playerThemePreference: String = ThemePreference.ALBUM_ART,
-    val colorPalette: String = "SAGE",
+    val colorPalette: String = "DYNAMIC",
     val albumArtPaletteStyle: AlbumArtPaletteStyle = AlbumArtPaletteStyle.default,
     val albumArtColorAccuracy: Int = AlbumArtColorAccuracy.DEFAULT,
     val mockGenresEnabled: Boolean = false,
