@@ -1335,6 +1335,13 @@ fun PaletteSelectionPage(
             recommended = true
         ),
         ThemeOptionItem(
+            mode = "ALBUM_ART",
+            title = "Live (Album Art)",
+            description = "Adapts accent colors live to the currently playing song's album art.",
+            icon = Icons.Outlined.Palette,
+            recommended = false
+        ),
+        ThemeOptionItem(
             mode = "SAGE",
             title = "Sage Green (Mint)",
             description = "A calming, natural mint green.",

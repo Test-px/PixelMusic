@@ -24,6 +24,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.graphics.ColorUtils
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ColorScheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.lerp
 import com.saurav.pixelmusic.presentation.viewmodel.ColorSchemePair
 
 val LocalPixelMusicDarkTheme = staticCompositionLocalOf { false }
@@ -474,14 +486,17 @@ fun PixelMusicTheme(
         baseColorScheme
     }
 
+    // 3. Smoothly animate ColorScheme changes (e.g. song/thumbnail/palette transitions)
+    val animatedColorScheme = rememberAnimatedColorScheme(finalColorScheme)
+
     PixelMusicStatusBarStyle(
-        color = finalColorScheme.background,
-        navigationColor = finalColorScheme.background
+        color = animatedColorScheme.background,
+        navigationColor = animatedColorScheme.background
     )
 
     CompositionLocalProvider(LocalPixelMusicDarkTheme provides darkTheme) {
         MaterialTheme(
-            colorScheme = finalColorScheme,
+            colorScheme = animatedColorScheme,
             typography = Typography,
             shapes = Shapes,
             motionScheme = MotionScheme.expressive(),
@@ -489,3 +504,66 @@ fun PixelMusicTheme(
         )
     }
 }
+
+@Composable
+fun rememberAnimatedColorScheme(
+    target: ColorScheme,
+    animationSpec: AnimationSpec<Float> = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+): ColorScheme {
+    val progress = remember { Animatable(1f) }
+    var fromScheme by remember { mutableStateOf(target) }
+    var toScheme by remember { mutableStateOf(target) }
+
+    LaunchedEffect(target) {
+        if (toScheme == target) return@LaunchedEffect
+        fromScheme = lerpColorScheme(fromScheme, toScheme, progress.value)
+        toScheme = target
+        progress.snapTo(0f)
+        progress.animateTo(1f, animationSpec)
+    }
+
+    val interpolated by remember {
+        derivedStateOf { lerpColorScheme(fromScheme, toScheme, progress.value) }
+    }
+    return interpolated
+}
+
+fun lerpColorScheme(from: ColorScheme, to: ColorScheme, t: Float): ColorScheme =
+    to.copy(
+        primary = lerp(from.primary, to.primary, t),
+        onPrimary = lerp(from.onPrimary, to.onPrimary, t),
+        primaryContainer = lerp(from.primaryContainer, to.primaryContainer, t),
+        onPrimaryContainer = lerp(from.onPrimaryContainer, to.onPrimaryContainer, t),
+        inversePrimary = lerp(from.inversePrimary, to.inversePrimary, t),
+        secondary = lerp(from.secondary, to.secondary, t),
+        onSecondary = lerp(from.onSecondary, to.onSecondary, t),
+        secondaryContainer = lerp(from.secondaryContainer, to.secondaryContainer, t),
+        onSecondaryContainer = lerp(from.onSecondaryContainer, to.onSecondaryContainer, t),
+        tertiary = lerp(from.tertiary, to.tertiary, t),
+        onTertiary = lerp(from.onTertiary, to.onTertiary, t),
+        tertiaryContainer = lerp(from.tertiaryContainer, to.tertiaryContainer, t),
+        onTertiaryContainer = lerp(from.onTertiaryContainer, to.onTertiaryContainer, t),
+        background = lerp(from.background, to.background, t),
+        onBackground = lerp(from.onBackground, to.onBackground, t),
+        surface = lerp(from.surface, to.surface, t),
+        onSurface = lerp(from.onSurface, to.onSurface, t),
+        surfaceVariant = lerp(from.surfaceVariant, to.surfaceVariant, t),
+        onSurfaceVariant = lerp(from.onSurfaceVariant, to.onSurfaceVariant, t),
+        surfaceTint = lerp(from.surfaceTint, to.surfaceTint, t),
+        inverseSurface = lerp(from.inverseSurface, to.inverseSurface, t),
+        inverseOnSurface = lerp(from.inverseOnSurface, to.inverseOnSurface, t),
+        error = lerp(from.error, to.error, t),
+        onError = lerp(from.onError, to.onError, t),
+        errorContainer = lerp(from.errorContainer, to.errorContainer, t),
+        onErrorContainer = lerp(from.onErrorContainer, to.onErrorContainer, t),
+        outline = lerp(from.outline, to.outline, t),
+        outlineVariant = lerp(from.outlineVariant, to.outlineVariant, t),
+        scrim = lerp(from.scrim, to.scrim, t),
+        surfaceBright = lerp(from.surfaceBright, to.surfaceBright, t),
+        surfaceDim = lerp(from.surfaceDim, to.surfaceDim, t),
+        surfaceContainer = lerp(from.surfaceContainer, to.surfaceContainer, t),
+        surfaceContainerHigh = lerp(from.surfaceContainerHigh, to.surfaceContainerHigh, t),
+        surfaceContainerHighest = lerp(from.surfaceContainerHighest, to.surfaceContainerHighest, t),
+        surfaceContainerLow = lerp(from.surfaceContainerLow, to.surfaceContainerLow, t),
+        surfaceContainerLowest = lerp(from.surfaceContainerLowest, to.surfaceContainerLowest, t)
+    )
