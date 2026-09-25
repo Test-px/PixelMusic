@@ -48,7 +48,7 @@ fun AlbumCarouselSection(
     modifier: Modifier = Modifier,
     carouselStyle: String = CarouselStyle.NO_PEEK,
     itemSpacing: Dp = 8.dp,
-    albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM
+    albumArtQuality: AlbumArtQuality = AlbumArtQuality.ORIGINAL
 ) {
     if (queue.isEmpty()) return
 
@@ -68,7 +68,7 @@ fun AlbumCarouselSection(
         )
 
         // Calculate target size based on quality
-        val targetSize = remember(currentSong?.id) {
+        val targetSize = remember(currentSong?.id, albumArtQuality) {
             if (albumArtQuality.maxSize == 0) SafeOriginalAlbumArtSize
             else Size(albumArtQuality.maxSize, albumArtQuality.maxSize)
         }
@@ -182,6 +182,7 @@ fun AlbumCarouselSection(
                             title = song.title,
                             modifier = Modifier.fillMaxSize(),
                             targetSize = targetSize,
+                            albumArtQuality = albumArtQuality,
                             placeholderModel = if (song.albumArtUriString?.startsWith("telegram_art") == true) {
                                  "${song.albumArtUriString}?quality=thumb"
                             } else null

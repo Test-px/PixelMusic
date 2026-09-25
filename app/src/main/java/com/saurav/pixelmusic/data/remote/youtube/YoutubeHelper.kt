@@ -353,13 +353,25 @@ object YoutubeHelper {
 
     suspend fun getDownloadUrl(context: Context, song: Song): String {
         val videoId = song.youtubeId
-        val maxBitrate = getTargetBitrateCeiling(context, forDownload = true)
-        val cacheKey = if (maxBitrate > 0) "${videoId}_dl_q$maxBitrate" else "${videoId}_dl_high"
+        val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication<YoutubeHelperEntryPoint>(
+            context.applicationContext,
+            YoutubeHelperEntryPoint::class.java
+        )
+        val userPreferencesRepository = entryPoint.userPreferencesRepository()
+        val targetQuality = userPreferencesRepository.downloadAudioQualityFlow.first()
+        val cacheKey = "${videoId}_dl_${targetQuality.name}"
 
         val cachedQuality = streamUrlLruCache.get(cacheKey)
         if (cachedQuality != null && isYoutubeUrlValid(cachedQuality)) return cachedQuality
 
-        val result = getSongUrlFromYoutube(context, song, lowQuality = false, maxBitrateKbps = maxBitrate, requireM4a = true)
+        val result = getSongUrlFromYoutube(
+            context = context,
+            song = song,
+            lowQuality = (targetQuality == StreamingAudioQuality.LOW),
+            maxBitrateKbps = targetQuality.maxBitrateKbps,
+            requireM4a = true,
+            explicitQuality = targetQuality
+        )
         val newUri = result.first
         streamUrlLruCache.put(cacheKey, newUri)
         return newUri
@@ -534,7 +546,8 @@ private suspend fun getSongUrlFromYoutube(
     retries: Int = 3,
     lowQuality: Boolean = false,
     maxBitrateKbps: Int = 0,
-    requireM4a: Boolean = false
+    requireM4a: Boolean = false,
+    explicitQuality: StreamingAudioQuality? = null
 ): Triple<String, String?, Int?> = withContext(Dispatchers.IO) {
     val videoId = song.youtubeId
     if (videoId.isNullOrBlank()) throw Exception("Invalid youtubeId for song: ${song.title}")
@@ -543,10 +556,12 @@ private suspend fun getSongUrlFromYoutube(
     try {
         InnerTubeXPlayer.initialize(context)
         val quality = when {
+            explicitQuality != null -> explicitQuality
             lowQuality -> StreamingAudioQuality.LOW
             maxBitrateKbps in 1..96 -> StreamingAudioQuality.LOW
-            maxBitrateKbps > 200 -> StreamingAudioQuality.HIGH
-            else -> StreamingAudioQuality.AUTO
+            maxBitrateKbps in 97..199 -> StreamingAudioQuality.MEDIUM
+            maxBitrateKbps >= 200 -> StreamingAudioQuality.HIGH
+            else -> StreamingAudioQuality.HIGH
         }
         val playbackData = InnerTubeXPlayer.playerResponseForPlayback(
             videoId = videoId,
@@ -582,12 +597,19 @@ private suspend fun getSongUrlFromYoutube(
     val targetStreams = if (filteredStreams.isNotEmpty()) filteredStreams else audioStreams
 
     val candidate = when {
-        lowQuality -> targetStreams.minByOrNull { it.averageBitrate }
-        maxBitrateKbps > 0 -> {
-            val bpsCeiling = maxBitrateKbps * 1000
+        lowQuality || explicitQuality == StreamingAudioQuality.LOW -> targetStreams.minByOrNull { it.averageBitrate }
+        explicitQuality == StreamingAudioQuality.HIGH -> targetStreams.maxByOrNull { it.averageBitrate }
+        explicitQuality == StreamingAudioQuality.MEDIUM -> {
+            val bpsCeiling = 160 * 1000
             val withinCeiling = targetStreams.filter { it.averageBitrate <= bpsCeiling }
             if (withinCeiling.isNotEmpty()) withinCeiling.maxByOrNull { it.averageBitrate }
-            else targetStreams.minByOrNull { it.averageBitrate }
+            else targetStreams.maxByOrNull { it.averageBitrate }
+        }
+        maxBitrateKbps > 0 -> {
+            val bpsCeiling = (maxBitrateKbps + 32) * 1000
+            val withinCeiling = targetStreams.filter { it.averageBitrate <= bpsCeiling }
+            if (withinCeiling.isNotEmpty()) withinCeiling.maxByOrNull { it.averageBitrate }
+            else targetStreams.maxByOrNull { it.averageBitrate }
         }
         else -> targetStreams.maxByOrNull { it.averageBitrate }
     } ?: targetStreams.first()

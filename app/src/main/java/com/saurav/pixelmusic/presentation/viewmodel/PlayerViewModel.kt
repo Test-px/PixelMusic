@@ -719,8 +719,19 @@ class PlayerViewModel @Inject constructor(
         _isImmersiveTemporarilyDisabled.value = disabled
     }
 
-    val albumArtQuality: StateFlow<AlbumArtQuality> = userPreferencesRepository.albumArtQualityFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumArtQuality.MEDIUM)
+    val albumArtQuality: StateFlow<AlbumArtQuality> = combine(
+        userPreferencesRepository.albumArtQualityFlow,
+        userPreferencesRepository.albumArtQualityMobileFlow,
+        connectivityStateHolder.isMeteredNetwork,
+        userPreferencesRepository.performanceModeEnabledFlow
+    ) { wifi, mobile, isMetered, perfMode ->
+        com.saurav.pixelmusic.utils.ThumbnailUrlUtils.getEffectiveQuality(
+            isMetered = isMetered,
+            qualityWifi = wifi,
+            qualityMobile = mobile,
+            performanceMode = perfMode
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AlbumArtQuality.ORIGINAL)
 
     val aodScreenEnabled: StateFlow<Boolean> = userPreferencesRepository.aodScreenEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)

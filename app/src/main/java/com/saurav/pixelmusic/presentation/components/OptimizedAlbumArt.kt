@@ -46,7 +46,7 @@ fun OptimizedAlbumArt(
     title: String,
     modifier: Modifier = Modifier,
     targetSize: Size = SafeOriginalAlbumArtSize,
-    albumArtQuality: com.saurav.pixelmusic.data.preferences.AlbumArtQuality = com.saurav.pixelmusic.data.preferences.AlbumArtQuality.LOW, // ADD THIS
+    albumArtQuality: com.saurav.pixelmusic.data.preferences.AlbumArtQuality = com.saurav.pixelmusic.data.preferences.AlbumArtQuality.ORIGINAL,
     placeholderModel: Any? = null
 ) {
     val context = LocalContext.current
@@ -75,9 +75,11 @@ fun OptimizedAlbumArt(
         return
     }
 
-    val effectiveQuality = remember(uri) { SmartImageCache.getEffectiveQuality() }
+    val effectiveQuality = remember(uri, albumArtQuality) {
+        albumArtQuality
+    }
 
-    val optimizedUri = remember(uri) {
+    val optimizedUri = remember(uri, effectiveQuality) {
         if (uri is String) {
             com.saurav.pixelmusic.utils.ThumbnailUrlUtils.optimizeArtworkUrl(uri, effectiveQuality) ?: uri
         } else {
@@ -161,7 +163,20 @@ fun OptimizedAlbumArt(
             if (cachedPainter != null) {
                 SubcomposeAsyncImageContent(painter = cachedPainter)
             } else {
-                PlaceholderContent(title = title)
+                val fallbackUrl = remember(optimizedUri) {
+                    if (optimizedUri is String) com.saurav.pixelmusic.utils.ThumbnailUrlUtils.getFallbackArtworkUrl(optimizedUri) else null
+                }
+                if (fallbackUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = fallbackUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = { PlaceholderContent(title = title) }
+                    )
+                } else {
+                    PlaceholderContent(title = title)
+                }
             }
         },
         success = {
