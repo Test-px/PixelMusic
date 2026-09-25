@@ -149,7 +149,7 @@ object QueuePreloadManager {
 
             // If already cached, skip all network downloading
             val isCached = runCatching {
-                exoCache?.cache?.isCached(cleanYoutubeId, 0, 128 * 1024L)
+                exoCache?.cache?.isCached(cleanYoutubeId, 0, 128 * 1024L) == true
             }.getOrDefault(false)
 
             if (isCached) {
