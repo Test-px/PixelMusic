@@ -1146,6 +1146,39 @@ fun SettingsCategoryScreen(
                                             Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary)
                                         }
                                     )
+                                    ThemeSelectorItem(
+                                        label = "Navigation Bar Style",
+                                        description = "Choose between floating navigation bar and edge-to-edge full width",
+                                        options = mapOf(
+                                            com.saurav.pixelmusic.data.preferences.NavBarStyle.DEFAULT to "Floating",
+                                            com.saurav.pixelmusic.data.preferences.NavBarStyle.FULL_WIDTH to "Full Width"
+                                        ),
+                                        selectedKey = uiState.navBarStyle,
+                                        onSelectionChanged = { settingsViewModel.setNavBarStyle(it) },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.Style, null, tint = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    )
+                                    SwitchSettingItem(
+                                        title = "Compact Navigation Bar",
+                                        subtitle = "Reduces vertical padding and height of the bottom navigation bar.",
+                                        checked = uiState.navBarCompactMode,
+                                        onCheckedChange = { settingsViewModel.setNavBarCompactMode(it) },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.GridView, null, tint = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    )
+                                    SettingsItem(
+                                        title = "Navigation Bar Corner Radius",
+                                        subtitle = "Adjust corner roundness for the floating navigation bar",
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.Style, null, tint = MaterialTheme.colorScheme.secondary)
+                                        },
+                                        trailingIcon = {
+                                            Icon(Icons.Rounded.ChevronRight, stringResource(R.string.cd_open), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        },
+                                        onClick = { navController.navigateSafely(Screen.NavBarCrRad.route) }
+                                    )
                                 }
 
                                 SettingsSubsection(title = "Performance & Battery") {
@@ -1172,6 +1205,15 @@ fun SettingsCategoryScreen(
 
                             SettingsCategory.PLAYBACK -> {
                                 SettingsSubsection(title = stringResource(R.string.setcat_background_playback)) {
+                                    SwitchSettingItem(
+                                        title = "Keep Playing in Background",
+                                        subtitle = "Continue audio playback when the app is minimized or the screen is turned off.",
+                                        checked = uiState.keepPlayingInBackground,
+                                        onCheckedChange = { settingsViewModel.setKeepPlayingInBackground(it) },
+                                        leadingIcon = {
+                                            Icon(Icons.Outlined.PlayCircle, null, tint = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    )
                                     val isDynamicIslandEnabled by playerViewModel.userPreferencesRepository.dynamicIslandEnabledFlow
                                         .collectAsStateWithLifecycle(initialValue = true)
                                     val dynamicIslandStyle by playerViewModel.userPreferencesRepository.dynamicIslandStyleFlow

@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -37,7 +38,8 @@ import timber.log.Timber
 
 @Singleton
 class PlaybackStatsRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val userPreferencesRepository: com.saurav.pixelmusic.data.preferences.UserPreferencesRepository? = null
 ) {
 
     private val gson = Gson()
@@ -298,7 +300,12 @@ class PlaybackStatsRepository @Inject constructor(
                 compareByDescending<SongPlaybackSummary> { it.totalDurationMs }
                     .thenByDescending { it.playCount }
             )
-        val topSongs = allSongs.take(5)
+        val topLimit = runCatching {
+            userPreferencesRepository?.let { repo ->
+                kotlinx.coroutines.runBlocking { repo.topSizeFlow.first().toIntOrNull() }
+            } ?: 50
+        }.getOrDefault(50)
+        val topSongs = allSongs.take(topLimit)
 
         val topGenres = segmentsBySong.entries
             .groupBy { (songId, _) ->

@@ -56,12 +56,14 @@ class ExternalPlayerActivity : ComponentActivity() {
             val playerThemePreference by themePreferencesRepository.playerThemePreferenceFlow.collectAsStateWithLifecycle(initialValue = ThemePreference.ALBUM_ART)
             val colorPalette by themePreferencesRepository.colorPalettePreferenceFlow.collectAsStateWithLifecycle(initialValue = "SAGE")
             val appFontMode by themePreferencesRepository.appFontModeFlow.collectAsStateWithLifecycle(initialValue = AppFontMode.APP_DEFAULT)
+            val isAmoledBlackEnabled by themePreferencesRepository.amoledBlackModeFlow.collectAsStateWithLifecycle(initialValue = false)
             val dynamicColorEnabled = colorPalette == "DYNAMIC" || playerThemePreference == ThemePreference.DYNAMIC
             PixelMusicTheme(
                 darkTheme = useDarkTheme,
                 dynamicColor = dynamicColorEnabled,
                 colorPalette = colorPalette,
-                useSystemFont = (appFontMode == AppFontMode.SYSTEM)
+                useSystemFont = (appFontMode == AppFontMode.SYSTEM),
+                isAmoledBlack = isAmoledBlackEnabled
             ) {
                 ExternalPlayerOverlay(
                     playerViewModel = playerViewModel,

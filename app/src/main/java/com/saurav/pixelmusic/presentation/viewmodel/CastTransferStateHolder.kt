@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -50,7 +51,8 @@ class CastTransferStateHolder @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val castStateHolder: CastStateHolder,
     private val playbackStateHolder: PlaybackStateHolder,
-    private val dualPlayerEngine: DualPlayerEngine // For local player control during transfer
+    private val dualPlayerEngine: DualPlayerEngine, // For local player control during transfer
+    private val userPreferencesRepository: com.saurav.pixelmusic.data.preferences.UserPreferencesRepository
 ) {
     private val CAST_LOG_TAG = "PlayerCastTransfer"
 
@@ -591,6 +593,7 @@ class CastTransferStateHolder @Inject constructor(
                 )
             }
 
+            val disableCastAutoplay = userPreferencesRepository.disableCastAutoplayFlow.first()
             var initialLoadAttempt = 0
             fun loadInitialQueueAttempt() {
                 initialLoadAttempt += 1
@@ -601,7 +604,7 @@ class CastTransferStateHolder @Inject constructor(
                     repeatMode = castRepeatMode,
                     serverAddress = serverAddress,
                     authToken = accessPolicy.authToken,
-                    autoPlay = wasPlaying, // Simplification
+                    autoPlay = wasPlaying && !disableCastAutoplay, // Respect cast autoplay preference
                     onComplete = loadResult@{ success, detail ->
                         if (!success && initialLoadAttempt < 2) {
                             Timber.tag(CAST_LOG_TAG).w(
@@ -1111,6 +1114,7 @@ class CastTransferStateHolder @Inject constructor(
                 castDeviceIpHint = castDeviceIpHint
             )
             val completionDeferred = CompletableDeferred<Boolean>()
+            val disableCastAutoplay = userPreferencesRepository.disableCastAutoplayFlow.first()
             castPlayer.loadQueue(
                 songs = songsToPlay,
                 startIndex = startIndex,
@@ -1118,7 +1122,7 @@ class CastTransferStateHolder @Inject constructor(
                 repeatMode = castRepeatMode,
                 serverAddress = serverAddress,
                 authToken = accessPolicy.authToken,
-                autoPlay = true,
+                autoPlay = !disableCastAutoplay,
                 onComplete = { success, detail ->
                     if (!success) {
                         pendingRemoteSongId = null

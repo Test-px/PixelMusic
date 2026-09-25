@@ -1794,6 +1794,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setAlbumArtCacheLimitMb(limitMb)
             com.saurav.pixelmusic.utils.AlbumArtCacheManager.configuredCacheLimitMb = limitMb.toLong()
+            withContext(Dispatchers.IO) {
+                com.saurav.pixelmusic.utils.AlbumArtCacheManager.cleanCacheIfNeeded(context, limitMb.toLong())
+            }
         }
     }
 
