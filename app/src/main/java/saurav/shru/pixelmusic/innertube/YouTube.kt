@@ -1528,15 +1528,16 @@ suspend fun artist(browseId: String): Result<ArtistPage> = runCatching {
     }
 
     suspend fun visitorData(): Result<String> = runCatching {
-        Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))
-            .jsonArray[0]
-            .jsonArray[2]
-            .jsonArray.first {
-                (it as? JsonPrimitive)?.contentOrNull?.let { candidate ->
-                    VISITOR_DATA_REGEX.containsMatchIn(candidate)
-                } ?: false
-            }
-            .jsonPrimitive.content
+        com.saurav.pixelmusic.utils.InnerTubeXPlayer.getFreshVisitorData()
+            ?: Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))
+                .jsonArray[0]
+                .jsonArray[2]
+                .jsonArray.first {
+                    (it as? JsonPrimitive)?.contentOrNull?.let { candidate ->
+                        VISITOR_DATA_REGEX.containsMatchIn(candidate)
+                    } ?: false
+                }
+                .jsonPrimitive.content
     }
 
     suspend fun accountInfo(): Result<AccountInfo> = runCatching {

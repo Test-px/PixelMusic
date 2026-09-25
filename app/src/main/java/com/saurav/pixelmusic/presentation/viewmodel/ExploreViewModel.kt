@@ -69,6 +69,16 @@ class ExploreViewModel @Inject constructor(
     /** Simple in-memory cache so re-tapping a mood doesn't refetch. */
     private val moodCache = mutableMapOf<String, List<HomePage.Section>>()
 
+    private val gson by lazy {
+        com.google.gson.GsonBuilder()
+            .registerTypeAdapter(YTItem::class.java, YTItemTypeAdapter())
+            .create()
+    }
+
+    private val cacheFile by lazy {
+        java.io.File(context.cacheDir, "explore_cache.json")
+    }
+
     private val explorePrefs by lazy { context.getSharedPreferences("explore_guest_cache", Context.MODE_PRIVATE) }
 
     init {
@@ -85,16 +95,6 @@ class ExploreViewModel @Inject constructor(
                 _uiState.update { it.copy(recentMixes = mixes) }
             }
         }
-    }
-
-    private val gson by lazy {
-        com.google.gson.GsonBuilder()
-            .registerTypeAdapter(YTItem::class.java, YTItemTypeAdapter())
-            .create()
-    }
-
-    private val cacheFile by lazy {
-        java.io.File(context.cacheDir, "explore_cache.json")
     }
 
     private fun restoreFromCache() {

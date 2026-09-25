@@ -1675,7 +1675,11 @@ object AutoQueueManager {
                 dao.insertAlbums(albumEntities.distinctBy { it.id })
                 dao.insertSongs(songEntities.distinctBy { it.id })
                 dao.insertSongArtistCrossRefs(crossRefs.distinct())
-                dao.insertRelatedSongMaps(relatedMaps.distinct())
+                runCatching {
+                    dao.insertRelatedSongMaps(relatedMaps.distinct())
+                }.onFailure { err ->
+                    printd("AutoQueueManager: RelatedSongMap insert skipped: ${err.message}")
+                }
             }
         } catch (e: Exception) {
             printe("AutoQueueManager: Error saving related songs to DB: ${e.message}")

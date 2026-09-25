@@ -204,6 +204,15 @@ NewPipe.init(object : Downloader() {
 
         com.saurav.pixelmusic.utils.InnerTubeXPlayer.initialize(this)
 
+        startupScope.launch {
+            if (saurav.shru.pixelmusic.innertube.YouTube.visitorData.isNullOrBlank()) {
+                val fresh = com.saurav.pixelmusic.utils.InnerTubeXPlayer.getFreshVisitorData()
+                if (!fresh.isNullOrBlank()) {
+                    saurav.shru.pixelmusic.innertube.YouTube.visitorData = fresh
+                }
+            }
+        }
+
         // Benchmark variant intentionally restarts/kills app process during tests.
         // Avoid persisting those events as user-facing crash reports.
         if (BuildConfig.BUILD_TYPE != "benchmark") {

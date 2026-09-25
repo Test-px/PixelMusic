@@ -101,18 +101,24 @@ object MediaItemBuilder {
     const val EXTERNAL_EXTRA_NAVIDROME_ID = EXTERNAL_EXTRA_PREFIX + "NAVIDROME_ID"
 
     fun build(song: Song): MediaItem {
+        val yId = song.youtubeId?.takeIf { it.isNotBlank() }
+        val cacheKey = yId ?: song.id
         return MediaItem.Builder()
             .setMediaId(song.id)
             .setUri(playbackUri(song))
+            .setCustomCacheKey(cacheKey)
             .setMimeType(playbackMimeType(song))
             .setMediaMetadata(buildMediaMetadataForSong(song))
             .build()
     }
 
     fun buildForExternalController(context: Context, song: Song): MediaItem {
+        val yId = song.youtubeId?.takeIf { it.isNotBlank() }
+        val cacheKey = yId ?: song.id
         return MediaItem.Builder()
             .setMediaId(song.id)
             .setUri(playbackUri(song))
+            .setCustomCacheKey(cacheKey)
             .setMimeType(playbackMimeType(song))
             .setMediaMetadata(
                 buildMediaMetadataForSong(

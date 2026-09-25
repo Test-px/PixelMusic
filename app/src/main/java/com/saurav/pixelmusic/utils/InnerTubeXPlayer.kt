@@ -23,8 +23,11 @@ import com.saurav.pixelmusic.data.preferences.StreamingAudioQuality
 import com.saurav.pixelmusic.utils.potoken.PoTokenGenerator
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
@@ -62,6 +65,10 @@ object InnerTubeXPlayer {
         if (applicationContext == null) applicationContext = context.applicationContext
     }
 
+    suspend fun getFreshVisitorData(): String? = runCatching {
+        innerTubeX.fetchFreshVisitorData()
+    }.getOrNull()
+
     private fun createHttpClient() =
         HttpClient(OkHttp) {
             expectSuccess = false
@@ -81,11 +88,22 @@ object InnerTubeXPlayer {
             engine {
                 config {
                     connectionPool(okhttp3.ConnectionPool(10, 5, TimeUnit.MINUTES))
-                    connectTimeout(15, TimeUnit.SECONDS)
-                    readTimeout(20, TimeUnit.SECONDS)
-                    writeTimeout(15, TimeUnit.SECONDS)
-                    callTimeout(30, TimeUnit.SECONDS)
+                    connectTimeout(30, TimeUnit.SECONDS)
+                    readTimeout(60, TimeUnit.SECONDS)
+                    writeTimeout(60, TimeUnit.SECONDS)
+                    protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
+                    retryOnConnectionFailure(true)
                 }
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 60_000
+            }
+            defaultRequest {
+                url("https://music.youtube.com/youtubei/v1/")
+                header("Accept", "application/json")
+                header("Cache-Control", "no-cache")
             }
         }
 
@@ -243,14 +261,19 @@ object InnerTubeXPlayer {
                 videoId: String,
                 visitorData: String,
                 cookie: String?,
-            ): InnerTubeXPoTokenResult? =
-                poTokenGenerator.getWebClientPoToken(videoId, visitorData)?.let { token ->
+            ): InnerTubeXPoTokenResult? {
+                val effectiveVisitor = visitorData.takeIf { it.isNotBlank() }
+                    ?: YouTube.visitorData.takeIf { !it.isNullOrBlank() }
+                    ?: getFreshVisitorData().orEmpty()
+
+                return poTokenGenerator.getWebClientPoToken(videoId, effectiveVisitor)?.let { token ->
                     InnerTubeXPoTokenResult(
                         playerRequestToken = token.playerRequestPoToken,
                         streamingDataToken = token.streamingDataPoToken,
-                        visitorData = visitorData,
+                        visitorData = effectiveVisitor,
                     )
                 }
+            }
 
             override suspend fun close() {
                 poTokenGenerator.close()

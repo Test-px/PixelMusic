@@ -2872,12 +2872,26 @@ class MusicService : MediaLibraryService() {
                 }
             }
             scheme == "http" || scheme == "https" -> {
+                val cachedBytes = runCatching {
+                    val loader = coil.Coil.imageLoader(applicationContext)
+                    loader.diskCache?.openSnapshot(uriString)?.use { snapshot ->
+                        snapshot.data.toFile().readBytes()
+                    }
+                }.getOrNull()
+
+                if (cachedBytes != null) {
+                    return ArtworkTransportSanitizer.sanitizeEncodedBytes(
+                        data = cachedBytes,
+                        config = ArtworkTransportSanitizer.WIDGET_CONFIG,
+                    )
+                }
+
                 var connection: HttpURLConnection? = null
                 try {
                     connection = (URL(uriString).openConnection() as? HttpURLConnection)
                         ?: return null
-                    connection.connectTimeout = 4_000
-                    connection.readTimeout = 6_000
+                    connection.connectTimeout = 3_000
+                    connection.readTimeout = 4_000
                     connection.instanceFollowRedirects = true
                     connection.doInput = true
                     connection.inputStream.use { input ->
@@ -2890,10 +2904,10 @@ class MusicService : MediaLibraryService() {
                             }
                     }
                 } catch (error: Exception) {
-                    Timber.tag(TAG).w(error, "Widget artwork read failed for remote uri=%s", uri)
+                    Timber.tag(TAG).w("Widget artwork download skipped: %s", error.message)
                     null
                 } finally {
-                    connection?.disconnect()
+                    runCatching { connection?.disconnect() }
                 }
             }
             else -> loadArtworkBytesViaCoil(uri)

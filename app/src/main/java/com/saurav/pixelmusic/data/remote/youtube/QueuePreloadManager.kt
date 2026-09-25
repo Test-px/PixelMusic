@@ -136,58 +136,73 @@ object QueuePreloadManager {
             val (currentIndex, totalCount) = playerState
             
             // Strictly respect user's configured queue preload size preference
-            val indicesAhead = 
-                (currentIndex + 1)..(currentIndex + settings.preloadQueueSize).coerceAtMost(totalCount - 1)
+            val nextIndex = currentIndex + 1
+            if (nextIndex >= totalCount) return@launch
 
-            for (i in indicesAhead) {
-                val mediaItem = withContext(Dispatchers.Main) {
-                    if (playerRef != null && i < player.mediaItemCount) player.getMediaItemAt(i) else null
-                } ?: continue
+            val mediaItem = withContext(Dispatchers.Main) {
+                if (playerRef != null && nextIndex < player.mediaItemCount) player.getMediaItemAt(nextIndex) else null
+            } ?: return@launch
 
-                val rawMediaId = mediaItem.mediaId
-                if (rawMediaId.isBlank()) continue
-                val cleanYoutubeId = rawMediaId.removePrefix("youtube_")
+            val rawMediaId = mediaItem.mediaId
+            if (rawMediaId.isBlank()) return@launch
+            val cleanYoutubeId = rawMediaId.removePrefix("youtube_")
 
-                val song = Song(
-                    youtubeId = cleanYoutubeId,
-                    title = mediaItem.mediaMetadata.title?.toString() ?: "",
-                    artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
-                    thumbnailHref = mediaItem.mediaMetadata.artworkUri?.toString().orEmpty()
-                )
+            // If already cached, skip all network downloading
+            val isCached = runCatching {
+                exoCache?.cache?.isCached(cleanYoutubeId, 0, 128 * 1024L)
+            }.getOrDefault(false)
 
-                var streamUrl: String? = null
+            if (isCached) {
+                printd("QueuePreloadManager: $cleanYoutubeId is already cached; skipping prefetch")
+                return@launch
+            }
+
+            val song = Song(
+                youtubeId = cleanYoutubeId,
+                title = mediaItem.mediaMetadata.title?.toString() ?: "",
+                artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
+                thumbnailHref = mediaItem.mediaMetadata.artworkUri?.toString().orEmpty()
+            )
+
+            var streamUrl: String? = null
+            try {
+                streamUrl = YoutubeHelper.getSongPlayerUrl(ctx, song, allowLocal = false)
+                printd("QueuePreloadManager: preloaded stream URL for $cleanYoutubeId")
+            } catch (e: Exception) {
+                printe("QueuePreloadManager: failed to preload stream for $cleanYoutubeId: ${e.message}")
+            }
+
+            val connectivityStateHolder = runCatching {
+                dagger.hilt.android.EntryPointAccessors.fromApplication<com.saurav.pixelmusic.data.remote.youtube.YoutubeHelperEntryPoint>(
+                    ctx.applicationContext,
+                    com.saurav.pixelmusic.data.remote.youtube.YoutubeHelperEntryPoint::class.java
+                ).connectivityStateHolder()
+            }.getOrNull()
+
+            val isMetered = connectivityStateHolder?.isMeteredNetwork?.value == true
+
+            if (!isMetered && !streamUrl.isNullOrBlank() && streamUrl.startsWith("http")) {
+                prefetchAudioBytes(ctx, cleanYoutubeId, streamUrl)
+            }
+
+            val thumbnailUrl = song.thumbnailHref
+            if (thumbnailUrl.isNotBlank()) {
                 try {
-                    // Safe call to the new NewPipe Extractor setup
-                    streamUrl = YoutubeHelper.getSongPlayerUrl(ctx, song, allowLocal = false)
-                    printd("QueuePreloadManager: preloaded stream URL for $cleanYoutubeId")
-                } catch (e: Exception) {
-                    printe("QueuePreloadManager: failed to preload stream for $cleanYoutubeId: ${e.message}")
-                }
-
-                if (!streamUrl.isNullOrBlank() && streamUrl.startsWith("http")) {
-                    prefetchAudioBytes(ctx, cleanYoutubeId, streamUrl)
-                }
-
-                val thumbnailUrl = song.thumbnailHref
-                if (thumbnailUrl.isNotBlank()) {
-                    try {
-                        val optimizedUrl = com.saurav.pixelmusic.utils.ThumbnailUrlUtils.optimizeArtworkUrl(
-                            thumbnailUrl,
-                            com.saurav.pixelmusic.presentation.components.SmartImageCache.getEffectiveQuality()
-                        )
-                        if (!optimizedUrl.isNullOrBlank()) {
-                            val request = coil.request.ImageRequest.Builder(ctx)
-                                .data(optimizedUrl)
-                                .diskCacheKey(optimizedUrl)
-                                .build()
-                            coil.Coil.imageLoader(ctx).enqueue(request)
-                            printd("QueuePreloadManager: enqueued thumbnail preload for $cleanYoutubeId")
-                        }
-                    } catch (e: Exception) {
-                        printe("QueuePreloadManager: failed to preload thumbnail for $cleanYoutubeId: ${e.message}")
+                    val optimizedUrl = com.saurav.pixelmusic.utils.ThumbnailUrlUtils.optimizeArtworkUrl(
+                        thumbnailUrl,
+                        com.saurav.pixelmusic.presentation.components.SmartImageCache.getEffectiveQuality()
+                    )
+                    if (!optimizedUrl.isNullOrBlank()) {
+                        val request = coil.request.ImageRequest.Builder(ctx)
+                            .data(optimizedUrl)
+                            .diskCacheKey(optimizedUrl)
+                            .build()
+                        coil.Coil.imageLoader(ctx).enqueue(request)
+                        printd("QueuePreloadManager: enqueued thumbnail preload for $cleanYoutubeId")
                     }
+                } catch (e: Exception) {
+                    printe("QueuePreloadManager: failed to preload thumbnail for $cleanYoutubeId: ${e.message}")
                 }
-                delay(500)
             }
         }
     }
@@ -205,8 +220,9 @@ object QueuePreloadManager {
             val dataSource = cacheDataSourceFactory.createDataSource()
             val dataSpec = DataSpec.Builder()
                 .setUri(uri)
+                .setKey(videoId)
                 .setPosition(0)
-                .setLength(512 * 1024)
+                .setLength(128 * 1024L)
                 .build()
 
             val parentJob = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]

@@ -24,6 +24,9 @@ class PoTokenGenerator(context: Context) {
     private var webPoTokenGenerator: PoTokenWebView? = null
 
     suspend fun getWebClientPoToken(videoId: String, sessionId: String): PoTokenResult? {
+        val effectiveSessionId = sessionId.takeIf { it.isNotBlank() }
+            ?: saurav.shru.pixelmusic.innertube.YouTube.visitorData.takeIf { !it.isNullOrBlank() }
+            ?: "CgtPQVo1TndqTldzWSjE0bC3Bg%3D%3D"
         Timber.tag(TAG).d("WebView state: supported=$webViewSupported, badImpl=$webViewBadImpl")
         if (!webViewSupported || webViewBadImpl) {
             Timber.tag(TAG).d("WebView not available: supported=$webViewSupported, badImpl=$webViewBadImpl")
@@ -32,7 +35,7 @@ class PoTokenGenerator(context: Context) {
 
         return try {
             withTimeout(POTOKEN_TIMEOUT_MS) {
-                getWebClientPoToken(videoId, sessionId, forceRecreate = false)
+                getWebClientPoToken(videoId, effectiveSessionId, forceRecreate = false)
             }
         } catch (e: TimeoutCancellationException) {
             Timber.tag(TAG).w("poToken generation timed out after ${POTOKEN_TIMEOUT_MS}ms; proceeding without PoToken")

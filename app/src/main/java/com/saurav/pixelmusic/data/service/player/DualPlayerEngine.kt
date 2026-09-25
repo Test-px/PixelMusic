@@ -603,32 +603,58 @@ class DualPlayerEngine @Inject constructor(
             override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
                 val uri = dataSpec.uri
                 val scheme = uri.scheme
-                if (scheme == "youtube") {
-                    val originalUri = uri.toString()
-                    val localPath = localFilePathCache[originalUri]
+                val uriString = uri.toString()
+
+                val cleanId = dataSpec.key ?: when {
+                    scheme == "youtube" -> uri.host?.takeIf { it.isNotBlank() } ?: uriString.removePrefix("youtube://")
+                    uriString.startsWith("youtube://") -> uriString.removePrefix("youtube://")
+                    else -> null
+                }
+
+                // 1. Instant Start: Check if the song is already cached in ExoCache
+                if (cleanId != null) {
+                    val isCached = runCatching {
+                        exoCache.cache.isCached(
+                            cleanId,
+                            dataSpec.position,
+                            if (dataSpec.length > 0) dataSpec.length else 128 * 1024L
+                        )
+                    }.getOrDefault(false)
+
+                    if (isCached) {
+                        return dataSpec.buildUpon().setKey(cleanId).build()
+                    }
+                }
+
+                if (scheme == "youtube" || uriString.startsWith("youtube://")) {
+                    val localPath = localFilePathCache[uriString]
                     if (localPath != null && File(localPath).exists()) {
-                        return dataSpec.buildUpon().setUri(Uri.fromFile(File(localPath))).build()
+                        return dataSpec.buildUpon()
+                            .setUri(Uri.fromFile(File(localPath)))
+                            .setKey(cleanId ?: uriString)
+                            .build()
                     }
 
                     fun DataSpec.Builder.applyYtHeaders(resolvedUri: Uri): DataSpec.Builder {
-    val urlStr = resolvedUri.toString()
-    if (urlStr.startsWith("http")) {
-        // Dynamically resolve the correct User-Agent, Origin, and Referer based on the URL's client parameter
-        val profile = saurav.shru.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
-        val headers = mutableMapOf<String, String>()
-        
-        headers["User-Agent"] = profile.userAgent
-        if (profile.origin != null) headers["Origin"] = profile.origin
-        if (profile.referer != null) headers["Referer"] = profile.referer
-        
-        this.setHttpRequestHeaders(headers)
-    }
-    return this
+                        val urlStr = resolvedUri.toString()
+                        if (urlStr.startsWith("http")) {
+                            val profile = saurav.shru.pixelmusic.innertube.utils.StreamClientUtils.resolveRequestProfile(urlStr)
+                            val headers = mutableMapOf<String, String>()
+                            headers["User-Agent"] = profile.userAgent
+                            if (profile.origin != null) headers["Origin"] = profile.origin
+                            if (profile.referer != null) headers["Referer"] = profile.referer
+                            this.setHttpRequestHeaders(headers)
+                        }
+                        return this
                     }
 
-                    val resolved = resolvedUriCache.get(originalUri)
+                    val resolved = resolvedUriCache.get(uriString)
                     if (resolved != null) {
-                        return dataSpec.buildUpon().setUri(resolved).applyYtHeaders(resolved).build()
+                        return dataSpec.buildUpon()
+                            .setUri(resolved)
+                            .setKey(cleanId ?: resolved.toString())
+                            .applyYtHeaders(resolved)
+                            .build()
                     }
 
                     try {
@@ -638,15 +664,24 @@ class DualPlayerEngine @Inject constructor(
                             }
                         }
                         if (fallbackResolved != null && fallbackResolved != uri) {
-                            return dataSpec.buildUpon().setUri(fallbackResolved).applyYtHeaders(fallbackResolved).build()
+                            return dataSpec.buildUpon()
+                                .setUri(fallbackResolved)
+                                .setKey(cleanId ?: fallbackResolved.toString())
+                                .applyYtHeaders(fallbackResolved)
+                                .build()
                         } else {
-                            throw IOException("Stream resolution failed or timed out for $originalUri")
+                            throw IOException("Stream resolution failed or timed out for $uriString")
                         }
                     } catch (e: Exception) {
-                        Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", originalUri)
+                        Timber.tag("DualPlayerEngine").w(e, "Synchronous resolveCloudUri failed for %s", uriString)
                         throw IOException("Stream resolution failed", e)
                     }
                 }
+
+                if (cleanId != null && dataSpec.key == null) {
+                    return dataSpec.buildUpon().setKey(cleanId).build()
+                }
+
                 return dataSpec
             }
         }
@@ -766,6 +801,9 @@ private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String,
 
     private suspend fun resolveYoutubeUriAsync(uriString: String): Uri? = withContext(Dispatchers.IO) {
         try {
+            if (uriString.startsWith("http://") || uriString.startsWith("https://") || uriString.startsWith("file://")) {
+                return@withContext Uri.parse(uriString)
+            }
             val youtubeId = uriString.substringAfter("youtube://")
             val youtubeSong = com.saurav.pixelmusic.data.model.youtube.Song(youtubeId = youtubeId)
 
@@ -789,6 +827,7 @@ private val inFlightResolutions = java.util.concurrent.ConcurrentHashMap<String,
         val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
         val scheme = uri.scheme
         if (scheme !in REMOTE_MEDIA_SCHEMES) return mediaItem
+        if (scheme == "http" || scheme == "https") return mediaItem
         val resolvedUri = resolveCloudUri(uri)
         if (resolvedUri == uri) return mediaItem
         
