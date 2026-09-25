@@ -1768,17 +1768,21 @@ private fun shareToInstagramStory(
     val mimeType = if (isVideo) "video/mp4" else "image/png"
 
     val intent = Intent("com.instagram.share.ADD_TO_STORY").apply {
-        type = mimeType
-        putExtra("interactive_asset_uri", mediaUri)
+        if (isVideo) {
+            // Videos must be set as background asset via setDataAndType; interactive_asset_uri is only for image stickers
+            setDataAndType(mediaUri, mimeType)
+        } else {
+            type = mimeType
+            putExtra("interactive_asset_uri", mediaUri)
+            if (topColorHex != null) {
+                putExtra("top_background_color", topColorHex)
+            }
+            if (bottomColorHex != null) {
+                putExtra("bottom_background_color", bottomColorHex)
+            }
+        }
         putExtra("content_url", GITHUB_LINK)
         putExtra("source_application", "1703718787517231")
-        
-        if (topColorHex != null) {
-            putExtra("top_background_color", topColorHex)
-        }
-        if (bottomColorHex != null) {
-            putExtra("bottom_background_color", bottomColorHex)
-        }
         `package` = INSTAGRAM_PACKAGE
         
         clipData = ClipData.newRawUri("", mediaUri)
@@ -1792,6 +1796,7 @@ private fun shareToInstagramStory(
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, mediaUri)
             `package` = INSTAGRAM_PACKAGE
+            clipData = ClipData.newRawUri("", mediaUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         try {
