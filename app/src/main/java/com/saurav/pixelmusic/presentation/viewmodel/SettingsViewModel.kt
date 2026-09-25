@@ -1787,7 +1787,6 @@ class SettingsViewModel @Inject constructor(
     fun setAlbumArtQuality(quality: AlbumArtQuality) {
         viewModelScope.launch {
             userPreferencesRepository.setAlbumArtQuality(quality)
-            userPreferencesRepository.setAlbumArtQualityMobile(quality)
         }
     }
 
