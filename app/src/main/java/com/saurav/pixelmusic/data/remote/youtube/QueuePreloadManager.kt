@@ -150,7 +150,7 @@ object QueuePreloadManager {
             val isMetered = connectivityStateHolder?.isMeteredNetwork?.value == true
 
             for (targetIndex in (currentIndex + 1)..maxTargetIndex) {
-                if (!kotlinx.coroutines.isActive) break
+                if (!isActive) break
 
                 val mediaItem = withContext(Dispatchers.Main) {
                     if (playerRef != null && targetIndex < player.mediaItemCount) player.getMediaItemAt(targetIndex) else null
