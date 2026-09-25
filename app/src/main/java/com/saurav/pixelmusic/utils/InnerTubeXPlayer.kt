@@ -365,12 +365,12 @@ object InnerTubeXPlayer {
                 metadata?.let {
                     PlayerResponse.VideoDetails(
                         videoId = videoId,
-                        title = it.title,
-                        author = it.author,
+                        title = it.title.orEmpty(),
+                        author = it.author.orEmpty(),
                         channelId = it.channelId.orEmpty(),
                         lengthSeconds = it.durationSeconds?.toString().orEmpty(),
                         musicVideoType = it.musicVideoType,
-                        viewCount = it.viewCount,
+                        viewCount = it.viewCount.orEmpty(),
                         thumbnail =
                             Thumbnails(
                                 it.thumbnails.map { thumbnail ->
