@@ -1023,15 +1023,46 @@ class SettingsViewModel @Inject constructor(
     fun switchYoutubeAccount(targetAccount: com.saurav.pixelmusic.data.model.youtube.StoredYoutubeAccount) {
         viewModelScope.launch {
             val switched = datastoreRepository.switchAccount(targetAccount.id)
-            if (switched != null) {
-                syncManager.fullSync()
-                withContext(Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Switched to ${switched.name.ifEmpty { "Account" }}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+            if (switched == null) return@launch
+
+            withContext(Dispatchers.IO) {
+                try {
+                    // 1. Instantly destroy old account data from Room
+                    val appDatabase = com.saurav.pixelmusic.data.database.youtube.AppDatabase.getInstance(context)
+                    val oldDbPlaylists = appDatabase.playlistRepository().getAll()
+                    oldDbPlaylists.filter { it.info.id != "_downloaded_" }.forEach {
+                        appDatabase.playlistRepository().deleteFullPlaylist(it.info.id)
+                    }
+
+                    // 2. Instantly fetch new account data using the targetAccount's credentials
+                    val cleanSyncId = if (targetAccount.dataSyncId.contains("-") || targetAccount.dataSyncId.isBlank()) "" else targetAccount.dataSyncId
+                    val tempSettings = com.saurav.pixelmusic.data.model.youtube.UmihiSettings(
+                        cookies = com.saurav.pixelmusic.data.model.youtube.Cookies(targetAccount.cookie),
+                        dataSyncId = cleanSyncId
+                    )
+                    val remotePlaylists = com.saurav.pixelmusic.data.remote.youtube.YoutubePlaylistDataSource().retrieveAll(tempSettings)
+                    remotePlaylists.forEach { playlistInfo ->
+                        val emptyPlaylist = com.saurav.pixelmusic.data.model.youtube.Playlist(playlistInfo, emptyList())
+                        val fullPlaylist = com.saurav.pixelmusic.data.remote.youtube.YoutubePlaylistDataSource().retrieveOne(emptyPlaylist, tempSettings)
+                        appDatabase.playlistRepository().insertPlaylistWithSongsPreserving(
+                            fullPlaylist,
+                            appDatabase.songRepository()
+                        )
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsViewModel", "Error refreshing account data on switch", e)
                 }
+            }
+
+            // Also trigger background fullSync for delta songs/subscriptions
+            syncManager.fullSync()
+
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(
+                    context,
+                    "Switched to ${switched.name.ifEmpty { "Account" }}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

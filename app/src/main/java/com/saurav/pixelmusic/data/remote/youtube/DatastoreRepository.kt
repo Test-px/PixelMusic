@@ -220,14 +220,15 @@ open class DatastoreRepository(private val context: Context) {
                 } else emptyList()
             }.toMutableList()
 
-            val accountId = dataSyncId.ifBlank { java.util.UUID.randomUUID().toString() }
+            val cleanDataSyncId = if (dataSyncId.contains("-") || dataSyncId.isBlank()) "" else dataSyncId
+            val accountId = if (cleanDataSyncId.isNotBlank()) cleanDataSyncId else java.util.UUID.randomUUID().toString()
             val newAcc = StoredYoutubeAccount(
                 id = accountId,
                 name = name,
                 handle = handle,
                 avatarUrl = avatarUrl,
                 cookie = cookie,
-                dataSyncId = dataSyncId,
+                dataSyncId = cleanDataSyncId,
                 isPro = false
             )
             resultAccount = newAcc

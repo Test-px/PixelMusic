@@ -1428,13 +1428,15 @@ constructor(
             var remotePlaylistsSuccess = false
             try {
                 val remotePlaylists = YoutubePlaylistDataSource().retrieveAll(settings)
-                val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
+                if (remotePlaylists.isNotEmpty()) {
+                    val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
 
-                // Purge stale local YouTube playlists that do not belong to the active account
-                val localDbPlaylists = appDatabase.playlistRepository().getAll()
-                localDbPlaylists.filter { it.info.id != "_downloaded_" && it.info.id !in remotePlaylistIds }.forEach { oldPl ->
-                    appDatabase.playlistRepository().deleteFullPlaylist(oldPl.info.id)
-                    Log.i(TAG, "Purged stale YouTube playlist '${oldPl.info.title}' (ID: ${oldPl.info.id})")
+                    // Purge stale local YouTube playlists that do not belong to the active account
+                    val localDbPlaylists = appDatabase.playlistRepository().getAll()
+                    localDbPlaylists.filter { it.info.id != "_downloaded_" && it.info.id !in remotePlaylistIds }.forEach { oldPl ->
+                        appDatabase.playlistRepository().deleteFullPlaylist(oldPl.info.id)
+                        Log.i(TAG, "Purged stale YouTube playlist '${oldPl.info.title}' (ID: ${oldPl.info.id})")
+                    }
                 }
 
                 remotePlaylists.forEach { playlistInfo ->
