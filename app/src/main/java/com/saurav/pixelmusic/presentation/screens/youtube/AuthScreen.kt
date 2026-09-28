@@ -53,6 +53,9 @@ fun AuthScreen(
                     WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, true)
                 }
 
+                CookieManager.getInstance().removeAllCookies(null)
+                CookieManager.getInstance().flush()
+
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
