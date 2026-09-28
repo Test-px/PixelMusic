@@ -158,6 +158,8 @@ data class SettingsUiState(
     val ytHandle: String = "",
     val ytAvatarUrl: String = "",
     val ytIsProUser: Boolean = false,
+    val savedAccounts: List<com.saurav.pixelmusic.data.model.youtube.StoredYoutubeAccount> = emptyList(),
+    val otherAccount: com.saurav.pixelmusic.data.model.youtube.StoredYoutubeAccount? = null,
     val performanceModeEnabled: Boolean = false,
     val audioOffloadEnabled: Boolean = false,
     val preferTelegramAlternative: Boolean = false,
@@ -1004,6 +1006,34 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(ytIsProUser = value) }
             }
         }
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                datastoreRepository.savedAccounts,
+                datastoreRepository.activeAccountId
+            ) { accounts, activeId ->
+                val effectiveActiveId = activeId.ifBlank { accounts.firstOrNull()?.id.orEmpty() }
+                val other = accounts.firstOrNull { it.id != effectiveActiveId }
+                accounts to other
+            }.collect { (accounts, other) ->
+                _uiState.update { it.copy(savedAccounts = accounts, otherAccount = other) }
+            }
+        }
+    }
+
+    fun switchYoutubeAccount(targetAccount: com.saurav.pixelmusic.data.model.youtube.StoredYoutubeAccount) {
+        viewModelScope.launch {
+            val switched = datastoreRepository.switchAccount(targetAccount.id)
+            if (switched != null) {
+                syncManager.fullSync()
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Switched to ${switched.name.ifEmpty { "Account" }}",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
     }
 
     fun setPureYtMusicOnly(enabled: Boolean) {
@@ -1014,12 +1044,21 @@ class SettingsViewModel @Inject constructor(
 
     fun logoutYoutube() {
         viewModelScope.launch {
-            datastoreRepository.saveCookies(com.saurav.pixelmusic.data.model.youtube.Cookies(""))
-            datastoreRepository.saveDataSyncId("")
-            datastoreRepository.saveYtProfile("", "", "")
+            val accounts = datastoreRepository.savedAccounts.first()
+            val activeId = datastoreRepository.activeAccountId.first().ifBlank {
+                accounts.firstOrNull()?.id.orEmpty()
+            }
+            if (activeId.isNotBlank()) {
+                datastoreRepository.removeAccount(activeId)
+            } else {
+                datastoreRepository.saveCookies(com.saurav.pixelmusic.data.model.youtube.Cookies(""))
+                datastoreRepository.saveDataSyncId("")
+                datastoreRepository.saveYtProfile("", "", "")
+            }
             withContext(Dispatchers.IO) {
                 com.saurav.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context)
             }
+            syncManager.fullSync()
         }
     }
 
