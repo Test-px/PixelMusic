@@ -1343,8 +1343,8 @@ fun PaletteSelectionPage(
         ),
         ThemeOptionItem(
             mode = "BLACK_AND_WHITE",
-            title = "Black and White (Theme ++)",
-            description = "Monochrome palette with creamy white, carbon black, and black & white thumbnails.",
+            title = "Black and White",
+            description = "Monochrome palette with pure white, pure black, grey accents, and black & white thumbnails.",
             icon = Icons.Outlined.Palette,
             recommended = false
         ),
