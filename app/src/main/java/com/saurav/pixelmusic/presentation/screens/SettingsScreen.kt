@@ -142,6 +142,7 @@ fun SettingsScreen(
     var showTokenDialog by remember { mutableStateOf(false) }
     var triggerSweepAnimation by remember { mutableStateOf(false) }
     var isWaitingForAuthReturn by rememberSaveable { mutableStateOf(false) }
+    var isSwitchingAccount by remember { mutableStateOf(false) }
 
     // Auto-reset trigger so it can re-trigger on subsequent logins
     LaunchedEffect(triggerSweepAnimation) {
@@ -276,10 +277,19 @@ fun SettingsScreen(
         com.saurav.pixelmusic.presentation.components.ExpandableAccountCard(
             uiState = uiState,
             isPro = isProUser,
+            isSwitchingAccount = isSwitchingAccount,
             onLoginNew = { showLoginOptionsDialog = true },
             onLogout = { settingsViewModel.logoutYoutube() },
             onManageAccounts = { navController.navigateSafely(Screen.Accounts.route) },
-            onSwitchAccount = { account -> settingsViewModel.switchYoutubeAccount(account) },
+            onSwitchAccount = { account ->
+                isSwitchingAccount = true
+                coroutineScope.launch {
+                    settingsViewModel.switchYoutubeAccount(account)
+                    kotlinx.coroutines.delay(2000L)
+                    isSwitchingAccount = false
+                    triggerSweepAnimation = true
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
         )
     }

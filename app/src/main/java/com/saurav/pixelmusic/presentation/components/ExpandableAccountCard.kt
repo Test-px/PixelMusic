@@ -42,6 +42,7 @@ fun ExpandableAccountCard(
     onLogout: () -> Unit,
     onManageAccounts: () -> Unit,
     onSwitchAccount: (com.saurav.pixelmusic.data.model.youtube.StoredYoutubeAccount) -> Unit = {},
+    isSwitchingAccount: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -167,8 +168,9 @@ fun ExpandableAccountCard(
                     if (other != null) {
                         Surface(
                             onClick = {
-                                expanded = false
-                                onSwitchAccount(other)
+                                if (!isSwitchingAccount) {
+                                    onSwitchAccount(other)
+                                }
                             },
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -225,12 +227,20 @@ fun ExpandableAccountCard(
                                     )
                                 }
 
-                                Icon(
-                                    imageVector = Icons.Rounded.Sync,
-                                    contentDescription = "Switch account",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                                if (isSwitchingAccount) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        strokeWidth = 2.5.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Sync,
+                                        contentDescription = "Switch account",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
                     } else {

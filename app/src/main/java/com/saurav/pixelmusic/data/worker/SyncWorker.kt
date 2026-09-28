@@ -1428,6 +1428,15 @@ constructor(
             var remotePlaylistsSuccess = false
             try {
                 val remotePlaylists = YoutubePlaylistDataSource().retrieveAll(settings)
+                val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
+
+                // Purge stale local YouTube playlists that do not belong to the active account
+                val localDbPlaylists = appDatabase.playlistRepository().getAll()
+                localDbPlaylists.filter { it.info.id != "_downloaded_" && it.info.id !in remotePlaylistIds }.forEach { oldPl ->
+                    appDatabase.playlistRepository().deleteFullPlaylist(oldPl.info.id)
+                    Log.i(TAG, "Purged stale YouTube playlist '${oldPl.info.title}' (ID: ${oldPl.info.id})")
+                }
+
                 remotePlaylists.forEach { playlistInfo ->
                     val existingPlaylist = appDatabase.playlistRepository().getPlaylistById(playlistInfo.id)
                     val existingSongCount = existingPlaylist?.info?.lastSyncSongCount ?: 0
@@ -1635,7 +1644,7 @@ constructor(
             val syncedPlaylistIds = youtubePlaylists.map { it.info.id }.toSet()
 
             // Delete orphaned synced playlists only if remote playlists were successfully fetched
-            if (remotePlaylistsSuccess && youtubePlaylists.isNotEmpty()) {
+            if (remotePlaylistsSuccess) {
                 allPlaylists.filter { it.source == "YOUTUBE" && it.id !in syncedPlaylistIds }.forEach {
                     playlistPreferencesRepository.deletePlaylist(it.id)
                 }
