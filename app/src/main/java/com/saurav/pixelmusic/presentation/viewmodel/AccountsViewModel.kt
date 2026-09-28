@@ -133,8 +133,17 @@ class AccountsViewModel @Inject constructor(
                 runCatching {
                     when (service) {
                         ExternalServiceAccount.YOUTUBE -> {
-                            datastoreRepository.saveCookies(com.saurav.pixelmusic.data.model.youtube.Cookies(""))
-                            datastoreRepository.saveDataSyncId("")
+                            val accounts = datastoreRepository.savedAccounts.first()
+                            val activeId = datastoreRepository.activeAccountId.first().ifBlank {
+                                accounts.firstOrNull()?.id.orEmpty()
+                            }
+                            if (activeId.isNotBlank()) {
+                                datastoreRepository.removeAccount(activeId)
+                            } else {
+                                datastoreRepository.saveCookies(com.saurav.pixelmusic.data.model.youtube.Cookies(""))
+                                datastoreRepository.saveDataSyncId("")
+                                datastoreRepository.saveYtProfile("", "", "")
+                            }
                             com.saurav.pixelmusic.data.database.youtube.AppDatabase.clearDownloads(context)
                         }
                         ExternalServiceAccount.LASTFM -> {
