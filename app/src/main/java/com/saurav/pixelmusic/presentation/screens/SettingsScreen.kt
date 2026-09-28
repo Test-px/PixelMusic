@@ -279,6 +279,7 @@ fun SettingsScreen(
             onLoginNew = { showLoginOptionsDialog = true },
             onLogout = { settingsViewModel.logoutYoutube() },
             onManageAccounts = { navController.navigateSafely(Screen.Accounts.route) },
+            onSwitchAccount = { account -> settingsViewModel.switchYoutubeAccount(account) },
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
         )
     }
@@ -572,7 +573,7 @@ fun SettingsScreen(
             val fullToken by authViewModel.getFullTokenString().collectAsStateWithLifecycle(initialValue = "")
 
             AdvancedTokenLoginDialog(
-                currentCookie = fullToken,
+                currentCookie = if (uiState.otherAccount == null && uiState.savedAccounts.isNotEmpty()) "" else fullToken,
                 onDismiss = { showTokenDialog = false },
                 onSaveToken = { token ->
                     showTokenDialog = false
