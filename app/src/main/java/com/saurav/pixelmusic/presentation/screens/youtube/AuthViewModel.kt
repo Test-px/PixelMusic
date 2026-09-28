@@ -32,20 +32,52 @@ class AuthViewModel @Inject constructor(
     private val _eventsChannel = MutableSharedFlow<ScreenEvent.Out>()
     val eventFlow = _eventsChannel.asSharedFlow()
 
+    private var currentDataSyncId: String = ""
+
     fun onPageFinished(url: String?) {
         viewModelScope.launch {
             if (url?.contains(Constants.Auth.END_URL) == true && !_uiState.value.isLoggedIn) {
                 val cookies = CookieManager.getInstance().getCookie(url).orEmpty()
-                saveCookies(Cookies(cookies))
-                _uiState.update { it.copy(isLoggedIn = true) }
-                _eventsChannel.emit(ScreenEvent.Out.LoginCompleted)
-                // Trigger an immediate background synchronization of user playlists and library
-                syncManager.fullSync()
+                if (cookies.isNotBlank()) {
+                    _uiState.update { it.copy(isLoggedIn = true) }
+                    val syncId = currentDataSyncId
+                    YouTube.cookie = cookies
+                    if (syncId.isNotBlank()) {
+                        YouTube.dataSyncId = syncId
+                    }
+
+                    var name = ""
+                    var handle = ""
+                    var avatarUrl = ""
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching {
+                            YouTube.accountInfo().getOrNull()
+                        }.getOrNull()?.let { info ->
+                            name = info.name
+                            handle = info.channelHandle ?: ""
+                            avatarUrl = info.thumbnailUrl ?: ""
+                        }
+                    }
+
+                    datastoreRepository.addNewAccount(
+                        cookie = cookies,
+                        dataSyncId = syncId,
+                        name = name,
+                        handle = handle,
+                        avatarUrl = avatarUrl,
+                        makeActive = true
+                    )
+
+                    _eventsChannel.emit(ScreenEvent.Out.LoginCompleted)
+                    // Trigger an immediate background synchronization of user playlists and library
+                    syncManager.fullSync()
+                }
             }
         }
     }
 
     fun onDataSyncIdFound(dataSyncId: String) {
+        currentDataSyncId = dataSyncId
         viewModelScope.launch {
             datastoreRepository.saveDataSyncId(dataSyncId)
             YouTube.dataSyncId = dataSyncId
@@ -88,21 +120,34 @@ class AuthViewModel @Inject constructor(
                 cookieStr = tokenString.trim()
             }
 
-            // 2. Save the extracted Cookie
+            var avatarUrl = ""
             if (cookieStr.isNotEmpty()) {
-                val cookies = Cookies(cookieStr)
-                saveCookies(cookies)
+                YouTube.cookie = cookieStr
+                if (dataSyncId.isNotEmpty()) {
+                    YouTube.dataSyncId = dataSyncId
+                }
+                if (accountName.isEmpty() || accountHandle.isEmpty()) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching {
+                            YouTube.accountInfo().getOrNull()
+                        }.getOrNull()?.let { info ->
+                            if (accountName.isEmpty()) accountName = info.name
+                            if (accountHandle.isEmpty()) accountHandle = info.channelHandle ?: ""
+                            avatarUrl = info.thumbnailUrl ?: ""
+                        }
+                    }
+                }
             }
 
-            // 3. Save the DataSyncId if it exists
-            if (dataSyncId.isNotEmpty()) {
-                datastoreRepository.saveDataSyncId(dataSyncId)
-                YouTube.dataSyncId = dataSyncId
-            }
-
-            // 4. Save the Profile Info! (This is what updates the "Guest User" header)
-            if (accountName.isNotEmpty() || accountHandle.isNotEmpty()) {
-                datastoreRepository.saveYtProfile(accountName, accountHandle, "")
+            if (cookieStr.isNotEmpty()) {
+                datastoreRepository.addNewAccount(
+                    cookie = cookieStr,
+                    dataSyncId = dataSyncId,
+                    name = accountName.ifBlank { "YouTube User" },
+                    handle = accountHandle,
+                    avatarUrl = avatarUrl,
+                    makeActive = true
+                )
             }
 
             // 5. Complete the login and trigger the background sync
