@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="130" viewBox="0 0 920 130" role="img" aria-label="Architecture Component Header">
+  <defs>
+    <linearGradient id="archBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#281125" />
+      <stop offset="100%" stop-color="#3B1936" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="916" height="126" rx="32" fill="url(#archBg)" stroke="#ECCBD9" stroke-width="1.8" />
+  
+  <g transform="translate(56, 65)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="-28" y="-28" width="56" height="56" rx="15.68" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-28" y="-28" width="56" height="56" rx="15.68" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-28" y="-28" width="56" height="56" rx="15.68" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+    <!-- Gear / Diagram Icon -->
+    <circle cx="0" cy="0" r="5" stroke="#2E172B" stroke-width="2.5" fill="none" />
+    <path d="M 0,-10 L 0,-6 M 0,6 L 0,10 M -10,0 L -6,0 M 6,0 L 10,0 M -7,-7 L -4,-4 M 4,4 L 7,7 M -7,7 L -4,4 M 4,-4 L 7,-7" stroke="#2E172B" stroke-width="2.2" stroke-linecap="round" />
+  </g>
+
+  <g transform="translate(104, 45)">
+    <text x="0" y="16" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2">PIPELINE ARCHITECTURE</text>
+    <text x="0" y="44" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" letter-spacing="-0.3">Direct CDN &amp; DualPlayer Playback Pipeline</text>
+    <text x="0" y="68" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.5" font-weight="400" opacity="0.9">End-to-end data flow: Multi-source resolution, zero-latency queue preloading, and DSP audio transformation.</text>
+  </g>
+</svg>
