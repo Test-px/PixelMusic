@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="260" viewBox="0 0 920 260" role="img" aria-label="Community &amp; Credits Component">
+  <defs>
+    <linearGradient id="cmBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A1A37" />
+      <stop offset="100%" stop-color="#1E0B1C" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="916" height="256" rx="32" fill="url(#cmBg)" stroke="#ECCBD9" stroke-width="1.8" />
+  
+  <g transform="translate(56, 50)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+    <!-- Heart / Community Icon -->
+    <path d="M 0,-4 C -3,-8 -8,-8 -8,-4 C -8,0 0,6 0,6 C 0,6 8,0 8,-4 C 8,-8 3,-8 0,-4 Z" fill="#2E172B" />
+  </g>
+
+  <g transform="translate(98, 38)">
+    <text x="0" y="14" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2">COMMUNITY &amp; OPEN SOURCE</text>
+    <text x="0" y="38" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="800" letter-spacing="-0.3">Meet the Makers &amp; Contributors</text>
+  </g>
+
+  <!-- Contributor Cards inside Component -->
+  <g transform="translate(56, 100)">
+    <!-- Person 1 -->
+    <rect x="0" y="0" width="254" height="130" rx="22" fill="#F8EBF3" stroke="#ECCBD9" stroke-width="1.2" />
+    
+    <g transform="translate(36, 40)">
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(0)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(30)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(60)" />
+    </g>
+  
+    <circle cx="36" cy="40" r="12" fill="#F8EBF3" />
+    <text x="68" y="32" fill="#6B4B67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700">LEAD ARCHITECT</text>
+    <text x="68" y="52" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="800">Saurav Biswas</text>
+    <text x="68" y="70" fill="#4A2E46" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">@Saurav124x</text>
+    <rect x="18" y="90" width="218" height="26" rx="13" fill="#4A2E46" />
+    <text x="127" y="107" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Lead Developer &amp; Maintainer</text>
+
+    <!-- Person 2 -->
+    <g transform="translate(276, 0)">
+      <rect x="0" y="0" width="254" height="130" rx="22" fill="#F8EBF3" stroke="#ECCBD9" stroke-width="1.2" />
+      
+    <g transform="translate(36, 40)">
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(0)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(30)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#4A2E46" transform="rotate(60)" />
+    </g>
+  
+      <circle cx="36" cy="40" r="12" fill="#F8EBF3" />
+      <text x="68" y="32" fill="#6B4B67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700">UI / UX COLLABORATOR</text>
+      <text x="68" y="52" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="800">@Xyg901</text>
+      <text x="68" y="70" fill="#4A2E46" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">Telegram Collaborator</text>
+      <rect x="18" y="90" width="218" height="26" rx="13" fill="#4A2E46" />
+      <text x="127" y="107" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Material 3 Makeover Design</text>
+    </g>
+
+    <!-- Person 3 -->
+    <g transform="translate(552, 0)">
+      <rect x="0" y="0" width="256" height="130" rx="22" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      
+    <g transform="translate(36, 40)">
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-20" y="-20" width="40" height="40" rx="11.200000000000001" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+      <circle cx="36" cy="40" r="12" fill="#2E172B" />
+      <text x="68" y="32" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700">ORIGINAL CREATOR</text>
+      <text x="68" y="52" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="800">Theo Vilardo</text>
+      <text x="68" y="70" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">PixelPlayer Project</text>
+      <rect x="18" y="90" width="220" height="26" rx="13" fill="#2A1327" />
+      <text x="128" y="107" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Foundational Architecture</text>
+    </g>
+  </g>
+</svg>

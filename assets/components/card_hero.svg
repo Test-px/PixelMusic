@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="330" viewBox="0 0 920 330" role="img" aria-label="PixelMusic Hero">
+  <defs>
+    <linearGradient id="heroBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2A1327" />
+      <stop offset="50%" stop-color="#3D1D38" />
+      <stop offset="100%" stop-color="#1F0E1D" />
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#F8EBF3" />
+      <stop offset="100%" stop-color="#EBBFE0" />
+    </linearGradient>
+    <linearGradient id="badgeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EBBFE0" />
+      <stop offset="100%" stop-color="#F8EBF3" />
+    </linearGradient>
+  </defs>
+
+  <!-- Big Component Container -->
+  <rect x="2" y="2" width="916" height="326" rx="32" fill="url(#heroBg)" stroke="#ECCBD9" stroke-width="1.8" />
+
+  <!-- Corner Scallop Accents -->
+  <g opacity="0.12">
+    
+    <g transform="translate(860, 60)">
+      <rect x="-70" y="-70" width="140" height="140" rx="39.199999999999996" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-70" y="-70" width="140" height="140" rx="39.199999999999996" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-70" y="-70" width="140" height="140" rx="39.199999999999996" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+    
+    <g transform="translate(60, 270)">
+      <rect x="-50" y="-50" width="100" height="100" rx="28" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-50" y="-50" width="100" height="100" rx="28" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-50" y="-50" width="100" height="100" rx="28" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+  </g>
+
+  <!-- App Logo / Badge Section -->
+  <g transform="translate(68, 80)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="-42" y="-42" width="84" height="84" rx="23.52" fill="url(#badgeGlow)" transform="rotate(0)" />
+      <rect x="-42" y="-42" width="84" height="84" rx="23.52" fill="url(#badgeGlow)" transform="rotate(30)" />
+      <rect x="-42" y="-42" width="84" height="84" rx="23.52" fill="url(#badgeGlow)" transform="rotate(60)" />
+    </g>
+  
+    <!-- Music Note Icon -->
+    <path d="M -8,14 C -14,14 -16,10 -16,6 C -16,2 -13,0 -8,0 C -5,0 -3,1 -1,2 L -1,-18 L 15,-22 L 15,9 C 9,9 7,5 7,1 C 7,-3 10,-5 15,-5 C 18,-5 20,-4 22,-3" stroke="#2E172B" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+
+  <!-- Text Hierarchy -->
+  <g transform="translate(148, 62)">
+    <rect x="0" y="0" width="220" height="26" rx="13" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1" />
+    <text x="110" y="17.5" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700" text-anchor="middle" letter-spacing="1.2">MATERIAL 3 EXPRESSIVE</text>
+
+    <text x="0" y="66" fill="url(#titleGrad)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="800" letter-spacing="-0.8">PixelMusic</text>
+    <text x="0" y="96" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16.5" font-weight="600" letter-spacing="-0.2">The Next-Generation Material 3 Expressive Music Experience for Android</text>
+    <text x="0" y="122" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.5" font-weight="400" opacity="0.9">Direct unencrypted GoogleVideo CDN streaming • DualPlayer pre-buffering • Synchronized karaoke lyrics</text>
+  </g>
+
+  <!-- Tech Stack Chips Bar inside Component -->
+  <g transform="translate(56, 252)">
+    <rect x="0" y="0" width="808" height="54" rx="27" fill="#1F0E1D" stroke="#ECCBD9" stroke-width="1.2" opacity="0.9" />
+    
+    <g transform="translate(16, 12)">
+      <rect x="0" y="0" width="136" height="30" rx="15" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="68" y="19.5" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Android 10+ (API 29+)</text>
+    </g>
+  
+    
+    <g transform="translate(164, 12)">
+      <rect x="0" y="0" width="120" height="30" rx="15" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="60" y="19.5" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">100% Kotlin</text>
+    </g>
+  
+    
+    <g transform="translate(296, 12)">
+      <rect x="0" y="0" width="170" height="30" rx="15" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="85" y="19.5" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Jetpack Compose M3E</text>
+    </g>
+  
+    
+    <g transform="translate(478, 12)">
+      <rect x="0" y="0" width="160" height="30" rx="15" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="80" y="19.5" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">AndroidX Media3</text>
+    </g>
+  
+    
+    <g transform="translate(650, 12)">
+      <rect x="0" y="0" width="142" height="30" rx="15" fill="#4A2E46" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="71" y="19.5" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">GPL-3.0 License</text>
+    </g>
+  
+  </g>
+</svg>

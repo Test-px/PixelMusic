@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="260" viewBox="0 0 920 260" role="img" aria-label="Official Distribution Hub">
+  <defs>
+    <linearGradient id="dlBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#361732" />
+      <stop offset="50%" stop-color="#4A2245" />
+      <stop offset="100%" stop-color="#261023" />
+    </linearGradient>
+  </defs>
+
+  <!-- Big Component Container -->
+  <rect x="2" y="2" width="916" height="256" rx="32" fill="url(#dlBg)" stroke="#ECCBD9" stroke-width="1.8" />
+
+  <!-- Scalloped Header Badge -->
+  <g transform="translate(48, 48)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(0)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(30)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#EBBFE0" transform="rotate(60)" />
+    </g>
+  
+    <!-- Download Arrow Icon -->
+    <path d="M 0,-9 L 0,5 M -6,0 L 0,5 L 6,0 M -9,10 L 9,10" stroke="#2E172B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+
+  <g transform="translate(90, 36)">
+    <text x="0" y="14" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2">OFFICIAL DISTRIBUTION HUB</text>
+    <text x="0" y="38" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="800" letter-spacing="-0.3">Download PixelMusic APK</text>
+  </g>
+
+  <!-- Information Callout Box inside Component -->
+  <g transform="translate(48, 100)">
+    <rect x="0" y="0" width="824" height="64" rx="20" fill="#240F22" stroke="#ECCBD9" stroke-width="1.2" />
+    <text x="24" y="27" fill="#F8EBF3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13.5" font-weight="600">
+      📢 Source Code Repository Notice: This repo is exclusively for open-source development.
+    </text>
+    <text x="24" y="49" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="400">
+      To install on your Android device, download signed release or beta APKs from our official channels below:
+    </text>
+  </g>
+
+  <!-- Sub-Cards Row: Website & Telegram Bot -->
+  <g transform="translate(48, 180)">
+    <!-- Website Sub-Card -->
+    <rect x="0" y="0" width="402" height="58" rx="20" fill="#F8EBF3" stroke="#ECCBD9" stroke-width="1.2" />
+    
+    <g transform="translate(30, 29)">
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(0)" />
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(30)" />
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(60)" />
+    </g>
+  
+    <!-- Globe Icon -->
+    <circle cx="30" cy="29" r="6.5" stroke="#F8EBF3" stroke-width="1.5" fill="none" />
+    <ellipse cx="30" cy="29" rx="3" ry="6.5" stroke="#F8EBF3" stroke-width="1.5" fill="none" />
+    <line x1="23.5" y1="29" x2="36.5" y2="29" stroke="#F8EBF3" stroke-width="1.5" />
+    <text x="58" y="24" fill="#6B4B67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" letter-spacing="1">OFFICIAL WEBSITE</text>
+    <text x="58" y="43" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700">pixelmusic.pages.dev</text>
+    <rect x="292" y="14" width="94" height="28" rx="14" fill="#4A2E46" />
+    <text x="339" y="32" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" text-anchor="middle">STABLE APK</text>
+
+    <!-- Bot Sub-Card -->
+    <g transform="translate(422, 0)">
+      <rect x="0" y="0" width="402" height="58" rx="20" fill="#F8EBF3" stroke="#ECCBD9" stroke-width="1.2" />
+      
+    <g transform="translate(30, 29)">
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(0)" />
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(30)" />
+      <rect x="-18" y="-18" width="36" height="36" rx="10.08" fill="#4A2E46" transform="rotate(60)" />
+    </g>
+  
+      <!-- Bot Icon -->
+      <rect x="24" y="24" width="12" height="9" rx="2" stroke="#F8EBF3" stroke-width="1.5" fill="none" />
+      <circle cx="27.5" cy="28.5" r="1.1" fill="#F8EBF3" />
+      <circle cx="32.5" cy="28.5" r="1.1" fill="#F8EBF3" />
+      <line x1="30" y1="24" x2="30" y2="21" stroke="#F8EBF3" stroke-width="1.5" stroke-linecap="round" />
+      <text x="58" y="24" fill="#6B4B67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" letter-spacing="1">TELEGRAM UPDATE BOT</text>
+      <text x="58" y="43" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700">@PixelMusicAppBot</text>
+      <rect x="292" y="14" width="94" height="28" rx="14" fill="#2A1327" />
+      <text x="339" y="32" fill="#EBBFE0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" text-anchor="middle">BETA &amp; FAST</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="260" viewBox="0 0 920 260" role="img" aria-label="🎨 Material 3 Expressive Aesthetics">
+  <defs>
+    <linearGradient id="cardGrad_DesignSystem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8EBF3" />
+      <stop offset="100%" stop-color="#ECCBD9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Big Component Container -->
+  <rect x="2" y="2" width="916" height="256" rx="32" fill="url(#cardGrad_DesignSystem)" stroke="#ECCBD9" stroke-width="1.8" />
+
+  <!-- Scalloped Badge -->
+  <g transform="translate(56, 52)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#4A2E46" transform="rotate(0)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#4A2E46" transform="rotate(30)" />
+      <rect x="-24" y="-24" width="48" height="48" rx="13.44" fill="#4A2E46" transform="rotate(60)" />
+    </g>
+  
+    <!-- Sparkle / Star Icon -->
+    <path d="M 0,-8 L 2.5,-2.5 L 8,0 L 2.5,2.5 L 0,8 L -2.5,2.5 L -8,0 L -2.5,-2.5 Z" fill="#F8EBF3" />
+  </g>
+
+  <!-- Header Section -->
+  <g transform="translate(100, 38)">
+    <text x="0" y="14" fill="#6B4B67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2">DESIGN SYSTEM</text>
+    <text x="0" y="38" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="800" letter-spacing="-0.3">🎨 Material 3 Expressive Aesthetics</text>
+  </g>
+
+  <!-- Expressive Spec Pills -->
+  <g transform="translate(56, 88)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="155" height="28" rx="14" fill="#FFFFFF" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="77.5" y="18.5" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Dynamic Harmonic Palette</text>
+    </g>
+  
+    <g transform="translate(165, 0)">
+      <rect x="0" y="0" width="155" height="28" rx="14" fill="#FFFFFF" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="77.5" y="18.5" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Fluid AGSL Shaders</text>
+    </g>
+  
+    <g transform="translate(330, 0)">
+      <rect x="0" y="0" width="155" height="28" rx="14" fill="#FFFFFF" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="77.5" y="18.5" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Scalloped Badges</text>
+    </g>
+  
+    <g transform="translate(495, 0)">
+      <rect x="0" y="0" width="155" height="28" rx="14" fill="#FFFFFF" stroke="#ECCBD9" stroke-width="1.2" />
+      <text x="77.5" y="18.5" fill="#2E172B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" text-anchor="middle" letter-spacing="0.3">Ambient Ring</text>
+    </g>
+  
+  </g>
+
+  <!-- Bullet Items in Rounded Component Box -->
+  <g transform="translate(56, 132)">
+    <rect x="0" y="0" width="808" height="106" rx="20" fill="#FFFFFF" stroke="#ECCBD9" stroke-width="1.2" opacity="0.9" />
+    
+      <g transform="translate(24, 26)">
+        <!-- Scalloped mini bullet -->
+        <circle cx="0" cy="0" r="4" fill="#4A2E46" />
+        <text x="14" y="4" fill="#3B1E37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500">
+          <tspan font-weight="700">Wallpaper &amp; Artwork Harmonics:</tspan> Dynamic color extraction synchronizes with your device theme.
+        </text>
+      </g>
+    
+      <g transform="translate(24, 50)">
+        <!-- Scalloped mini bullet -->
+        <circle cx="0" cy="0" r="4" fill="#4A2E46" />
+        <text x="14" y="4" fill="#3B1E37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500">
+          <tspan font-weight="700">GPU Blur &amp; Motion Scrims:</tspan> Android 13+ GPU-accelerated blur headers, spring physics, and haptics.
+        </text>
+      </g>
+    
+      <g transform="translate(24, 74)">
+        <!-- Scalloped mini bullet -->
+        <circle cx="0" cy="0" r="4" fill="#4A2E46" />
+        <text x="14" y="4" fill="#3B1E37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500">
+          <tspan font-weight="700">Living Ambient Ring:</tspan> Flowing sweep gradient avatar ring reacting to playback states and theme accents.
+        </text>
+      </g>
+    
+  </g>
+</svg>
