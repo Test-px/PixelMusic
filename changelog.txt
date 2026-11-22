@@ -1,0 +1,44 @@
+**Sub release 4.6.0**
+
+* 🎧 **InnerTube & YouTube Music Stabilization:**
+  - Resolved serialization crashes on `NextResponse` continuations and queue pagination by providing safe defaults across all InnerTube response models.
+  - Fixed recursive self-reference bug in `BrowseResponse.MusicThumbnailRenderer` and missing field exceptions on blocked or deleted tracks in `PlaylistPanelVideoRenderer`.
+  - Fixed tab resolution for Lyrics and Related recommendations: dynamically discover tabs via endpoint inspection instead of hardcoded indices, ensuring recommendations load reliably even when lyrics are missing.
+  - Enhanced Related endpoint parser to check both single-column and section-list layouts, fixing empty Related recommendation carousels.
+  - Fixed Liked Songs and playlist sync continuation (`songsContinuation`) so large library playlists paginate and sync completely.
+  - Hardened Home, Explore, Search, Suggestion, Album, and Artist parsers against null durations, missing thumbnails, single-group subtitle formats, and non-ASCII separator bullet characters.
+  - Added predecessor support and VL-prefix normalization in playlist reordering (`ACTION_MOVE_VIDEO_AFTER`) for moving songs to the end of playlists.
+  - Optimized playlist creation with atomic multi-track creation in a single request instead of sequential loops.
+  - Enforced 'Not Interested' and skipped song filtering within AutoQueue / Radio mode to prevent unwanted recommendations from appearing in upcoming queues.
+* 🎛️ **Complex Now Playing Style & Dynamic Morphing:**
+  - Added a new 4th Now Playing layout style: **Complex**. Features a left-shifted Scooped Arc, curved seekbar aligned with the arch radius, vertical expressive control stack, dynamic island line animations, and smart vocal word sync with unclipped lyrics glow.
+  - In-place `graphicsLayer` morphing for song metadata, album artwork, and playback buttons (`play/pause`, `next`, `prev`) transitioning between MiniPlayer and Now Playing across all 4 player styles.
+  - Eliminated overlay hand-off hitches, end-of-collapse bounce, and spring jitter during player sheet drag transitions.
+  - Refined play/pause button morphing: maintains a smooth rounded rectangle shape (`26.dp` corner radius) during active playback.
+  - Added real-time Material You Expressive audio visualizer in Complex mode with softened cookie carves and smooth bar movement.
+* 🤖 **AI Playlist Lab & Expressive Generation:**
+  - Redesigned AI Playlist generation into an edge-to-edge full-screen portal featuring celestial merge animations, dynamic theme-adaptive glows, floating Material You expressive shapes, and 3 Material You `PullToRefresh` LoadingIndicators that spin, scale, and converge.
+  - Background generation with persistent notification progress and deep-link resumption.
+  - Upgraded AI Mix on Home screen: added a large (124dp) 6-head cookie button with reactive magic logo and shape-morphing pill shortcuts. Rendered via Skia path clipping and shader shadows to eliminate HWUI outline freezes.
+  - Integrated Gemini 3.5 Flash Lite as default model for faster responses, cloud library taste telemetry, and curated 1-2 word smart playlist names.
+* 🎚️ **Equalizer Integration (In-App & System):**
+  - Integrated full equalizer support (`com.saurav.pixelmusic`) with seamless in-app equalizer processing by default.
+  - Added system equalizer chooser in Experimental Settings for routing to external device sound engines.
+* 🎵 **Smooth Crossfade & Manual Skip Transitions:**
+  - Implemented smooth audio crossfade on manual track skips and play/pause toggles via MediaSession custom commands.
+  - Safeguarded audio volume fade curves to prevent silent playback bugs and volume level corruption.
+* 🎨 **Dynamic Theme Engine & Interactive Palette Selector:**
+  - Refined theme palettes (Black & White, Dynamic Material You, Live Album Art, and Yellow) with signature per-palette micro-animations.
+  - Added interactive palette circle preview showing real detected system Material You colors with watchdog-protected transition stability.
+  - Preserved full-color album artwork and added pure black & white support across pills and updater buttons.
+* 🧬 **Fluid Blob-Grid Collage (Your Mix):**
+  - Asymmetric biological fluid blob-grid overlay for Your Mix with custom SVG rounded triangle blobs, cookie shapes, and floating accent orbs with smoothed curves to prevent edge notches.
+* 🧭 **Settings Architecture & UI Polish:**
+  - Streamlined settings navigation: unified `Library & Sources`, relocated `Device Capabilities` to Developer Options, moved `Liquid Glass` exclusively to Experimental Features, and removed obsolete `Behavior` screen.
+  - Staggered zoom blur and rounded depth card screen transitions across all navigation routes.
+  - Restored circular action buttons for Settings and Smart Mix, and increased Explore title size to 34sp.
+* 🌐 **Library, Search & Content Fixes:**
+  - Fixed artist and album detail pages across localized InnerTube responses and unified online/local ID resolution.
+  - Resolved repeating songs in Quick Picks and Your Mix, enabling fresh related track fetching on pull-to-refresh.
+  - Enforced 720p artwork resolution and unified single-download cache sharing to prevent duplicate network calls.
+  - Prevented crashes on delete requests for invalid or SD-card URIs and cleaned up phantom library songs.
