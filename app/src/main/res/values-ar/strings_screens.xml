@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation / misc -->
+    <string name="nav_error_genre_id_missing">خطأ: معرّف النوع الموسيقي مفقود</string>
+    <string name="easter_egg_thank_you">شكرًا لاستخدامك PixelMusic!</string>
+
+    <!-- Word delimiter config -->
+    <string name="word_delimiter_section_title">فواصل الكلمات الحالية</string>
+    <string name="word_delimiter_section_subtitle">تقوم هذه الكلمات بفصل أسماء الفنانين عند إحاطتها بمسافات دون حساسية لحالة الأحرف. اضغط للإزالة.</string>
+    <string name="word_delimiter_empty">لم يتم إعداد أي فواصل كلمات</string>
+    <string name="word_delimiter_add_title">إضافة فاصل كلمات جديد</string>
+    <string name="word_delimiter_hint">مثلًا: feat. أو ft.</string>
+    <string name="word_delimiter_help_title">كيف تعمل فواصل الكلمات</string>
+    <string name="word_delimiter_help_body">تتم مطابقة فواصل الكلمات دون حساسية لحالة الأحرف مع وجود مسافات حولها.\n\nتتطلب الفواصل المكونة من حرف واحد (مثل \"x\") وجود مسافات على الجانبين لتجنّب المطابقات الخاطئة.\n\nأمثلة:\n  \"Drake feat. Rihanna\" -&gt; Drake, Rihanna\n  \"Marshmello x Bastille\" -&gt; Marshmello, Bastille\n  \"A vs. B\" -&gt; A, B</string>
+    <string name="word_delimiters_screen_title">فواصل الكلمات</string>
+    <string name="word_delimiter_reset_title">إعادة تعيين فواصل الكلمات؟</string>
+    <string name="word_delimiter_reset_message">سيؤدي هذا إلى مسح جميع فواصل الكلمات المخصّصة واستعادة الكلمات الافتراضية. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="word_delimiter_toast_added">تمت إضافة فاصل الكلمات</string>
+    <string name="word_delimiter_toast_invalid">موجود بالفعل أو غير صالح</string>
+    <string name="word_delimiter_toast_reset">تمت إعادة تعيين فواصل الكلمات إلى الافتراضية</string>
+    <string name="action_reset">إعادة تعيين</string>
+
+    <!-- Delimiter config (path separators) -->
+    <string name="delimiter_section_title">الفواصل الحالية</string>
+    <string name="delimiter_section_subtitle">اضغط على فاصل لإزالته. يلزم وجود فاصل واحد على الأقل.</string>
+    <string name="delimiter_add_title">إضافة فاصل جديد</string>
+    <string name="delimiter_hint">مثلًا: / أو ;</string>
+    <string name="delimiter_defaults_title">الفواصل الافتراضية</string>
+    <string name="delimiter_reset_title">إعادة تعيين الفواصل؟</string>
+    <string name="delimiter_reset_message">سيؤدي هذا إلى مسح جميع الفواصل المخصّصة واستعادة الافتراضية. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="delimiter_toast_reset">تمت إعادة تعيين الفواصل إلى الافتراضية</string>
+    <string name="delimiter_toast_at_least_one">يلزم وجود فاصل واحد على الأقل</string>
+    <string name="delimiter_toast_added">تمت إضافة الفاصل</string>
+    <string name="delimiter_toast_invalid">الفاصل موجود بالفعل أو غير صالح</string>
+    <string name="path_delimiters_toolbar_title">الفواصل</string>
+    <string name="delimiter_label_space">مسافة</string>
+    <string name="cd_add_path_delimiter">إضافة فاصل</string>
+
+    <!-- Accounts -->
+    <string name="accounts_google_drive_soon">Google Drive قادم قريبًا.</string>
+    <string name="accounts_unable_open_screen">تعذّر فتح هذه الشاشة الآن.</string>
+
+    <!-- Setup (subset; more keys follow in same file) -->
+    <string name="setup_welcome_prefix">مرحبًا بك في </string>
+    <string name="setup_beta_symbol">β</string>
+    <string name="setup_beta_label">تجريبي</string>
+    <string name="setup_intro_body">لنقم بتجهيز كل شيء لك.</string>
+    <string name="setup_checking_backup">جارٍ فحص حزمة النسخ الاحتياطي…</string>
+    <string name="setup_theme_title">سمة التطبيق</string>
+    <string name="setup_theme_subtitle">اختر المظهر الذي تفضّله قبل البدء في استكشاف مكتبتك.</string>
+    <string name="setup_theme_footer">يمكنك تغيير هذا لاحقًا من الإعدادات &gt; المظهر &gt; سمة التطبيق.</string>
+    <string name="setup_recommended">موصى به</string>
+    <string name="setup_library_layout_title">تخطيط المكتبة</string>
+    <string name="setup_library_layout_subtitle">اختر طريقتك المفضّلة للتنقّل في مكتبتك.</string>
+    <string name="setup_compact_mode">الوضع المدمج</string>
+    <string name="setup_library_layout_footer">يمكنك تغيير هذا لاحقًا من الإعدادات &gt; المظهر &gt; التنقّل في المكتبة.</string>
+    <string name="tab_library">المكتبة</string>
+    <string name="tab_songs">الأغاني</string>
+    <string name="tab_albums">الألبومات</string>
+    <string name="tab_artists">الفنانون</string>
+    <string name="setup_all_set_title">كل شيء جاهز!</string>
+    <string name="setup_all_set_body">أنت مستعد للاستمتاع بموسيقاك.</string>
+    <string name="setup_restore_backup_title">استعادة نسخة احتياطية</string>
+    <string name="setup_restore_backup_subtitle">راجع ما تريد استيراده قبل إنهاء الإعداد.</string>
+    <string name="setup_modules_selected_format">تم تحديد %1$d من %2$d وحدات</string>
+    <string name="setup_backup_created_format">تم الإنشاء في %1$s</string>
+    <string name="setup_backup_from_version">نسخة احتياطية من %1$s</string>
+    <string name="unknown_version">إصدار غير معروف</string>
+    <string name="setup_lets_go">لنبدأ!</string>
+    <string name="setup_step_format">الخطوة %1$d من %2$d</string>
+    <string name="setup_app_navigation_title">التنقّل في التطبيق</string>
+    <string name="setup_app_navigation_subtitle">اختر نمط شريط التنقّل السفلي.</string>
+    <string name="setup_navbar_default_style">النمط الافتراضي</string>
+    <string name="setup_navbar_footer">يمكنك تغيير هذا لاحقًا من الإعدادات &gt; المظهر &gt; نمط شريط التنقّل.</string>
+    <string name="skip_for_now">تخطٍ الآن</string>
+    <string name="skip_not_now">تخطٍ / ليس الآن</string>
+    <string name="restoring">جارٍ الاستعادة</string>
+    <string name="restore_selected">استعادة المحدد</string>
+    <string name="customize_corner_radius">تخصيص استدارة الزوايا</string>
+    <string name="toast_grant_permission_first">يُرجى منح الإذن المطلوب أولًا.</string>
+    <string name="toast_grant_all_permissions">يُرجى منح جميع الأذونات المطلوبة.</string>
+    <string name="toast_grant_storage_first">امنح أذونات التخزين أولًا</string>
+    <string name="toast_battery_settings_unavailable">تعذّر فتح إعدادات البطارية</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_expand_menu">توسيع القائمة</string>
+    <string name="cd_next_step">التالي</string>
+    <string name="cd_finish">إنهاء</string>
+    <string name="cd_close">إغلاق</string>
+    <string name="cd_remove">إزالة</string>
+    <string name="cd_add_word_delimiter">إضافة فاصل كلمات</string>
+    <string name="cd_reset_defaults">استعادة الافتراضيات</string>
+
+    <!-- Setup (additional literals) -->
+    <string name="setup_excluded_folders_title">المجلدات المستبعدة</string>
+    <string name="setup_excluded_folders_description">يتم فحص جميع المجلدات افتراضيًا. اختر أي مجلدات تريد تجاهلها عند بناء مكتبتك.</string>
+    <string name="setup_choose_folders_ignore">اختر المجلدات المراد تجاهلها</string>
+    <string name="setup_permission_media_title">إذن الوسائط</string>
+    <string name="setup_permission_media_description">يحتاج PixelMusic إلى الوصول لملفاتك الصوتية لبناء مكتبة الموسيقى الخاصة بك.</string>
+    <string name="setup_permission_granted">تم منح الإذن</string>
+    <string name="setup_grant_media_permission">منح إذن الوسائط</string>
+    <string name="setup_permission_notifications_title">الإشعارات</string>
+    <string name="setup_permission_notifications_description">فعّل الإشعارات للتحكم في الموسيقى من شاشة القفل ولوحة الإشعارات.</string>
+    <string name="setup_enable_notifications">تفعيل الإشعارات</string>
+    <string name="setup_permission_alarms_title">المنبّهات والتذكيرات</string>
+    <string name="setup_permission_alarms_description">اختياري، لكنه موصى به إذا كنت تستخدم مؤقت النوم وتريد أن يوقف PixelMusic التشغيل في الوقت المحدد بالضبط.</string>
+    <string name="setup_grant_permission_generic">منح الإذن</string>
+    <string name="setup_backup_have_title">هل لديك نسخة احتياطية؟</string>
+    <string name="setup_backup_have_description">إذا كانت لديك نسخة احتياطية من PixelMusic بالفعل، استعدها الآن وتخطَّ معظم خطوات الإعداد المتبقية على هذا الجهاز.</string>
+    <string name="setup_inspecting_backup">جارٍ فحص النسخة الاحتياطية</string>
+    <string name="setup_restoring_backup">جارٍ استعادة النسخة الاحتياطية</string>
+    <string name="setup_import_backup">استيراد نسخة احتياطية</string>
+    <string name="setup_theme_dark_title">داكن</string>
+    <string name="setup_theme_dark_description">مظهر Material 3 الداكن الافتراضي لتطبيق PixelMusic.</string>
+    <string name="setup_theme_light_title">فاتح</string>
+    <string name="setup_theme_light_description">مظهر Material 3 أكثر إشراقًا في أنحاء التطبيق.</string>
+    <string name="setup_theme_follow_title">اتباع النظام</string>
+    <string name="setup_theme_follow_description">مطابقة إعداد المظهر الحالي في هاتفك.</string>
+    <string name="setup_compact_mode_pill_hint">استخدام التنقّل المصغّر</string>
+    <string name="setup_compact_mode_tab_hint">استخدام صف التبويبات القياسي</string>
+    <string name="setup_preview_songs_label">الأغاني</string>
+    <string name="setup_battery_optimization_title">تحسين البطارية</string>
+    <string name="setup_battery_optimization_description">تقوم بعض أجهزة Android بإغلاق تطبيقات الخلفية بشكل صارم. عطّل تحسين البطارية لتطبيق PixelMusic لمنع انقطاع التشغيل المفاجئ.</string>
+    <string name="setup_disable_battery_optimization">تعطيل التحسين</string>
+    <string name="setup_nav_floating_pill_description">شريط عائم بزوايا دائرية</string>
+    <string name="setup_nav_full_width_description">شريط قياسي بعرض كامل</string>
+
+    <!-- Delete song (Material dialog from ViewModel) -->
+    <string name="dialog_delete_song_title">حذف الأغنية؟</string>
+    <string name="dialog_delete_song_message">\"%1$s\" للفنان %2$s\n\nسيتم حذف هذه الأغنية نهائيًا من جهازك ولا يمكن استعادتها.</string>
+
+    <!-- Home / detail shared -->
+    <string name="home_your_mix_title">مزيجك\nالخاص</string>
+    <string name="home_empty_placeholder_title">لا توجد بيانات للعرض بعد</string>
+    <string name="home_empty_placeholder_subtitle">سيظهر مزيجك هنا عندما يعثر PixelMusic على أغانٍ أو يزامن مصدرًا.</string>
+    <string name="home_empty_placeholder_refresh">تحديث</string>
+    <string name="cd_shuffle_play">تشغيل عشوائي</string>
+    <string name="cd_album_art_for_title">غلاف ألبوم %1$s</string>
+    <string name="cd_options">خيارات</string>
+    <string name="genre_quick_fill">تعبئة سريعة للنوع</string>
+    <string name="cd_generic_artist">فنان عام</string>
+    <string name="cd_play_album">تشغيل الألبوم</string>
+    <string name="cd_shuffle_play_album">تشغيل الألبوم عشوائيًا</string>
+    <string name="album_cover_for">غلاف %1$s</string>
+    <string name="album_detail_meta_line">%1$s · %2$s</string>
+    <string name="mashup_cd_play_pause">تشغيل/إيقاف مؤقت</string>
+    <string name="cd_song_cover">غلاف الأغنية</string>
+
+    <!-- Crash report dialog -->
+    <string name="crash_report_title">عذرًا! حدث خطأ ما</string>
+    <string name="crash_report_subtitle">تعطّل التطبيق خلال جلستك الأخيرة. ساعدنا في إصلاح المشكلة بمشاركة تقرير التعطّل.</string>
+    <string name="crash_report_date_line">التاريخ: %1$s</string>
+    <string name="crash_report_error_label">الخطأ:</string>
+    <string name="crash_report_stack_preview_label">تتبّع المكدس (معاينة):</string>
+    <string name="crash_report_clipboard_label">سجل التعطّل</string>
+    <string name="toast_crash_log_copied">تم نسخ سجل التعطّل إلى الحافظة</string>
+    <string name="crash_report_share_subject">تقرير تعطّل PixelMusic</string>
+    <string name="crash_report_share_chooser">مشاركة تقرير التعطّل</string>
+    <string name="action_copy">نسخ</string>
+    <string name="action_share">مشاركة</string>
+
+    <!-- Search screen -->
+    <string name="search_placeholder">بحث…</string>
+    <string name="cd_search_icon">بحث</string>
+    <string name="cd_clear_search_query">مسح البحث</string>
+    <string name="recent_searches">عمليات البحث الأخيرة</string>
+    <string name="clear_all">مسح الكل</string>
+    <string name="cd_search_history_icon">السجل</string>
+    <string name="cd_delete_search_history_item">حذف عنصر من سجل البحث</string>
+    <string name="cd_no_search_results">لا توجد نتائج</string>
+    <string name="search_no_results_for_query">لا توجد نتائج لـ \"%1$s\"</string>
+    <string name="search_nothing_found">لم يتم العثور على شيء</string>
+    <string name="search_try_different_or_filters">جرّب عبارة بحث أخرى أو تحقّق من الفلاتر.</string>
+    <string name="search_no_results_found">لم يتم العثور على نتائج.</string>
+
+    <!-- Genre browse -->
+    <string name="browse_by_genre">التصفّح حسب النوع الموسيقي</string>
+    <string name="no_genres_available">لا توجد أنواع موسيقية متاحة.</string>
+
+    <!-- About -->
+    <string name="about_credits_title">المبتكر الأصلي</string>
+    <string name="about_credits_description">بُني هذا التطبيق واستُلهم من مشروع PixelPlayer مفتوح المصدر الذي أنشأه Theo Vilardo بموجب الترخيص الخاص.</string>
+    <string name="about_no_contributors">لم يتم العثور على مساهمين حاليًا. يُرجى المحاولة لاحقًا.</string>
+    <string name="about_app_name">PixelMusic</string>
+    <string name="about_tagline">مشغّل موسيقى مفتوح المصدر بُني بمشاركة مجتمعه.</string>
+    <string name="about_version_format">الإصدار v%1$s</string>
+    <string name="about_contributions_format">%1$d مساهمة</string>
+    <string name="screen_about">حول التطبيق</string>
+    <string name="about_maintainer_title">المشرف</string>
+    <string name="about_maintainer_subtitle">الشخص القائم على PixelMusic.</string>
+    <string name="about_spotlight_title">إضاءة على المجتمع</string>
+    <string name="about_spotlight_subtitle">تقدير للمتعاونين ذوي الأثر الكبير.</string>
+    <string name="about_contributors_section_title">المساهمون في المصدر المفتوح</string>
+    <string name="about_contributors_section_subtitle">قائمة مساهمين مباشرة من GitHub.</string>
+    <string name="about_signal_open_source">مفتوح المصدر</string>
+    <string name="about_signal_community_first">المجتمع أولًا</string>
+    <string name="about_signal_material3">Material 3 تعبيري</string>
+    <string name="cd_open_github_profile">فتح ملف GitHub</string>
+    <string name="cd_open_telegram">فتح Telegram</string>
+    <string name="cd_contributor_avatar">صورة %1$s</string>
+    <string name="cd_contributor_icon">أيقونة %1$s</string>
+
+    <!-- Streaming / cloud dashboards -->
+    <string name="screen_subsonic_dashboard_title">Subsonic</string>
+    <string name="dash_playlists_synced_count">تمت مزامنة %1$d قائمة تشغيل</string>
+    <string name="dash_folders_synced_count">تمت مزامنة %1$d مجلد</string>
+    <string name="dash_title_playlists">قوائم التشغيل</string>
+    <string name="dash_music_folders">مجلدات الموسيقى</string>
+    <string name="dash_action_sync">مزامنة</string>
+    <string name="dash_playlists_empty_title">لم تتم مزامنة أي قوائم تشغيل بعد</string>
+    <string name="dash_playlists_empty_hint_subsonic">اضغط على مزامنة لجلب قوائم التشغيل الخاصة بك</string>
+    <string name="dash_playlists_empty_hint_jellyfin">اضغط على مزامنة لجلب قوائم تشغيل Jellyfin الخاصة بك</string>
+    <string name="dash_no_folders_yet">لم تتم إضافة أي مجلدات بعد</string>
+    <string name="dash_tap_plus_add_drive_folder">اضغط على + لإضافة مجلد Drive</string>
+    <string name="dash_quick_actions">إجراءات سريعة</string>
+    <string name="dash_quick_actions_subsonic_subtitle">إدارة Navidrome وAirsonic والخوادم الأخرى المتوافقة مع Subsonic.</string>
+    <string name="dash_quick_actions_jellyfin_subtitle">إدارة اتصالك بخادم Jellyfin.</string>
+    <string name="dash_status_syncing">جارٍ المزامنة</string>
+    <string name="dash_action_sync_library">مزامنة المكتبة</string>
+    <string name="dash_action_disconnect">قطع الاتصال</string>
+    <string name="dash_status_syncing_library">جارٍ مزامنة المكتبة…</string>
+    <string name="dash_status_fetching_playlists">جارٍ جلب قوائم التشغيل…</string>
+    <string name="dash_status_syncing_playlist_format">جارٍ مزامنة قائمة التشغيل: %1$s</string>
+    <string name="dash_status_updating_local">جارٍ تحديث المكتبة المحلية…</string>
+    <string name="dash_status_sync_complete">اكتملت المزامنة</string>
+    <string name="dash_status_fetching_albums">جارٍ جلب قائمة الألبومات…</string>
+    <string name="dash_status_fetching_songs_from_format">جارٍ جلب الأغاني من %1$s…</string>
+    <string name="dash_status_saving_songs_format">جارٍ حفظ %1$d أغنية في قاعدة البيانات…</string>
+    <string name="dash_status_no_songs_found">لم يتم العثور على أغانٍ في المكتبة</string>
+    <string name="dash_status_library_sync_complete">اكتملت مزامنة المكتبة</string>
+    <string name="dash_song_count">%1$d أغنية</string>
+    <string name="cd_sync">مزامنة</string>
+    <string name="cd_sync_all">مزامنة الكل</string>
+    <string name="cd_add_drive_folder">إضافة مجلد</string>
+    <string name="cd_logout">تسجيل الخروج</string>
+    <string name="screen_netease_dashboard_title">NetEase Music</string>
+    <string name="cd_sync_all_playlists">مزامنة جميع قوائم التشغيل</string>
+    <string name="error_with_message_format">خطأ: %1$s</string>
+    <string name="sync_status_syncing_ellipsis">جارٍ المزامنة…</string>
+    <string name="qq_select_playlist_type_title">اختر نوع قائمة التشغيل</string>
+    <string name="qq_choose_playlists_to_sync">اختر قوائم التشغيل المراد مزامنتها:</string>
+    <string name="qq_all_playlists">جميع قوائم التشغيل</string>
+    <string name="qq_created_and_collected">المنشأة والمحفوظة</string>
+    <string name="qq_created_playlists">قوائم التشغيل المنشأة</string>
+    <string name="qq_collected_playlists">قوائم التشغيل المحفوظة</string>
+    <string name="cd_user_avatar">صورة المستخدم</string>
+    <string name="toast_playlist_created">تم إنشاء قائمة التشغيل بنجاح</string>
+    <string name="toast_set_ai_provider_api_key_first">اضبط مفتاح API لمزوّد الذكاء الاصطناعي أولًا</string>
+    <string name="toast_set_gemini_api_key_first">اضبط مفتاح Gemini API الخاص بك أولًا</string>
+    <string name="toast_added_to_queue">تمت الإضافة إلى قائمة الانتظار</string>
+    <string name="toast_playing_next">سيتم التشغيل تاليًا</string>
+    <string name="error_share_song_format">تعذّرت مشاركة الأغنية: %1$s</string>
+</resources>

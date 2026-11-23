@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pixel Music</string>
+    <string name="app_name_change_title">تغيير اسم التطبيق</string>
+    <string name="app_name_change_message">قمنا بتغيير اسم تطبيقنا من PixelMusic إلى PixelMusic بسبب مسألة تتعلق بالعلامة التجارية. استمتع بالاستماع!</string>
+    <string name="do_not_show_again">عدم الإظهار مجددًا</string>
+    <string name="dismiss">تجاهل</string>
+    <string name="all_files_access_title">مطلوب إذن خاص</string>
+    <string name="all_files_access_description">لتعديل البيانات الوصفية للأغاني (ملفات .mp3)، يحتاج PixelMusic إلى إذن خاص للوصول إلى جميع الملفات. يتيح لنا ذلك تعديل وسوم المقاطع مباشرةً. يُرجى منح هذا الإذن في الشاشة التالية لتفعيل تعديل البيانات الوصفية.</string>
+    <string name="grant_permission_button">منح الإذن</string>
+    <string name="all_files_access_setting">الوصول إلى جميع الملفات</string>
+    <string name="error">خطأ</string>
+    <string name="ok">حسنًا</string>
+    <string name="cancel">إلغاء</string>
+    <string name="import_file">استيراد</string>
+    <string name="search">بحث</string>
+
+    <string name="lyrics">كلمات الأغنية</string>
+    <string name="close_lyrics_sheet">إغلاق نافذة الكلمات</string>
+    <string name="loading_lyrics">جارٍ تحميل كلمات الأغنية…</string>
+    <string name="cant_find_lyrics">تعذّر العثور على كلمات لهذه الأغنية.</string>
+    <string name="lyrics_provided_by">الكلمات مقدّمة من</string>
+    <string name="lrclib_uri">https://lrclib.net/</string>
+    <string name="lyrics_not_found">لم يتم العثور على الكلمات</string>
+    <string name="search_lyrics_online_prompt">هل ترغب في البحث عن كلمات الأغنية عبر الإنترنت؟</string>
+    <string name="lyrics_custom_search_hint">تعذّر العثور على الكلمات تلقائيًا. يمكنك تعديل العنوان أو اسم الفنان والمحاولة يدويًا.</string>
+    <string name="failed_to_search_for_lyrics">فشل البحث عن كلمات الأغنية</string>
+    <string name="failed_to_fetch_lyrics_from_remote">فشل جلب كلمات الأغنية من الخادم</string>
+    <string name="lyrics_fetch_timeout">انتهت مهلة الاتصال. يُرجى التحقق من اتصالك بالإنترنت.</string>
+    <string name="lyrics_network_error">خطأ في الشبكة. يُرجى التحقق من اتصالك بالإنترنت.</string>
+    <string name="lyrics_server_error">خطأ في الخادم (الرمز %d). يُرجى المحاولة لاحقًا.</string>
+    <string name="found_n_matches_format">تم العثور على %d نتيجة</string>
+    <string name="searched_for_x_format">تم البحث عن \"%s\"</string>
+    <string name="searching_lyrics">جارٍ البحث عن الكلمات…</string>
+    <string name="lyrics_already_available">الكلمات متوفرة بالفعل. تم تخطي الجلب عبر الإنترنت.</string>
+    <string name="lyrics_embedded_already_available">تم العثور على كلمات مدمجة بالفعل. تم تخطي الجلب عبر الإنترنت.</string>
+    <string name="local_lrc_already_available">تم العثور على ملف كلمات محلي (.lrc) بالفعل. تم تخطي الجلب عبر الإنترنت.</string>
+    <string name="fetch_lyrics_show_options_title">عرض خيارات الكلمات</string>
+    <string name="fetch_lyrics_show_options_subtitle">فتح قائمة الاختيار دائمًا بدلًا من تطبيق أول مطابقة تلقائيًا</string>
+    <string name="save_lyrics_as_lrc">حفظ الكلمات كملف .lrc</string>
+    <string name="save_lyrics_dialog_title">حفظ الكلمات</string>
+    <string name="save_lyrics_dialog_message">اختر النسخة التي تريد حفظها:</string>
+    <string name="save_synced_lyrics">متزامنة (مع التوقيت)</string>
+    <string name="save_plain_lyrics">عادية (نص فقط)</string>
+    <string name="lyrics_saved_successfully">تم حفظ الكلمات بنجاح</string>
+    <string name="lyrics_save_failed">فشل حفظ الكلمات</string>
+    <string name="no_lyrics_to_save">لا توجد كلمات متاحة للحفظ</string>
+    <string name="reset_imported_lyrics">إعادة تعيين الكلمات المستوردة</string>
+    <string name="lyrics_sync_offset">إزاحة مزامنة الكلمات</string>
+    <string name="lyrics_sync_offset_format">%+.1f ث</string>
+    <string name="lyrics_sync_offset_reset">إعادة تعيين</string>
+    <string name="lyrics_earlier">أبكر</string>
+    <string name="lyrics_later">أبطأ</string>
+
+    <string name="sync_scanning">جارٍ فحص ملفات الموسيقى…</string>
+    <string name="sync_processing">جارٍ معالجة الملفات…</string>
+    <string name="sync_files_progress">%1$d من %2$d ملف</string>
+    <string name="sync_in_progress">جارٍ مزامنة المكتبة…</string>
+    <string name="sync_complete">اكتملت المزامنة</string>
+    <string name="sync_pending">في الانتظار…</string>
+    <string name="syncing_library">جارٍ مزامنة المكتبة…</string>
+    <string name="library_background_sync">جارٍ الإكمال في الخلفية…</string>
+    <string name="library_background_sync_lyrics">جارٍ فحص الكلمات…</string>
+    <string name="library_background_sync_cache">جارٍ تنظيف ذاكرة أغلفة الألبومات…</string>
+    <string name="library_background_sync_cloud">جارٍ مزامنة المصادر السحابية…</string>
+    <string name="unknown_song_title">مقطع غير معروف</string>
+    <string name="unknown_artist">فنان غير معروف</string>
+    <string name="unknown_album">ألبوم غير معروف</string>
+    <string name="artist_picker_title">اختر فنانًا</string>
+    <string name="artist_picker_supporting_text">افتح صفحة أي فنان مشارك في هذا المقطع.</string>
+    <string name="artist_picker_count_single">فنان واحد</string>
+    <string name="artist_picker_count_multiple">%1$d فنانين</string>
+    <string name="artist_picker_primary_label">الفنان الرئيسي</string>
+    <string name="artist_picker_shortcut_label">صفحة الفنان</string>
+    <string name="external_queue_label">تشغيل سريع</string>
+    <string name="external_playback_error">تعذّر فتح هذا الملف الصوتي.</string>
+    <string name="open_full_player">فتح المشغّل الكامل</string>
+    <string name="close_external_player">إغلاق المشغّل العائم</string>
+    <string name="close_notification_player">إغلاق المشغّل</string>
+    <string name="previous_track">المقطع السابق</string>
+    <string name="next_track">المقطع التالي</string>
+    <string name="pause_playback">إيقاف التشغيل مؤقتًا</string>
+    <string name="play_playback">تشغيل</string>
+    <string name="playlist_not_found">قائمة التشغيل غير موجودة.</string>
+    <string name="disc_number_header">القرص %d</string>
+
+    <string name="ai_error_api_key">يُرجى إعداد مفتاح API صالح لمزوّد الذكاء الاصطناعي المحدد من الإعدادات.</string>
+    <string name="ai_error_generic">خطأ في الذكاء الاصطناعي: %s</string>
+    <string name="ai_error_quota">رفض مزوّد الذكاء الاصطناعي المحدد الطلب بسبب نفاد الرصيد أو الحصة المتاحة في الحساب.</string>
+    <string name="ai_error_model_unavailable">لم يعد نموذج الذكاء الاصطناعي المحدد متاحًا. حاول PixelMusic التبديل تلقائيًا إلى نموذج مدعوم.</string>
+    <string name="ai_no_songs_found">لم يعثر الذكاء الاصطناعي على أي أغانٍ مطابقة لطلبك.</string>
+    <string name="ai_prompt_empty">اكتب فكرة لمزيجك اليومي</string>
+    <string name="ai_daily_mix_updated">تم تحديث المزيج اليومي بالذكاء الاصطناعي</string>
+    <string name="ai_no_songs_for_mix">لم يعثر الذكاء الاصطناعي على أغانٍ لهذا المزيج</string>
+
+    <string name="shortcut_shuffle_short">عشوائي</string>
+    <string name="shortcut_shuffle_long">تشغيل عشوائي لكل الأغاني</string>
+    <string name="shortcut_playlist_short">قائمة التشغيل</string>
+    <string name="shortcut_playlist_long">آخر قائمة تشغيل تم تشغيلها</string>
+
+    <string name="tile_shuffle_all">تشغيل عشوائي للكل</string>
+    <string name="tile_last_playlist">آخر قائمة تشغيل</string>
+    <string name="tile_last_playlist_unavailable">لا توجد قائمة تشغيل متاحة للفتح</string>
+
+    <string name="invalid_album_id">معرّف الألبوم غير صالح</string>
+    <string name="album_id_not_found">معرّف الألبوم غير موجود</string>
+    <string name="error_loading_album">خطأ في تحميل بيانات الألبوم: %s</string>
+    <string name="album_not_found">لم يتم العثور على الألبوم</string>
+    <string name="could_not_update">تعذّر التحديث: %s</string>
+    <string name="invalid_artist_id">معرّف الفنان غير صالح</string>
+    <string name="artist_id_not_found">معرّف الفنان غير موجود</string>
+    <string name="error_loading_artist">خطأ في تحميل بيانات الفنان: %s</string>
+    <string name="could_not_find_artist">تعذّر العثور على الفنان</string>
+    <string name="no_valid_songs">لا توجد أغانٍ صالحة للتشغيل</string>
+
+    <string name="glance_widget_description">أداة متجاوبة تتكيّف مع حجمها</string>
+    <string name="widget_bar_4x1_desc">شريط مشغّل مدمج</string>
+    <string name="widget_control_4x2_desc">عناصر تحكم كاملة مع التشغيل العشوائي والتكرار</string>
+    <string name="widget_grid_2x2_desc">مشغّل مربّع بتصميم بسيط</string>
+    <string name="widget_blur_2x2_desc">مشغّل مربّع بخلفية غلاف ألبوم ضبابية</string>
+
+    <string name="service_processing_action">جارٍ معالجة أمر التشغيل…</string>
+
+    <!-- Playlist bulk actions -->
+    <string name="playlist_none_to_share">لا توجد قوائم تشغيل لمشاركتها</string>
+    <string name="playlist_share_chooser_title">مشاركة قوائم التشغيل</string>
+    <string name="playlist_share_failed">فشلت المشاركة: %1$s</string>
+    <string name="playlist_none_to_export">لا توجد قوائم تشغيل لتصديرها</string>
+    <string name="playlist_export_failed">فشل التصدير: %1$s</string>
+    <string name="playlist_export_folder_display">Music/PixelMusic Exports</string>
+    <string name="ai_playlist_gemini_key_required">يُرجى إعداد مفتاح Gemini API الخاص بك في الإعدادات.</string>
+    <string name="error_unknown">خطأ غير معروف</string>
+
+    <!-- Watch transfer foreground service -->
+    <string name="watch_transfer_sending_n_to_watch">جارٍ إرسال %1$d أغنية إلى الساعة</string>
+    <string name="watch_transfer_sending_to_watch">جارٍ الإرسال إلى الساعة</string>
+    <string name="watch_transfer_complete">اكتمل النقل</string>
+    <string name="watch_transfer_failed">فشل النقل</string>
+    <string name="watch_transfer_cancelled">تم إلغاء النقل</string>
+    <string name="watch_transfer_preparing">جارٍ التحضير للنقل إلى الساعة</string>
+    <string name="watch_transfer_summary_n">%1$d عمليات نقل</string>
+    <string name="watch_transfer_starting">جارٍ بدء النقل…</string>
+    <string name="watch_transfer_multiple_active">عدة عمليات نقل نشطة</string>
+    <string name="watch_transfer_preparing_transfer">جارٍ تحضير النقل…</string>
+    <string name="watch_transfer_status_transferring">جارٍ النقل</string>
+    <string name="watch_transfer_status_completed">مكتمل</string>
+    <string name="watch_transfer_status_failed">فشل</string>
+    <string name="watch_transfer_status_cancelled">ملغى</string>
+    <string name="watch_transfer_status_preparing">جارٍ التحضير</string>
+    <string name="watch_transfer_starting_short">جارٍ البدء</string>
+    <string name="watch_transfer_channel_name">نقل الملفات إلى الساعة</string>
+    <string name="watch_transfer_channel_description">يعرض التقدّم المباشر لنقل الموسيقى من الهاتف إلى الساعة</string>
+
+    <!-- Cast HTTP server -->
+    <string name="cast_server_channel_name">خادم وسائط Cast</string>
+    <string name="cast_server_notification_title">جارٍ البث إلى الجهاز</string>
+    <string name="cast_server_notification_text">تقديم الوسائط إلى جهاز Cast</string>
+    <string name="cast_server_foreground_error">%1$s: %2$s</string>
+
+    <!-- Backup / data transfer (ViewModels) -->
+    <string name="backup_invalid_format">نسخة احتياطية غير صالحة: %1$s</string>
+    <string name="backup_progress_preparing_restore">جارٍ تحضير الاستعادة</string>
+    <string name="backup_progress_starting_task">جارٍ بدء مهمة الاستعادة.</string>
+    <string name="backup_progress_preparing_backup">جارٍ تحضير النسخ الاحتياطي</string>
+    <string name="backup_progress_starting_backup_task">جارٍ بدء مهمة النسخ الاحتياطي.</string>
+    <string name="restore_completed_success">تمت استعادة النسخة الاحتياطية بنجاح</string>
+    <string name="restore_completed_partial_issues">اكتملت الاستعادة مع بعض المشكلات التي لم تُحل.</string>
+    <string name="restore_could_not_complete">تعذّر إكمال الاستعادة: %1$s</string>
+    <string name="restore_failed_format">فشلت الاستعادة: %1$s</string>
+    <string name="data_exported_successfully">تم تصدير البيانات بنجاح</string>
+    <string name="export_failed_format">فشل التصدير: %1$s</string>
+    <string name="data_restored_successfully">تمت استعادة البيانات بنجاح</string>
+    <string name="restore_partial_unresolved_format">اكتملت الاستعادة مع مشكلات لم تُحل. فشل: %1$s</string>
+    <string name="models_fetch_failed">فشل تحميل النماذج</string>
+    <string name="dev_test_crash_message">تم تشغيل تعطّل تجريبي من خيارات المطوّر - هذا متعمّد لاختبار نظام الإبلاغ عن الأعطال</string>
+
+    <!-- PlayerViewModel -->
+    <string name="player_song_not_found_in_list">الأغنية غير موجودة في القائمة الحالية</string>
+    <string name="player_could_not_locate_song">تعذّر العثور على الأغنية</string>
+    <string name="player_no_songs_in_library_toast">لا توجد أغانٍ في المكتبة</string>
+    <string name="player_playback_stopped_eot">توقف التشغيل: انتهى %1$s (نهاية المقطع).</string>
+    <string name="player_default_track_title">مقطع</string>
+    <string name="player_no_songs_to_shuffle">لا توجد أغانٍ للتشغيل العشوائي.</string>
+    <string name="player_queue_name_selected_albums">الألبومات المحددة</string>
+    <string name="player_no_playable_songs_in_albums">لا توجد أغانٍ قابلة للتشغيل في الألبومات المحددة</string>
+    <string name="player_only_first_n_albums_queued">تمت إضافة أول %1$d ألبومات فقط إلى قائمة الانتظار</string>
+    <string name="player_albums_queued_format">تمت إضافة %1$d ألبومات إلى قائمة الانتظار (%2$d أغنية)</string>
+    <string name="player_could_not_queue_albums">تعذّرت إضافة الألبومات المحددة إلى قائمة الانتظار</string>
+    <string name="player_all_songs_already_in_favorites">جميع الأغاني موجودة بالفعل في المفضلة</string>
+    <string name="player_no_songs_were_in_favorites">لم تكن هناك أي أغانٍ في المفضلة</string>
+    <string name="player_creating_zip">جارٍ إنشاء ملف ZIP…</string>
+    <string name="player_share_zip_failed_format">فشلت المشاركة: %1$s</string>
+    <string name="player_cannot_delete_currently_playing">لا يمكن حذف الأغنية قيد التشغيل حاليًا</string>
+    <string name="player_batch_delete_files_deleted_skipped_format">تم حذف %1$d ملف (تم تخطي %2$d - قيد التشغيل)</string>
+    <string name="player_batch_delete_partial_format">تم حذف %1$d من %2$d ملف</string>
+    <string name="player_delete_files_failed">فشل حذف الملفات</string>
+    <string name="player_file_deleted">تم حذف الملف</string>
+    <string name="player_delete_file_not_found">لا يمكن حذف الملف أو أن الملف غير موجود</string>
+    <string name="player_deletion_cancelled">تم إلغاء الحذف</string>
+    <string name="player_permission_denied_edit_files">تم رفض الإذن – لا يمكن تعديل الملفات</string>
+    <string name="player_permission_denied_save_lyrics">تم رفض الإذن – لا يمكن حفظ الكلمات</string>
+    <string name="player_permission_denied_edit_this_file">تم رفض الإذن – لا يمكن تعديل هذا الملف</string>
+    <string name="metadata_updated_successfully">تم تحديث البيانات الوصفية بنجاح</string>
+    <string name="player_updating_n_songs">جارٍ تحديث %1$d أغنية…</string>
+    <string name="player_batch_genre_updated_all">تم تحديث %1$d أغنية بنجاح!</string>
+    <string name="player_batch_genre_updated_partial">تم تحديث %1$d أغنية. فشل: %2$d</string>
+    <string name="playlist_restored_toast">تمت استعادة قائمة التشغيل</string>
+    <string name="delete_songs_permanent_message">سيتم حذف هذه الأغاني نهائيًا من جهازك ولا يمكن استعادتها.</string>
+    <string name="delete_action">حذف</string>
+
+    <!-- Sleep timer (SleepTimerStateHolder + TimerOptionsBottomSheet) -->
+    <string name="sleep_timer_n_minutes_format">%1$d دقيقة</string>
+    <string name="sleep_timer_display_eot">نهاية المقطع</string>
+    <string name="sleep_timer_set_for_minutes_toast">تم ضبط المؤقت على %1$d دقيقة.</string>
+    <string name="sleep_timer_cancelled_toast">تم إلغاء المؤقت.</string>
+    <string name="sleep_timer_eot_no_song_toast">لا يمكن تفعيل خيار نهاية المقطع: لا توجد أغنية نشطة.</string>
+    <string name="sleep_timer_eot_song_changed_toast">تم إيقاف مؤقت نهاية المقطع: تغيّرت الأغنية من %1$s إلى %2$s.</string>
+    <string name="sleep_timer_eot_stop_at_end_toast">سيتوقف التشغيل عند نهاية المقطع.</string>
+    <string name="sleep_timer_label_previous_track">المقطع السابق</string>
+    <string name="sleep_timer_label_current_track">المقطع الحالي</string>
+    <string name="sleep_timer_ui_title">مؤقت النوم</string>
+    <string name="sleep_timer_ui_slider_label_timer">المؤقت</string>
+    <string name="sleep_timer_ui_end_of_current_track">نهاية المقطع الحالي</string>
+    <string name="sleep_timer_ui_custom_time">وقت مخصّص</string>
+    <string name="sleep_timer_ui_cancel_timer">إلغاء المؤقت</string>
+    <string name="sleep_timer_ui_set_custom_duration">تعيين مدة مخصّصة</string>
+    <string name="sleep_timer_ui_play_count_label">عدد مرات التشغيل: %1$s</string>
+    <string name="sleep_timer_ui_play_count_one_time">مرة واحدة</string>
+    <string name="cd_switch_on">تفعيل</string>
+    <string name="ui_format_percent_d">%1$d%%</string>
+    <string name="backup_manifest_schema_v">v%1$d</string>
+    <string name="backup_manifest_device_line">%1$s %2$s</string>
+
+    <!-- Share Bottom Sheet -->
+    <string name="share_sheet_title">مشاركة</string>
+    <string name="share_sheet_chooser_title">مشاركة عبر</string>
+    <string name="share_card_tab_song">بطاقة الأغنية</string>
+    <string name="share_card_tab_lyrics">بطاقة الكلمات</string>
+    <string name="share_action_snapchat">قصة\nSnapchat</string>
+    <string name="share_action_instagram">قصة\nInstagram</string>
+    <string name="share_action_download_card">حفظ\nالبطاقة</string>
+    <string name="share_action_copy_yt_link">نسخ\nرابط YT</string>
+    <string name="share_action_more_apps">مشاركة\nالمزيد</string>
+    <string name="share_action_add_to_playlist">إضافة إلى قائمة تشغيل</string>
+    <string name="share_action_add_to_playlist_sub">أضف هذه الأغنية إلى إحدى قوائم التشغيل الخاصة بك</string>
+    <string name="share_action_copy_github_link">نسخ رابط التطبيق</string>
+    <string name="share_card_saved">تم حفظ البطاقة في الصور</string>
+    <string name="share_link_copied">تم نسخ الرابط إلى الحافظة</string>
+    <string name="share_text_format">أستمع الآن إلى \"%1$s\" للفنان %2$s 🎵\n%3$s</string>
+    <string name="share_format_photo">صورة</string>
+    <string name="share_format_video">فيديو 30 ث</string>
+    <string name="share_action_download_video">حفظ\nالفيديو</string>
+    <string name="share_action_share_video">مشاركة\nالفيديو</string>
+    <string name="share_video_saved">تم حفظ الفيديو في Movies/PixelMusic</string>
+    <string name="share_video_generating">جارٍ إنشاء فيديو مدته 30 ثانية…</string>
+    <string name="share_video_failed">فشل إنشاء الفيديو: %1$s</string>
+    <string name="share_video_progress_title">جارٍ إنشاء فيديو 30 ثانية</string>
+    <string name="share_video_progress_subtitle">جارٍ ترميز تصميم البطاقة مع صوت الأغنية…</string>
+
+    <!-- Player Share / Options Menu -->
+    <string name="player_menu_share_card">مشاركة بطاقة القصة</string>
+    <string name="player_menu_download">تنزيل الأغنية</string>
+    <string name="player_menu_add_to_playlist">إضافة إلى قائمة تشغيل</string>
+    <string name="cd_player_more_options">المزيد من الخيارات</string>
+    <string name="cd_player_theme">تغيير المظهر</string>
+    <string name="setcat_navbar_style_floating_pill">شريط عائم دائري</string>
+
+    <!-- Listen Together -->
+    <string name="listen_together">الاستماع معًا</string>
+    <string name="listen_together_desc">استمع إلى نفس الموسيقى في الوقت نفسه مع أصدقائك أينما كانوا</string>
+    <string name="listen_together_host_only">المضيف فقط يمكنه التحكم في التشغيل</string>
+    <string name="listen_together_your_name">اسمك</string>
+    <string name="listen_together_start">بدء جلسة</string>
+    <string name="listen_together_join">الانضمام إلى جلسة</string>
+    <string name="listen_together_room_code">رمز الغرفة</string>
+    <string name="listen_together_guest_name">اسم الضيف (اختياري)</string>
+    <string name="listen_together_creating">جارٍ إنشاء الجلسة\u2026</string>
+    <string name="listen_together_joining">جارٍ الانضمام\u2026</string>
+    <string name="listen_together_share_code">شارك هذا الرمز مع أصدقائك</string>
+    <string name="listen_together_copy_code">نسخ الرمز</string>
+    <string name="listen_together_code_copied">تم نسخ الرمز إلى الحافظة</string>
+    <string name="listen_together_listeners">%1$d/4 يستمعون</string>
+    <string name="listen_together_end_session">إنهاء الجلسة</string>
+    <string name="listen_together_listening_with">الاستماع مع %1$s</string>
+    <string name="listen_together_guest_note">استرخِ، المضيف يتحكم في الموسيقى</string>
+    <string name="listen_together_leave">مغادرة</string>
+    <string name="listen_together_live">مباشر</string>
+    <string name="listen_together_listening">يستمع</string>
+    <string name="listen_together_reconnecting">جارٍ إعادة الاتصال\u2026</string>
+    <string name="listen_together_slow_down">تمهّل قليلًا</string>
+    <string name="listen_together_host">المضيف</string>
+    <string-array name="listen_together_preset_messages">
+        <item>الأغنية رائعة 🔥</item>
+        <item>نعيدها؟ 🔁</item>
+        <item>أغنية هادئة بعدها 🎧</item>
+        <item>ارفع الصوت 🔊</item>
+    </string-array>
+    <string name="listen_together_track_unavailable">هذا المقطع غير متاح لديك، ستبقى متزامنًا مع المضيف</string>
+</resources>
